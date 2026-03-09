@@ -507,6 +507,7 @@ class NodeRuntime(context: Context) {
   fun setOnboardingCompleted(value: Boolean) = prefs.setOnboardingCompleted(value)
   val lastDiscoveredStableId: StateFlow<String> = prefs.lastDiscoveredStableId
   val canvasDebugStatusEnabled: StateFlow<Boolean> = prefs.canvasDebugStatusEnabled
+  val preferredLanguage: StateFlow<String> = prefs.preferredLanguage
 
   private var didAutoConnect = false
 
@@ -648,6 +649,10 @@ class NodeRuntime(context: Context) {
 
   fun setCanvasDebugStatusEnabled(value: Boolean) {
     prefs.setCanvasDebugStatusEnabled(value)
+  }
+
+  fun setPreferredLanguage(value: String) {
+    prefs.setPreferredLanguage(value)
   }
 
   fun setVoiceScreenActive(active: Boolean) {

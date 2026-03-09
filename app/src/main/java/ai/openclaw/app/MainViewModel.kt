@@ -60,6 +60,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   val gatewayToken: StateFlow<String> = runtime.gatewayToken
   val onboardingCompleted: StateFlow<Boolean> = runtime.onboardingCompleted
   val canvasDebugStatusEnabled: StateFlow<Boolean> = runtime.canvasDebugStatusEnabled
+  val preferredLanguage: StateFlow<String> = runtime.preferredLanguage
 
   val chatSessionKey: StateFlow<String> = runtime.chatSessionKey
   val chatSessionId: StateFlow<String?> = runtime.chatSessionId
@@ -126,6 +127,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
   fun setCanvasDebugStatusEnabled(value: Boolean) {
     runtime.setCanvasDebugStatusEnabled(value)
+  }
+
+  fun setPreferredLanguage(value: String) {
+    runtime.setPreferredLanguage(value)
   }
 
   fun setVoiceScreenActive(active: Boolean) {

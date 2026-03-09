@@ -48,11 +48,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import ai.openclaw.app.MainViewModel
 
-private enum class ConnectInputMode {
-  SetupCode,
-  Manual,
-}
-
 @Composable
 fun ConnectTabScreen(viewModel: MainViewModel) {
   val statusText by viewModel.statusText.collectAsState()
@@ -70,9 +65,9 @@ fun ConnectTabScreen(viewModel: MainViewModel) {
     remember(manualEnabled, manualHost, gatewayToken) {
       mutableStateOf(
         if (manualEnabled || manualHost.isNotBlank() || gatewayToken.trim().isNotEmpty()) {
-          ConnectInputMode.Manual
+          if (manualHost.contains(".ts.net", ignoreCase = true)) ConnectGatewayInputMode.Tailscale else ConnectGatewayInputMode.Manual
         } else {
-          ConnectInputMode.SetupCode
+          ConnectGatewayInputMode.SetupCode
         },
       )
     }
@@ -80,6 +75,8 @@ fun ConnectTabScreen(viewModel: MainViewModel) {
   var manualHostInput by rememberSaveable { mutableStateOf(manualHost.ifBlank { "10.0.2.2" }) }
   var manualPortInput by rememberSaveable { mutableStateOf(manualPort.toString()) }
   var manualTlsInput by rememberSaveable { mutableStateOf(manualTls) }
+  var tailscaleHostInput by rememberSaveable { mutableStateOf("") }
+  var tailscalePortInput by rememberSaveable { mutableStateOf("443") }
   var passwordInput by rememberSaveable { mutableStateOf("") }
   var validationText by rememberSaveable { mutableStateOf<String?>(null) }
 
@@ -111,12 +108,16 @@ fun ConnectTabScreen(viewModel: MainViewModel) {
   val manualResolvedEndpoint = remember(manualHostInput, manualPortInput, manualTlsInput) {
     composeGatewayManualUrl(manualHostInput, manualPortInput, manualTlsInput)?.let { parseGatewayEndpoint(it)?.displayUrl }
   }
+  val tailscaleResolvedEndpoint = remember(tailscaleHostInput, tailscalePortInput) {
+    composeGatewayManualUrl(tailscaleHostInput, tailscalePortInput, tls = true)?.let { parseGatewayEndpoint(it)?.displayUrl }
+  }
 
   val activeEndpoint =
-    remember(isConnected, remoteAddress, setupResolvedEndpoint, manualResolvedEndpoint, inputMode) {
+    remember(isConnected, remoteAddress, setupResolvedEndpoint, manualResolvedEndpoint, tailscaleResolvedEndpoint, inputMode) {
       when {
         isConnected && !remoteAddress.isNullOrBlank() -> remoteAddress!!
-        inputMode == ConnectInputMode.SetupCode -> setupResolvedEndpoint ?: "Not set"
+        inputMode == ConnectGatewayInputMode.SetupCode -> setupResolvedEndpoint ?: "Not set"
+        inputMode == ConnectGatewayInputMode.Tailscale -> tailscaleResolvedEndpoint ?: "Not set"
         else -> manualResolvedEndpoint ?: "Not set"
       }
     }
@@ -176,21 +177,23 @@ fun ConnectTabScreen(viewModel: MainViewModel) {
 
         val config =
           resolveGatewayConnectConfig(
-            useSetupCode = inputMode == ConnectInputMode.SetupCode,
+            inputMode = inputMode,
             setupCode = setupCode,
             manualHost = manualHostInput,
             manualPort = manualPortInput,
             manualTls = manualTlsInput,
+            tailscaleHost = tailscaleHostInput,
+            tailscalePort = tailscalePortInput,
             fallbackToken = gatewayToken,
             fallbackPassword = passwordInput,
           )
 
         if (config == null) {
           validationText =
-            if (inputMode == ConnectInputMode.SetupCode) {
-              "Paste a valid setup code to connect."
-            } else {
-              "Enter a valid manual host and port to connect."
+            when (inputMode) {
+              ConnectGatewayInputMode.SetupCode -> "Paste a valid setup code to connect."
+              ConnectGatewayInputMode.Tailscale -> "Enter a valid Tailscale host and port to connect."
+              ConnectGatewayInputMode.Manual -> "Enter a valid manual host and port to connect."
             }
           return@Button
         }
@@ -256,13 +259,18 @@ fun ConnectTabScreen(viewModel: MainViewModel) {
           Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MethodChip(
               label = "Setup Code",
-              active = inputMode == ConnectInputMode.SetupCode,
-              onClick = { inputMode = ConnectInputMode.SetupCode },
+              active = inputMode == ConnectGatewayInputMode.SetupCode,
+              onClick = { inputMode = ConnectGatewayInputMode.SetupCode },
             )
             MethodChip(
               label = "Manual",
-              active = inputMode == ConnectInputMode.Manual,
-              onClick = { inputMode = ConnectInputMode.Manual },
+              active = inputMode == ConnectGatewayInputMode.Manual,
+              onClick = { inputMode = ConnectGatewayInputMode.Manual },
+            )
+            MethodChip(
+              label = "Tailscale",
+              active = inputMode == ConnectGatewayInputMode.Tailscale,
+              onClick = { inputMode = ConnectGatewayInputMode.Tailscale },
             )
           }
 
@@ -270,135 +278,182 @@ fun ConnectTabScreen(viewModel: MainViewModel) {
           CommandBlock("openclaw qr --setup-code-only")
           CommandBlock("openclaw qr --json")
 
-          if (inputMode == ConnectInputMode.SetupCode) {
-            Text("Setup Code", style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold), color = mobileTextSecondary)
-            OutlinedTextField(
-              value = setupCode,
-              onValueChange = {
-                setupCode = it
-                validationText = null
-              },
-              placeholder = { Text("Paste setup code", style = mobileBody, color = mobileTextTertiary) },
-              modifier = Modifier.fillMaxWidth(),
-              minLines = 3,
-              maxLines = 5,
-              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
-              textStyle = mobileBody.copy(fontFamily = FontFamily.Monospace, color = mobileText),
-              shape = RoundedCornerShape(14.dp),
-              colors = outlinedColors(),
-            )
-            if (!setupResolvedEndpoint.isNullOrBlank()) {
-              EndpointPreview(endpoint = setupResolvedEndpoint)
-            }
-          } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-              QuickFillChip(
-                label = "Android Emulator",
-                onClick = {
-                  manualHostInput = "10.0.2.2"
-                  manualPortInput = "18789"
-                  manualTlsInput = false
+          when (inputMode) {
+            ConnectGatewayInputMode.SetupCode -> {
+              Text("Setup Code", style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold), color = mobileTextSecondary)
+              OutlinedTextField(
+                value = setupCode,
+                onValueChange = {
+                  setupCode = it
                   validationText = null
                 },
+                placeholder = { Text("Paste setup code", style = mobileBody, color = mobileTextTertiary) },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3,
+                maxLines = 5,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+                textStyle = mobileBody.copy(fontFamily = FontFamily.Monospace, color = mobileText),
+                shape = RoundedCornerShape(14.dp),
+                colors = outlinedColors(),
               )
-              QuickFillChip(
-                label = "Localhost",
-                onClick = {
-                  manualHostInput = "127.0.0.1"
-                  manualPortInput = "18789"
-                  manualTlsInput = false
-                  validationText = null
-                },
-              )
-            }
-
-            Text("Host", style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold), color = mobileTextSecondary)
-            OutlinedTextField(
-              value = manualHostInput,
-              onValueChange = {
-                manualHostInput = it
-                validationText = null
-              },
-              placeholder = { Text("10.0.2.2", style = mobileBody, color = mobileTextTertiary) },
-              modifier = Modifier.fillMaxWidth(),
-              singleLine = true,
-              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-              textStyle = mobileBody.copy(color = mobileText),
-              shape = RoundedCornerShape(14.dp),
-              colors = outlinedColors(),
-            )
-
-            Text("Port", style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold), color = mobileTextSecondary)
-            OutlinedTextField(
-              value = manualPortInput,
-              onValueChange = {
-                manualPortInput = it
-                validationText = null
-              },
-              placeholder = { Text("18789", style = mobileBody, color = mobileTextTertiary) },
-              modifier = Modifier.fillMaxWidth(),
-              singleLine = true,
-              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-              textStyle = mobileBody.copy(fontFamily = FontFamily.Monospace, color = mobileText),
-              shape = RoundedCornerShape(14.dp),
-              colors = outlinedColors(),
-            )
-
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-              Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("Use TLS", style = mobileHeadline, color = mobileText)
-                Text("Switch to secure websocket (`wss`).", style = mobileCallout, color = mobileTextSecondary)
+              if (!setupResolvedEndpoint.isNullOrBlank()) {
+                EndpointPreview(endpoint = setupResolvedEndpoint)
               }
-              Switch(
-                checked = manualTlsInput,
-                onCheckedChange = {
-                  manualTlsInput = it
-                  validationText = null
-                },
-                colors =
-                  SwitchDefaults.colors(
-                    checkedTrackColor = mobileAccent,
-                    uncheckedTrackColor = mobileBorderStrong,
-                    checkedThumbColor = Color.White,
-                    uncheckedThumbColor = Color.White,
-                  ),
-              )
             }
 
-            Text("Token (optional)", style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold), color = mobileTextSecondary)
-            OutlinedTextField(
-              value = gatewayToken,
-              onValueChange = { viewModel.setGatewayToken(it) },
-              placeholder = { Text("token", style = mobileBody, color = mobileTextTertiary) },
-              modifier = Modifier.fillMaxWidth(),
-              singleLine = true,
-              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
-              textStyle = mobileBody.copy(color = mobileText),
-              shape = RoundedCornerShape(14.dp),
-              colors = outlinedColors(),
-            )
+            ConnectGatewayInputMode.Manual -> {
+              Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                QuickFillChip(
+                  label = "Android Emulator",
+                  onClick = {
+                    manualHostInput = "10.0.2.2"
+                    manualPortInput = "18789"
+                    manualTlsInput = false
+                    validationText = null
+                  },
+                )
+                QuickFillChip(
+                  label = "Localhost",
+                  onClick = {
+                    manualHostInput = "127.0.0.1"
+                    manualPortInput = "18789"
+                    manualTlsInput = false
+                    validationText = null
+                  },
+                )
+              }
 
-            Text("Password (optional)", style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold), color = mobileTextSecondary)
-            OutlinedTextField(
-              value = passwordInput,
-              onValueChange = { passwordInput = it },
-              placeholder = { Text("password", style = mobileBody, color = mobileTextTertiary) },
-              modifier = Modifier.fillMaxWidth(),
-              singleLine = true,
-              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
-              textStyle = mobileBody.copy(color = mobileText),
-              shape = RoundedCornerShape(14.dp),
-              colors = outlinedColors(),
-            )
+              Text("Host", style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold), color = mobileTextSecondary)
+              OutlinedTextField(
+                value = manualHostInput,
+                onValueChange = {
+                  manualHostInput = it
+                  validationText = null
+                },
+                placeholder = { Text("10.0.2.2", style = mobileBody, color = mobileTextTertiary) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                textStyle = mobileBody.copy(color = mobileText),
+                shape = RoundedCornerShape(14.dp),
+                colors = outlinedColors(),
+              )
 
-            if (!manualResolvedEndpoint.isNullOrBlank()) {
-              EndpointPreview(endpoint = manualResolvedEndpoint)
+              Text("Port", style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold), color = mobileTextSecondary)
+              OutlinedTextField(
+                value = manualPortInput,
+                onValueChange = {
+                  manualPortInput = it
+                  validationText = null
+                },
+                placeholder = { Text("18789", style = mobileBody, color = mobileTextTertiary) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                textStyle = mobileBody.copy(fontFamily = FontFamily.Monospace, color = mobileText),
+                shape = RoundedCornerShape(14.dp),
+                colors = outlinedColors(),
+              )
+
+              Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+              ) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                  Text("Use TLS", style = mobileHeadline, color = mobileText)
+                  Text("Switch to secure websocket (`wss`).", style = mobileCallout, color = mobileTextSecondary)
+                }
+                Switch(
+                  checked = manualTlsInput,
+                  onCheckedChange = {
+                    manualTlsInput = it
+                    validationText = null
+                  },
+                  colors =
+                    SwitchDefaults.colors(
+                      checkedTrackColor = mobileAccent,
+                      uncheckedTrackColor = mobileBorderStrong,
+                      checkedThumbColor = Color.White,
+                      uncheckedThumbColor = Color.White,
+                    ),
+                )
+              }
+
+              if (!manualResolvedEndpoint.isNullOrBlank()) {
+                EndpointPreview(endpoint = manualResolvedEndpoint)
+              }
+            }
+
+            ConnectGatewayInputMode.Tailscale -> {
+              Text(
+                "Use your Tailnet gateway address (for example: openclaw.yourname.ts.net).",
+                style = mobileCallout,
+                color = mobileTextSecondary,
+              )
+              Text("Tailscale host", style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold), color = mobileTextSecondary)
+              OutlinedTextField(
+                value = tailscaleHostInput,
+                onValueChange = {
+                  tailscaleHostInput = it
+                  validationText = null
+                },
+                placeholder = { Text("openclaw.yourname.ts.net", style = mobileBody, color = mobileTextTertiary) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                textStyle = mobileBody.copy(color = mobileText),
+                shape = RoundedCornerShape(14.dp),
+                colors = outlinedColors(),
+              )
+
+              Text("Port", style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold), color = mobileTextSecondary)
+              OutlinedTextField(
+                value = tailscalePortInput,
+                onValueChange = {
+                  tailscalePortInput = it
+                  validationText = null
+                },
+                placeholder = { Text("443", style = mobileBody, color = mobileTextTertiary) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                textStyle = mobileBody.copy(fontFamily = FontFamily.Monospace, color = mobileText),
+                shape = RoundedCornerShape(14.dp),
+                colors = outlinedColors(),
+              )
+
+              if (!tailscaleResolvedEndpoint.isNullOrBlank()) {
+                EndpointPreview(endpoint = tailscaleResolvedEndpoint)
+              }
             }
           }
+
+          Text("Token (optional)", style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold), color = mobileTextSecondary)
+          OutlinedTextField(
+            value = gatewayToken,
+            onValueChange = { viewModel.setGatewayToken(it) },
+            placeholder = { Text("token", style = mobileBody, color = mobileTextTertiary) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+            textStyle = mobileBody.copy(color = mobileText),
+            shape = RoundedCornerShape(14.dp),
+            colors = outlinedColors(),
+          )
+
+          Text("Password (optional)", style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold), color = mobileTextSecondary)
+          OutlinedTextField(
+            value = passwordInput,
+            onValueChange = { passwordInput = it },
+            placeholder = { Text("password", style = mobileBody, color = mobileTextTertiary) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+            textStyle = mobileBody.copy(color = mobileText),
+            shape = RoundedCornerShape(14.dp),
+            colors = outlinedColors(),
+          )
 
           HorizontalDivider(color = mobileBorder)
 

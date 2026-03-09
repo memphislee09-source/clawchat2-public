@@ -30,18 +30,26 @@ internal data class GatewayConnectConfig(
   val password: String,
 )
 
+internal enum class ConnectGatewayInputMode {
+  SetupCode,
+  Manual,
+  Tailscale,
+}
+
 private val gatewaySetupJson = Json { ignoreUnknownKeys = true }
 
 internal fun resolveGatewayConnectConfig(
-  useSetupCode: Boolean,
+  inputMode: ConnectGatewayInputMode,
   setupCode: String,
   manualHost: String,
   manualPort: String,
   manualTls: Boolean,
+  tailscaleHost: String,
+  tailscalePort: String,
   fallbackToken: String,
   fallbackPassword: String,
 ): GatewayConnectConfig? {
-  if (useSetupCode) {
+  if (inputMode == ConnectGatewayInputMode.SetupCode) {
     val setup = decodeGatewaySetupCode(setupCode) ?: return null
     val parsed = parseGatewayEndpoint(setup.url) ?: return null
     return GatewayConnectConfig(
@@ -50,6 +58,18 @@ internal fun resolveGatewayConnectConfig(
       tls = parsed.tls,
       token = setup.token ?: fallbackToken.trim(),
       password = setup.password ?: fallbackPassword.trim(),
+    )
+  }
+
+  if (inputMode == ConnectGatewayInputMode.Tailscale) {
+    val tailscaleUrl = composeGatewayManualUrl(tailscaleHost, tailscalePort, tls = true) ?: return null
+    val parsed = parseGatewayEndpoint(tailscaleUrl) ?: return null
+    return GatewayConnectConfig(
+      host = parsed.host,
+      port = parsed.port,
+      tls = true,
+      token = fallbackToken.trim(),
+      password = fallbackPassword.trim(),
     )
   }
 

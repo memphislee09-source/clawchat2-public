@@ -90,6 +90,10 @@ class SecurePrefs(context: Context) {
     MutableStateFlow(plainPrefs.getBoolean("canvas.debugStatusEnabled", false))
   val canvasDebugStatusEnabled: StateFlow<Boolean> = _canvasDebugStatusEnabled
 
+  private val _preferredLanguage =
+    MutableStateFlow(plainPrefs.getString("app.language", "system") ?: "system")
+  val preferredLanguage: StateFlow<String> = _preferredLanguage
+
   private val _wakeWords = MutableStateFlow(loadWakeWords())
   val wakeWords: StateFlow<List<String>> = _wakeWords
 
@@ -173,6 +177,12 @@ class SecurePrefs(context: Context) {
   fun setCanvasDebugStatusEnabled(value: Boolean) {
     plainPrefs.edit { putBoolean("canvas.debugStatusEnabled", value) }
     _canvasDebugStatusEnabled.value = value
+  }
+
+  fun setPreferredLanguage(value: String) {
+    val normalized = value.trim().ifEmpty { "system" }
+    plainPrefs.edit { putString("app.language", normalized) }
+    _preferredLanguage.value = normalized
   }
 
   fun loadGatewayToken(): String? {

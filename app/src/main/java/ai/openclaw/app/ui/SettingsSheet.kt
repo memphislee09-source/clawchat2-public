@@ -1,6 +1,7 @@
 package ai.openclaw.app.ui
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -81,6 +82,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
   val locationPreciseEnabled by viewModel.locationPreciseEnabled.collectAsState()
   val preventSleep by viewModel.preventSleep.collectAsState()
   val canvasDebugStatusEnabled by viewModel.canvasDebugStatusEnabled.collectAsState()
+  val preferredLanguage by viewModel.preferredLanguage.collectAsState()
 
   val listState = rememberLazyListState()
   val deviceModel =
@@ -360,6 +362,43 @@ fun SettingsSheet(viewModel: MainViewModel) {
           )
         }
       }
+      item { HorizontalDivider(color = mobileBorder) }
+
+      item {
+        Text(
+          "GENERAL",
+          style = mobileCaption1.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
+          color = mobileAccent,
+        )
+      }
+      item {
+        Column(modifier = Modifier.settingsRowModifier(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+          ListItem(
+            modifier = Modifier.fillMaxWidth(),
+            colors = listItemColors,
+            headlineContent = { Text("Language", style = mobileHeadline) },
+            supportingContent = { Text("Change app display language (restart current screen).", style = mobileCallout) },
+          )
+          languageOptions.forEachIndexed { index, option ->
+            if (index > 0) HorizontalDivider(color = mobileBorder)
+            ListItem(
+              modifier = Modifier.fillMaxWidth(),
+              colors = listItemColors,
+              headlineContent = { Text(option.label, style = mobileHeadline) },
+              trailingContent = {
+                RadioButton(
+                  selected = preferredLanguage == option.code,
+                  onClick = {
+                    viewModel.setPreferredLanguage(option.code)
+                    (context as? Activity)?.recreate()
+                  },
+                )
+              },
+            )
+          }
+        }
+      }
+
       item { HorizontalDivider(color = mobileBorder) }
 
     // Order parity: Node → Voice → Camera → Messaging → Location → Screen.
@@ -894,6 +933,15 @@ private fun hasNotificationsPermission(context: Context): Boolean {
 private fun isNotificationListenerEnabled(context: Context): Boolean {
   return DeviceNotificationListenerService.isAccessEnabled(context)
 }
+
+private data class LanguageOption(val code: String, val label: String)
+
+private val languageOptions =
+  listOf(
+    LanguageOption(code = "system", label = "System Default"),
+    LanguageOption(code = "en", label = "English"),
+    LanguageOption(code = "zh", label = "中文"),
+  )
 
 private fun hasMotionCapabilities(context: Context): Boolean {
   val sensorManager = context.getSystemService(SensorManager::class.java) ?: return false
