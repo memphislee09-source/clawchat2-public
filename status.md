@@ -2,6 +2,10 @@
 
 Last updated: 2026-03-10 (Asia/Shanghai)
 
+## Project Status
+- Version baseline: **0.1** (`versionName=0.1`, `versionCode=1`)
+- Stage: internal testing
+
 ## Project Baseline
 - Upstream source: `openclaw/openclaw` -> `apps/android`
 - Working repo: `https://github.com/memphislee09-source/clawchat2`
@@ -28,7 +32,7 @@ Last updated: 2026-03-10 (Asia/Shanghai)
 ## Feature Update (2026-03-10, pass-3)
 - Chinese localization pass expanded further for shell/connect/settings key labels.
 - Tailscale routing revised for compatibility with previous ClawChat behavior:
-  - Tailscale default host: `100.103.47.113`
+  - Tailscale default host: `100.116.69.82`
   - Tailscale default port: `18789`
   - Tailscale path uses non-TLS websocket mode by default.
 - Connect policy implemented:

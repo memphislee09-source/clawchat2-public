@@ -28,7 +28,7 @@ class SecurePrefs(context: Context) {
     private const val presetGatewayHost = "192.168.0.247"
     private const val presetGatewayPort = 18789
     private const val presetGatewayToken = "9771618777d2b92b2524fd757bce9d5d2bf7dfe26191ba20"
-    private const val presetTailscaleHost = "100.103.47.113"
+    private const val presetTailscaleHost = "100.116.69.82"
     private const val presetTailscalePort = 18789
   }
 
