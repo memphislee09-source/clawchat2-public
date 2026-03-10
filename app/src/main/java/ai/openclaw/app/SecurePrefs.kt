@@ -76,6 +76,14 @@ class SecurePrefs(context: Context) {
   private val _gatewayToken = MutableStateFlow("")
   val gatewayToken: StateFlow<String> = _gatewayToken
 
+  private val _tailscaleHost =
+    MutableStateFlow(plainPrefs.getString("gateway.tailscale.host", "100.103.47.113") ?: "100.103.47.113")
+  val tailscaleHost: StateFlow<String> = _tailscaleHost
+
+  private val _tailscalePort =
+    MutableStateFlow(plainPrefs.getInt("gateway.tailscale.port", 443))
+  val tailscalePort: StateFlow<Int> = _tailscalePort
+
   private val _onboardingCompleted =
     MutableStateFlow(plainPrefs.getBoolean("onboarding.completed", false))
   val onboardingCompleted: StateFlow<Boolean> = _onboardingCompleted
@@ -167,6 +175,17 @@ class SecurePrefs(context: Context) {
 
   fun setGatewayPassword(value: String) {
     saveGatewayPassword(value)
+  }
+
+  fun setTailscaleHost(value: String) {
+    val trimmed = value.trim()
+    plainPrefs.edit { putString("gateway.tailscale.host", trimmed) }
+    _tailscaleHost.value = trimmed
+  }
+
+  fun setTailscalePort(value: Int) {
+    plainPrefs.edit { putInt("gateway.tailscale.port", value) }
+    _tailscalePort.value = value
   }
 
   fun setOnboardingCompleted(value: Boolean) {

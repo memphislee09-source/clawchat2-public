@@ -58,6 +58,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   val manualPort: StateFlow<Int> = runtime.manualPort
   val manualTls: StateFlow<Boolean> = runtime.manualTls
   val gatewayToken: StateFlow<String> = runtime.gatewayToken
+  val tailscaleHost: StateFlow<String> = runtime.tailscaleHost
+  val tailscalePort: StateFlow<Int> = runtime.tailscalePort
   val onboardingCompleted: StateFlow<Boolean> = runtime.onboardingCompleted
   val canvasDebugStatusEnabled: StateFlow<Boolean> = runtime.canvasDebugStatusEnabled
   val preferredLanguage: StateFlow<String> = runtime.preferredLanguage
@@ -119,6 +121,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
   fun setGatewayPassword(value: String) {
     runtime.setGatewayPassword(value)
+  }
+
+  fun setTailscaleHost(value: String) {
+    runtime.setTailscaleHost(value)
+  }
+
+  fun setTailscalePort(value: Int) {
+    runtime.setTailscalePort(value)
   }
 
   fun setOnboardingCompleted(value: Boolean) {

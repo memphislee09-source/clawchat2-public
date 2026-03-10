@@ -24,7 +24,15 @@ Last updated: 2026-03-10 (Asia/Shanghai)
 - Targeted test passed: `:app:testDebugUnitTest --tests ai.openclaw.app.ui.GatewayConfigResolverTest*`
 - APK build passed: `:app:assembleDebug`
 - APK output: `app/build/outputs/apk/debug/openclaw-2026.3.9-debug.apk`
-- Note: full `testDebugUnitTest` has 2 upstream pre-existing failures in `TalkModeConfigContractTest`.
+
+## Feature Update (2026-03-10, pass-2)
+- Chinese localization pass expanded: major shell/connect/settings labels switched to Chinese when language is Chinese.
+- Language option persists and recreates activity for immediate UI switch.
+- Tailscale connectivity integrated with persistence:
+  - Stored host + port (`gateway.tailscale.host` / `gateway.tailscale.port`)
+  - Default host: `100.103.47.113`
+  - Connect priority: LAN discovery first, fallback to Tailscale on LAN failure, otherwise Offline.
+- Tailscale host/port now saved when connecting.
 
 ## Next Actions
 - Brand rename pass (app name / package id / icon / default gateway config) when requested.

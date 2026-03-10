@@ -224,6 +224,8 @@ class NodeRuntime(context: Context) {
       deviceAuthStore = deviceAuthStore,
       onConnected = { name, remote, mainSessionKey ->
         operatorConnected = true
+        pendingTailscaleFallback = false
+        tailscaleFallbackTried = false
         operatorStatusText = "Connected"
         _serverName.value = name
         _remoteAddress.value = remote
@@ -240,7 +242,6 @@ class NodeRuntime(context: Context) {
       },
       onDisconnected = { message ->
         operatorConnected = false
-        operatorStatusText = message
         _serverName.value = null
         _remoteAddress.value = null
         _seamColorArgb.value = DEFAULT_SEAM_COLOR_ARGB
@@ -249,8 +250,23 @@ class NodeRuntime(context: Context) {
         }
         chat.applyMainSessionKey(resolveMainSessionKey())
         chat.onDisconnected(message)
-        updateStatus()
         micCapture.onGatewayConnectionChanged(false)
+
+        if (pendingTailscaleFallback && !tailscaleFallbackTried) {
+          val tsHost = tailscaleHost.value.trim()
+          val tsPort = tailscalePort.value
+          pendingTailscaleFallback = false
+          if (tsHost.isNotEmpty() && tsPort in 1..65535) {
+            tailscaleFallbackTried = true
+            operatorStatusText = "LAN unavailable, trying Tailscale…"
+            updateStatus()
+            connect(GatewayEndpoint.manual(host = tsHost, port = tsPort), fromTailscaleFallback = true)
+            return@GatewaySession
+          }
+        }
+
+        operatorStatusText = if (tailscaleFallbackTried) "Offline" else message
+        updateStatus()
       },
       onEvent = { event, payloadJson ->
         handleGatewayEvent(event, payloadJson)
@@ -501,15 +517,21 @@ class NodeRuntime(context: Context) {
   val manualPort: StateFlow<Int> = prefs.manualPort
   val manualTls: StateFlow<Boolean> = prefs.manualTls
   val gatewayToken: StateFlow<String> = prefs.gatewayToken
+  val tailscaleHost: StateFlow<String> = prefs.tailscaleHost
+  val tailscalePort: StateFlow<Int> = prefs.tailscalePort
   val onboardingCompleted: StateFlow<Boolean> = prefs.onboardingCompleted
   fun setGatewayToken(value: String) = prefs.setGatewayToken(value)
   fun setGatewayPassword(value: String) = prefs.setGatewayPassword(value)
+  fun setTailscaleHost(value: String) = prefs.setTailscaleHost(value)
+  fun setTailscalePort(value: Int) = prefs.setTailscalePort(value)
   fun setOnboardingCompleted(value: Boolean) = prefs.setOnboardingCompleted(value)
   val lastDiscoveredStableId: StateFlow<String> = prefs.lastDiscoveredStableId
   val canvasDebugStatusEnabled: StateFlow<Boolean> = prefs.canvasDebugStatusEnabled
   val preferredLanguage: StateFlow<String> = prefs.preferredLanguage
 
   private var didAutoConnect = false
+  private var pendingTailscaleFallback = false
+  private var tailscaleFallbackTried = false
 
   val chatSessionKey: StateFlow<String> = chat.sessionKey
   val chatSessionId: StateFlow<String?> = chat.sessionId
@@ -711,7 +733,12 @@ class NodeRuntime(context: Context) {
     nodeSession.reconnect()
   }
 
-  fun connect(endpoint: GatewayEndpoint) {
+  fun connect(endpoint: GatewayEndpoint, fromTailscaleFallback: Boolean = false) {
+    if (!fromTailscaleFallback) {
+      pendingTailscaleFallback = true
+      tailscaleFallbackTried = false
+    }
+
     val tls = connectionManager.resolveTlsParams(endpoint)
     if (tls?.required == true && tls.expectedFingerprint.isNullOrBlank()) {
       // First-time TLS: capture fingerprint, ask user to verify out-of-band, then store and connect.
@@ -756,13 +783,27 @@ class NodeRuntime(context: Context) {
   }
 
   fun connectManual() {
-    val host = manualHost.value.trim()
-    val port = manualPort.value
-    if (host.isEmpty() || port <= 0 || port > 65535) {
-      _statusText.value = "Failed: invalid manual host/port"
+    val lanEndpoint = gateways.value.firstOrNull()
+    if (lanEndpoint != null) {
+      connect(lanEndpoint)
       return
     }
-    connect(GatewayEndpoint.manual(host = host, port = port))
+
+    val host = manualHost.value.trim()
+    val port = manualPort.value
+    if (host.isNotEmpty() && port in 1..65535) {
+      connect(GatewayEndpoint.manual(host = host, port = port))
+      return
+    }
+
+    val tsHost = tailscaleHost.value.trim()
+    val tsPort = tailscalePort.value
+    if (tsHost.isNotEmpty() && tsPort in 1..65535) {
+      connect(GatewayEndpoint.manual(host = tsHost, port = tsPort), fromTailscaleFallback = true)
+      return
+    }
+
+    _statusText.value = "Offline"
   }
 
   fun disconnect() {

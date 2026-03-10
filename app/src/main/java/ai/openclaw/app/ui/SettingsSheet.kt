@@ -350,11 +350,11 @@ fun SettingsSheet(viewModel: MainViewModel) {
       item {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
           Text(
-            "SETTINGS",
+            tr("SETTINGS", "设置"),
             style = mobileCaption1.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
             color = mobileAccent,
           )
-          Text("Device Configuration", style = mobileTitle2, color = mobileText)
+          Text(tr("Device Configuration", "设备配置"), style = mobileTitle2, color = mobileText)
           Text(
             "Manage capabilities, permissions, and diagnostics.",
             style = mobileCallout,
@@ -366,7 +366,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
 
       item {
         Text(
-          "GENERAL",
+          tr("GENERAL", "通用"),
           style = mobileCaption1.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
           color = mobileAccent,
         )
@@ -376,7 +376,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
           ListItem(
             modifier = Modifier.fillMaxWidth(),
             colors = listItemColors,
-            headlineContent = { Text("Language", style = mobileHeadline) },
+            headlineContent = { Text(tr("Language", "语言"), style = mobileHeadline) },
             supportingContent = { Text("Change app display language (restart current screen).", style = mobileCallout) },
           )
           languageOptions.forEachIndexed { index, option ->
@@ -404,7 +404,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
     // Order parity: Node → Voice → Camera → Messaging → Location → Screen.
       item {
         Text(
-          "NODE",
+          tr("NODE", "节点"),
           style = mobileCaption1.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
           color = mobileAccent,
         )
@@ -428,7 +428,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
       // Voice
       item {
         Text(
-          "VOICE",
+          tr("VOICE", "语音"),
           style = mobileCaption1.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
           color = mobileAccent,
         )
@@ -481,7 +481,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
     // Camera
       item {
         Text(
-          "CAMERA",
+          tr("CAMERA", "相机"),
           style = mobileCaption1.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
           color = mobileAccent,
         )
@@ -508,7 +508,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
     // Messaging
       item {
         Text(
-          "MESSAGING",
+          tr("MESSAGING", "消息"),
           style = mobileCaption1.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
           color = mobileAccent,
         )
@@ -559,7 +559,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
     // Notifications
       item {
         Text(
-          "NOTIFICATIONS",
+          tr("NOTIFICATIONS", "通知"),
           style = mobileCaption1.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
           color = mobileAccent,
         )
@@ -628,7 +628,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
     // Data access
       item {
         Text(
-          "DATA ACCESS",
+          tr("DATA ACCESS", "数据访问"),
           style = mobileCaption1.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
           color = mobileAccent,
         )
@@ -772,7 +772,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
     // Location
       item {
         Text(
-          "LOCATION",
+          tr("LOCATION", "定位"),
           style = mobileCaption1.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
           color = mobileAccent,
         )
@@ -825,7 +825,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
     // Screen
       item {
         Text(
-          "SCREEN",
+          tr("SCREEN", "屏幕"),
           style = mobileCaption1.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
           color = mobileAccent,
         )
@@ -845,7 +845,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
     // Debug
       item {
         Text(
-          "DEBUG",
+          tr("DEBUG", "调试"),
           style = mobileCaption1.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
           color = mobileAccent,
         )

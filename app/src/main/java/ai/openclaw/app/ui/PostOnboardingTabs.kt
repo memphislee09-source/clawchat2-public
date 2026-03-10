@@ -47,14 +47,15 @@ import androidx.compose.ui.unit.dp
 import ai.openclaw.app.MainViewModel
 
 private enum class HomeTab(
-  val label: String,
+  val labelEn: String,
+  val labelZh: String,
   val icon: ImageVector,
 ) {
-  Connect(label = "Connect", icon = Icons.Default.CheckCircle),
-  Chat(label = "Chat", icon = Icons.Default.ChatBubble),
-  Voice(label = "Voice", icon = Icons.Default.RecordVoiceOver),
-  Screen(label = "Screen", icon = Icons.AutoMirrored.Filled.ScreenShare),
-  Settings(label = "Settings", icon = Icons.Default.Settings),
+  Connect(labelEn = "Connect", labelZh = "连接", icon = Icons.Default.CheckCircle),
+  Chat(labelEn = "Chat", labelZh = "聊天", icon = Icons.Default.ChatBubble),
+  Voice(labelEn = "Voice", labelZh = "语音", icon = Icons.Default.RecordVoiceOver),
+  Screen(labelEn = "Screen", labelZh = "屏幕", icon = Icons.AutoMirrored.Filled.ScreenShare),
+  Settings(labelEn = "Settings", labelZh = "设置", icon = Icons.Default.Settings),
 }
 
 private enum class StatusVisual {
@@ -231,7 +232,7 @@ private fun TopStatusBar(
       horizontalArrangement = Arrangement.SpaceBetween,
     ) {
       Text(
-        text = "OpenClaw",
+        text = tr("OpenClaw", "ClawChat 2"),
         style = mobileTitle2,
         color = mobileText,
       )
@@ -253,7 +254,7 @@ private fun TopStatusBar(
             Box(modifier = Modifier.padding(4.dp))
           }
           Text(
-            text = statusText.trim().ifEmpty { "Offline" },
+            text = statusText.trim().ifEmpty { tr("Offline", "离线") },
             style = mobileCaption1,
             color = chipText,
             maxLines = 1,
@@ -309,11 +310,11 @@ private fun BottomTabBar(
             ) {
               Icon(
                 imageVector = tab.icon,
-                contentDescription = tab.label,
+                contentDescription = tr(tab.labelEn, tab.labelZh),
                 tint = if (active) mobileAccent else mobileTextTertiary,
               )
               Text(
-                text = tab.label,
+                text = tr(tab.labelEn, tab.labelZh),
                 color = if (active) mobileAccent else mobileTextSecondary,
                 style = mobileCaption2.copy(fontWeight = if (active) FontWeight.Bold else FontWeight.Medium),
               )
