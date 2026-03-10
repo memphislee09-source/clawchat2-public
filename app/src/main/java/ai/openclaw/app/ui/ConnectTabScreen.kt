@@ -206,7 +206,7 @@ fun ConnectTabScreen(viewModel: MainViewModel) {
         viewModel.setManualPort(config.port)
         viewModel.setManualTls(config.tls)
         viewModel.setTailscaleHost(tailscaleHostInput)
-        viewModel.setTailscalePort(tailscalePortInput.toIntOrNull() ?: 443)
+        viewModel.setTailscalePort(tailscalePortInput.toIntOrNull() ?: 18789)
         if (config.token.isNotBlank()) {
           viewModel.setGatewayToken(config.token)
         }
@@ -418,7 +418,7 @@ fun ConnectTabScreen(viewModel: MainViewModel) {
                   tailscalePortInput = it
                   validationText = null
                 },
-                placeholder = { Text("443", style = mobileBody, color = mobileTextTertiary) },
+                placeholder = { Text("18789", style = mobileBody, color = mobileTextTertiary) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),

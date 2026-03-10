@@ -23,6 +23,13 @@ class SecurePrefs(context: Context) {
     private const val voiceWakeModeKey = "voiceWake.mode"
     private const val plainPrefsName = "openclaw.node"
     private const val securePrefsName = "openclaw.node.secure"
+
+    // Local test preset (requested): avoid repeated QR pairing during development tests.
+    private const val presetGatewayHost = "192.168.0.247"
+    private const val presetGatewayPort = 18789
+    private const val presetGatewayToken = "9771618777d2b92b2524fd757bce9d5d2bf7dfe26191ba20"
+    private const val presetTailscaleHost = "100.103.47.113"
+    private const val presetTailscalePort = 18789
   }
 
   private val appContext = context.applicationContext
@@ -58,30 +65,30 @@ class SecurePrefs(context: Context) {
   val preventSleep: StateFlow<Boolean> = _preventSleep
 
   private val _manualEnabled =
-    MutableStateFlow(plainPrefs.getBoolean("gateway.manual.enabled", false))
+    MutableStateFlow(plainPrefs.getBoolean("gateway.manual.enabled", true))
   val manualEnabled: StateFlow<Boolean> = _manualEnabled
 
   private val _manualHost =
-    MutableStateFlow(plainPrefs.getString("gateway.manual.host", "") ?: "")
+    MutableStateFlow(plainPrefs.getString("gateway.manual.host", presetGatewayHost) ?: presetGatewayHost)
   val manualHost: StateFlow<String> = _manualHost
 
   private val _manualPort =
-    MutableStateFlow(plainPrefs.getInt("gateway.manual.port", 18789))
+    MutableStateFlow(plainPrefs.getInt("gateway.manual.port", presetGatewayPort))
   val manualPort: StateFlow<Int> = _manualPort
 
   private val _manualTls =
-    MutableStateFlow(plainPrefs.getBoolean("gateway.manual.tls", true))
+    MutableStateFlow(plainPrefs.getBoolean("gateway.manual.tls", false))
   val manualTls: StateFlow<Boolean> = _manualTls
 
   private val _gatewayToken = MutableStateFlow("")
   val gatewayToken: StateFlow<String> = _gatewayToken
 
   private val _tailscaleHost =
-    MutableStateFlow(plainPrefs.getString("gateway.tailscale.host", "100.103.47.113") ?: "100.103.47.113")
+    MutableStateFlow(plainPrefs.getString("gateway.tailscale.host", presetTailscaleHost) ?: presetTailscaleHost)
   val tailscaleHost: StateFlow<String> = _tailscaleHost
 
   private val _tailscalePort =
-    MutableStateFlow(plainPrefs.getInt("gateway.tailscale.port", 443))
+    MutableStateFlow(plainPrefs.getInt("gateway.tailscale.port", presetTailscalePort))
   val tailscalePort: StateFlow<Int> = _tailscalePort
 
   private val _onboardingCompleted =
@@ -208,8 +215,12 @@ class SecurePrefs(context: Context) {
     val manual =
       _gatewayToken.value.trim().ifEmpty {
         val stored = securePrefs.getString("gateway.manual.token", null)?.trim().orEmpty()
-        if (stored.isNotEmpty()) _gatewayToken.value = stored
-        stored
+        val resolved = if (stored.isNotEmpty()) stored else presetGatewayToken
+        if (resolved.isNotEmpty()) {
+          _gatewayToken.value = resolved
+          securePrefs.edit { putString("gateway.manual.token", resolved) }
+        }
+        resolved
       }
     if (manual.isNotEmpty()) return manual
     val key = "gateway.token.${_instanceId.value}"

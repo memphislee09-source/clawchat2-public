@@ -25,14 +25,20 @@ Last updated: 2026-03-10 (Asia/Shanghai)
 - APK build passed: `:app:assembleDebug`
 - APK output: `app/build/outputs/apk/debug/openclaw-2026.3.9-debug.apk`
 
-## Feature Update (2026-03-10, pass-2)
-- Chinese localization pass expanded: major shell/connect/settings labels switched to Chinese when language is Chinese.
-- Language option persists and recreates activity for immediate UI switch.
-- Tailscale connectivity integrated with persistence:
-  - Stored host + port (`gateway.tailscale.host` / `gateway.tailscale.port`)
-  - Default host: `100.103.47.113`
-  - Connect priority: LAN discovery first, fallback to Tailscale on LAN failure, otherwise Offline.
-- Tailscale host/port now saved when connecting.
+## Feature Update (2026-03-10, pass-3)
+- Chinese localization pass expanded further for shell/connect/settings key labels.
+- Tailscale routing revised for compatibility with previous ClawChat behavior:
+  - Tailscale default host: `100.103.47.113`
+  - Tailscale default port: `18789`
+  - Tailscale path uses non-TLS websocket mode by default.
+- Connect policy implemented:
+  - First try LAN endpoint (discovery)
+  - If LAN disconnects/fails, auto-fallback to saved Tailscale endpoint
+  - If both fail, status resolves to `Offline`
+- Preset dev gateway credentials added (for this environment) to reduce repeated QR pairing during testing:
+  - Gateway host: `192.168.0.247`
+  - Gateway port: `18789`
+  - Token preloaded in secure prefs when missing.
 
 ## Next Actions
 - Brand rename pass (app name / package id / icon / default gateway config) when requested.

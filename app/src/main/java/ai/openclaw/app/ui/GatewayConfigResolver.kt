@@ -62,12 +62,12 @@ internal fun resolveGatewayConnectConfig(
   }
 
   if (inputMode == ConnectGatewayInputMode.Tailscale) {
-    val tailscaleUrl = composeGatewayManualUrl(tailscaleHost, tailscalePort, tls = true) ?: return null
+    val tailscaleUrl = composeGatewayManualUrl(tailscaleHost, tailscalePort, tls = false) ?: return null
     val parsed = parseGatewayEndpoint(tailscaleUrl) ?: return null
     return GatewayConnectConfig(
       host = parsed.host,
       port = parsed.port,
-      tls = true,
+      tls = false,
       token = fallbackToken.trim(),
       password = fallbackPassword.trim(),
     )
