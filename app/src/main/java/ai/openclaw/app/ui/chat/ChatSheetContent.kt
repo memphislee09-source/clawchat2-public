@@ -41,18 +41,18 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun ChatSheetContent(viewModel: MainViewModel) {
+fun ChatSheetContent(viewModel: MainViewModel, onOpenVoice: () -> Unit) {
   val messages by viewModel.chatMessages.collectAsState()
   val errorText by viewModel.chatError.collectAsState()
   val pendingRunCount by viewModel.pendingRunCount.collectAsState()
   val healthOk by viewModel.chatHealthOk.collectAsState()
-  val mainSessionKey by viewModel.mainSessionKey.collectAsState()
+  val chatSessionKey by viewModel.chatSessionKey.collectAsState()
   val thinkingLevel by viewModel.chatThinkingLevel.collectAsState()
   val streamingAssistantText by viewModel.chatStreamingAssistantText.collectAsState()
   val pendingToolCalls by viewModel.chatPendingToolCalls.collectAsState()
 
-  LaunchedEffect(mainSessionKey) {
-    viewModel.loadChat(mainSessionKey)
+  LaunchedEffect(chatSessionKey) {
+    viewModel.loadChat(chatSessionKey)
     viewModel.refreshChatSessions(limit = 200)
   }
 
@@ -112,6 +112,10 @@ fun ChatSheetContent(viewModel: MainViewModel) {
         onRefresh = {
           viewModel.refreshChat()
           viewModel.refreshChatSessions(limit = 200)
+        },
+        onOpenVoice = {
+          viewModel.prepareVoiceConversation(chatSessionKey)
+          onOpenVoice()
         },
         onAbort = { viewModel.abortChat() },
         onSend = { text ->

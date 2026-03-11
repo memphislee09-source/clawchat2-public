@@ -5,6 +5,6 @@ import ai.openclaw.app.MainViewModel
 import ai.openclaw.app.ui.chat.ChatSheetContent
 
 @Composable
-fun ChatSheet(viewModel: MainViewModel) {
-  ChatSheetContent(viewModel = viewModel)
+fun ChatSheet(viewModel: MainViewModel, onOpenVoice: () -> Unit) {
+  ChatSheetContent(viewModel = viewModel, onOpenVoice = onOpenVoice)
 }

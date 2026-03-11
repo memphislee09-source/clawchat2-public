@@ -1,34 +1,34 @@
 package ai.openclaw.app.ui
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ScreenShare
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -45,7 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,7 +60,6 @@ private enum class HomeTab(
 ) {
   Connect(labelEn = "Connect", labelZh = "连接", icon = Icons.Default.CheckCircle),
   Chat(labelEn = "Chat", labelZh = "聊天", icon = Icons.Default.ChatBubble),
-  Voice(labelEn = "Voice", labelZh = "语音", icon = Icons.Default.RecordVoiceOver),
   Screen(labelEn = "Screen", labelZh = "屏幕", icon = Icons.AutoMirrored.Filled.ScreenShare),
   Settings(labelEn = "Settings", labelZh = "设置", icon = Icons.Default.Settings),
 }
@@ -73,16 +72,18 @@ private enum class StatusVisual {
   Offline,
 }
 
-private val bottomTabs = listOf(HomeTab.Chat, HomeTab.Voice, HomeTab.Screen)
-private val overflowMenuTabs = listOf(HomeTab.Connect, HomeTab.Settings)
+private val overflowMenuTabs = listOf(HomeTab.Chat, HomeTab.Connect, HomeTab.Screen, HomeTab.Settings)
 
 @Composable
 fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) {
-  var activeTab by rememberSaveable { mutableStateOf(HomeTab.Connect) }
+  var activeTab by rememberSaveable { mutableStateOf(HomeTab.Chat) }
+  var voiceDialogOpen by rememberSaveable { mutableStateOf(false) }
+  val context = LocalContext.current
 
-  // Stop TTS when user navigates away from voice tab
-  LaunchedEffect(activeTab) {
-    viewModel.setVoiceScreenActive(activeTab == HomeTab.Voice)
+  LaunchedEffect(voiceDialogOpen) {
+    if (!voiceDialogOpen) {
+      viewModel.setVoiceScreenActive(false)
+    }
   }
 
   val statusText by viewModel.statusText.collectAsState()
@@ -103,6 +104,13 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
       friendlySessionName(currentLabel).ifBlank { "Conversation" }
     }
 
+  BackHandler(enabled = voiceDialogOpen || activeTab != HomeTab.Chat) {
+    when {
+      voiceDialogOpen -> voiceDialogOpen = false
+      activeTab != HomeTab.Chat -> activeTab = HomeTab.Chat
+    }
+  }
+
   val statusVisual =
     remember(statusText, isConnected) {
       val lower = statusText.lowercase()
@@ -115,10 +123,6 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
       }
     }
 
-  val density = LocalDensity.current
-  val imeVisible = WindowInsets.ime.getBottom(density) > 0
-  val hideBottomTabBar = activeTab == HomeTab.Chat && imeVisible
-
   Scaffold(
     modifier = modifier,
     containerColor = Color.Transparent,
@@ -130,15 +134,8 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
         statusVisual = statusVisual,
         activeTab = activeTab,
         onSelectTab = { activeTab = it },
+        onOpenAppInfo = { openAppInfo(context) },
       )
-    },
-    bottomBar = {
-      if (!hideBottomTabBar) {
-        BottomTabBar(
-          activeTab = activeTab,
-          onSelect = { activeTab = it },
-        )
-      }
     },
   ) { innerPadding ->
     Box(
@@ -151,10 +148,23 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
     ) {
       when (activeTab) {
         HomeTab.Connect -> ConnectTabScreen(viewModel = viewModel)
-        HomeTab.Chat -> ChatSheet(viewModel = viewModel)
-        HomeTab.Voice -> VoiceTabScreen(viewModel = viewModel)
+        HomeTab.Chat ->
+          ChatSheet(
+            viewModel = viewModel,
+            onOpenVoice = {
+              viewModel.prepareVoiceConversation(chatSessionKey)
+              voiceDialogOpen = true
+            },
+          )
         HomeTab.Screen -> ScreenTabScreen(viewModel = viewModel)
         HomeTab.Settings -> SettingsSheet(viewModel = viewModel)
+      }
+
+      if (voiceDialogOpen) {
+        VoiceDialog(
+          viewModel = viewModel,
+          onDismissRequest = { voiceDialogOpen = false },
+        )
       }
     }
   }
@@ -210,6 +220,7 @@ private fun TopStatusBar(
   statusVisual: StatusVisual,
   activeTab: HomeTab,
   onSelectTab: (HomeTab) -> Unit,
+  onOpenAppInfo: () -> Unit,
 ) {
   val safeInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
   var menuExpanded by remember { mutableStateOf(false) }
@@ -259,7 +270,7 @@ private fun TopStatusBar(
     shadowElevation = 0.dp,
   ) {
     Row(
-      modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
+      modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 2.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -303,7 +314,7 @@ private fun TopStatusBar(
         Box {
           Surface(
             onClick = { menuExpanded = true },
-            modifier = Modifier.size(40.dp),
+            modifier = Modifier.size(38.dp),
             shape = RoundedCornerShape(12.dp),
             color = if (activeTab in overflowMenuTabs) mobileAccentSoft else mobileSurface,
             border = BorderStroke(1.dp, if (activeTab in overflowMenuTabs) Color(0xFFD5E2FA) else mobileBorder),
@@ -340,6 +351,20 @@ private fun TopStatusBar(
                 },
               )
             }
+            HorizontalDivider(color = mobileBorder)
+            DropdownMenuItem(
+              text = {
+                Text(
+                  text = tr("App info", "应用信息"),
+                  style = mobileBody.copy(fontWeight = FontWeight.Medium),
+                  color = mobileText,
+                )
+              },
+              onClick = {
+                menuExpanded = false
+                onOpenAppInfo()
+              },
+            )
           }
         }
       }
@@ -347,63 +372,11 @@ private fun TopStatusBar(
   }
 }
 
-@Composable
-private fun BottomTabBar(
-  activeTab: HomeTab,
-  onSelect: (HomeTab) -> Unit,
-) {
-  val safeInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
-
-  Box(
-    modifier =
-      Modifier
-        .fillMaxWidth(),
-  ) {
-    Surface(
-      modifier = Modifier.fillMaxWidth(),
-      color = Color.White.copy(alpha = 0.97f),
-      shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-      border = BorderStroke(1.dp, mobileBorder),
-      shadowElevation = 6.dp,
-    ) {
-      Row(
-        modifier =
-          Modifier
-            .fillMaxWidth()
-            .windowInsetsPadding(safeInsets)
-            .padding(horizontal = 10.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        bottomTabs.forEach { tab ->
-          val active = tab == activeTab
-          Surface(
-            onClick = { onSelect(tab) },
-            modifier = Modifier.weight(1f).heightIn(min = 58.dp),
-            shape = RoundedCornerShape(16.dp),
-            color = if (active) mobileAccentSoft else Color.Transparent,
-            border = if (active) BorderStroke(1.dp, Color(0xFFD5E2FA)) else null,
-            shadowElevation = 0.dp,
-          ) {
-            Column(
-              modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 7.dp),
-              horizontalAlignment = Alignment.CenterHorizontally,
-              verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-              Icon(
-                imageVector = tab.icon,
-                contentDescription = tr(tab.labelEn, tab.labelZh),
-                tint = if (active) mobileAccent else mobileTextTertiary,
-              )
-              Text(
-                text = tr(tab.labelEn, tab.labelZh),
-                color = if (active) mobileAccent else mobileTextSecondary,
-                style = mobileCaption2.copy(fontWeight = if (active) FontWeight.Bold else FontWeight.Medium),
-              )
-            }
-          }
-        }
-      }
-    }
-  }
+private fun openAppInfo(context: android.content.Context) {
+  val intent =
+    Intent(
+      Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+      Uri.fromParts("package", context.packageName, null),
+    )
+  context.startActivity(intent)
 }

@@ -4,10 +4,7 @@ import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
-import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -20,8 +17,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -44,6 +43,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -61,6 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -73,6 +74,63 @@ import kotlin.math.max
 
 @Composable
 fun VoiceTabScreen(viewModel: MainViewModel) {
+  VoicePanelContent(
+    viewModel = viewModel,
+    modifier =
+      Modifier
+        .fillMaxSize()
+        .background(mobileBackgroundGradient)
+        .imePadding()
+        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
+        .padding(horizontal = 20.dp, vertical = 14.dp),
+    showMicSettingsHint = true,
+  )
+}
+
+@Composable
+fun VoiceDialog(
+  viewModel: MainViewModel,
+  onDismissRequest: () -> Unit,
+) {
+  Dialog(
+    onDismissRequest = onDismissRequest,
+    properties = DialogProperties(usePlatformDefaultWidth = false),
+  ) {
+    Box(
+      modifier = Modifier.fillMaxSize(),
+      contentAlignment = Alignment.Center,
+    ) {
+      Surface(
+        modifier =
+          Modifier
+            .fillMaxWidth(0.92f)
+            .fillMaxHeight(0.74f)
+            .heightIn(min = 360.dp, max = 620.dp),
+        shape = RoundedCornerShape(22.dp),
+        color = Color.White,
+        border = BorderStroke(1.dp, mobileBorder),
+        shadowElevation = 12.dp,
+      ) {
+        VoicePanelContent(
+          viewModel = viewModel,
+          modifier =
+            Modifier
+              .fillMaxSize()
+              .background(mobileBackgroundGradient)
+              .padding(horizontal = 16.dp, vertical = 14.dp),
+          showMicSettingsHint = true,
+        )
+      }
+    }
+  }
+}
+
+@Composable
+private fun VoicePanelContent(
+  viewModel: MainViewModel,
+  modifier: Modifier,
+  showMicSettingsHint: Boolean,
+) {
   val context = LocalContext.current
   val lifecycleOwner = LocalLifecycleOwner.current
   val activity = remember(context) { context.findActivity() }
@@ -127,13 +185,7 @@ fun VoiceTabScreen(viewModel: MainViewModel) {
   }
 
   Column(
-    modifier =
-      Modifier
-        .fillMaxSize()
-        .background(mobileBackgroundGradient)
-        .imePadding()
-        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
-        .padding(horizontal = 20.dp, vertical = 14.dp),
+    modifier = modifier,
     verticalArrangement = Arrangement.spacedBy(10.dp),
   ) {
     LazyColumn(
@@ -315,12 +367,13 @@ fun VoiceTabScreen(viewModel: MainViewModel) {
           color = mobileWarning,
           textAlign = TextAlign.Center,
         )
-        Button(
-          onClick = { openAppSettings(context) },
-          shape = RoundedCornerShape(12.dp),
-          colors = ButtonDefaults.buttonColors(containerColor = mobileSurfaceStrong, contentColor = mobileText),
-        ) {
-          Text("Open settings", style = mobileCallout.copy(fontWeight = FontWeight.SemiBold))
+        if (showMicSettingsHint) {
+          Text(
+            "Use the top-right menu to open App info and enable microphone access.",
+            style = mobileCaption1,
+            color = mobileTextSecondary,
+            textAlign = TextAlign.Center,
+          )
         }
       }
     }
@@ -411,12 +464,3 @@ private fun Context.findActivity(): Activity? =
     is ContextWrapper -> baseContext.findActivity()
     else -> null
   }
-
-private fun openAppSettings(context: Context) {
-  val intent =
-    Intent(
-      Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-      Uri.fromParts("package", context.packageName, null),
-    )
-  context.startActivity(intent)
-}

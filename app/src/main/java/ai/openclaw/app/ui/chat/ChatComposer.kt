@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Button
@@ -66,6 +67,7 @@ fun ChatComposer(
   onRemoveAttachment: (id: String) -> Unit,
   onSetThinkingLevel: (level: String) -> Unit,
   onRefresh: () -> Unit,
+  onOpenVoice: () -> Unit,
   onAbort: () -> Unit,
   onSend: (text: String) -> Unit,
 ) {
@@ -102,7 +104,6 @@ fun ChatComposer(
 
     Box(
       modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
-      contentAlignment = Alignment.Center,
     ) {
       Row(
         modifier = Modifier.align(Alignment.CenterStart),
@@ -123,23 +124,7 @@ fun ChatComposer(
         )
       }
 
-      Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-      ) {
-        Box {
-          CompactTextButton(
-            text = "T",
-            onClick = { showThinkingMenu = true },
-          )
-          DropdownMenu(expanded = showThinkingMenu, onDismissRequest = { showThinkingMenu = false }) {
-            ThinkingMenuItem("off", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
-            ThinkingMenuItem("low", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
-            ThinkingMenuItem("medium", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
-            ThinkingMenuItem("high", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
-          }
-        }
-
+      Box(modifier = Modifier.align(Alignment.Center)) {
         CompactUtilityButton(
           icon = Icons.AutoMirrored.Filled.Send,
           contentDescription = "Send message",
@@ -161,6 +146,32 @@ fun ChatComposer(
               )
             }
           },
+        )
+      }
+
+      Row(
+        modifier = Modifier.align(Alignment.CenterEnd),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+      ) {
+        Box {
+          CompactTextButton(
+            text = "T",
+            onClick = { showThinkingMenu = true },
+          )
+          DropdownMenu(expanded = showThinkingMenu, onDismissRequest = { showThinkingMenu = false }) {
+            ThinkingMenuItem("off", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
+            ThinkingMenuItem("low", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
+            ThinkingMenuItem("medium", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
+            ThinkingMenuItem("high", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
+          }
+        }
+
+        CompactUtilityButton(
+          icon = Icons.Default.Mic,
+          contentDescription = "Open voice conversation",
+          enabled = healthOk,
+          onClick = onOpenVoice,
         )
 
         CompactUtilityButton(

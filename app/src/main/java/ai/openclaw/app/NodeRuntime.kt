@@ -347,9 +347,10 @@ class NodeRuntime(context: Context) {
         // Notify MicCaptureManager of the idempotency key *before* the network
         // call so pendingRunId is set before any chat events can arrive.
         onRunIdKnown(idempotencyKey)
+        val sessionKey = resolveActiveChatSessionKey()
         val params =
           buildJsonObject {
-            put("sessionKey", JsonPrimitive(resolveMainSessionKey()))
+            put("sessionKey", JsonPrimitive(sessionKey))
             put("message", JsonPrimitive(message))
             put("thinking", JsonPrimitive(chatThinkingLevel.value))
             put("timeoutMs", JsonPrimitive(30_000))
@@ -436,6 +437,11 @@ class NodeRuntime(context: Context) {
   private fun resolveMainSessionKey(): String {
     val trimmed = _mainSessionKey.value.trim()
     return if (trimmed.isEmpty()) "main" else trimmed
+  }
+
+  private fun resolveActiveChatSessionKey(): String {
+    val trimmed = chat.sessionKey.value.trim()
+    return if (trimmed.isEmpty()) resolveMainSessionKey() else trimmed
   }
 
   private fun maybeNavigateToA2uiOnConnect() {
@@ -560,6 +566,7 @@ class NodeRuntime(context: Context) {
         micCapture.setMicEnabled(enabled)
         if (enabled) {
           // Mic on = user is on voice screen and wants TTS responses.
+          talkMode.setMainSessionKey(resolveActiveChatSessionKey())
           talkMode.ttsOnAllResponses = true
           scope.launch { talkMode.ensureChatSubscribed() }
         }
@@ -684,10 +691,16 @@ class NodeRuntime(context: Context) {
     // Don't re-enable on active=true; mic toggle drives that
   }
 
+  fun prepareVoiceConversation(sessionKey: String) {
+    val resolved = sessionKey.trim().ifEmpty { resolveActiveChatSessionKey() }
+    talkMode.setMainSessionKey(resolved)
+  }
+
   fun setMicEnabled(value: Boolean) {
     prefs.setTalkEnabled(value)
     if (value) {
       // Tapping mic on interrupts any active TTS (barge-in)
+      talkMode.setMainSessionKey(resolveActiveChatSessionKey())
       talkMode.stopTts()
       talkMode.ttsOnAllResponses = true
       scope.launch { talkMode.ensureChatSubscribed() }
@@ -904,6 +917,7 @@ class NodeRuntime(context: Context) {
 
   fun switchChatSession(sessionKey: String) {
     chat.switchSession(sessionKey)
+    talkMode.setMainSessionKey(resolveActiveChatSessionKey())
   }
 
   fun abortChat() {

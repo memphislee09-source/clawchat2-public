@@ -81,6 +81,35 @@ Last updated: 2026-03-11 (Asia/Shanghai)
   - App launch confirmed in emulator foreground: `adb shell am start -n ai.openclaw.app/.MainActivity`
   - User manual acceptance for this step: passed
 
+## UI Update (2026-03-11, chat-default + voice-dialog pass)
+- Goal: make chat the default shell and reduce navigation/context switching.
+- Changes:
+  - Removed the bottom tab bar entirely; default app landing screen is now the chat interface.
+  - Moved `Screen` into the top-right overflow menu.
+  - Added `Chat` to the overflow menu so full-screen utility pages can always return to the default conversation view.
+  - Moved the voice entry into the chat composer area, positioned between the thinking control and attachment button.
+  - Voice interaction now opens as an in-chat modal dialog instead of navigating to a separate full-screen page.
+  - Voice requests are now prepared against the active chat session so voice remains bound to the current conversation.
+  - Removed the in-voice `Open settings` button; `App info` is now exposed from the top-right overflow menu instead.
+  - Back/edge-swipe behavior aligned with the new structure:
+    - Close voice dialog first.
+    - Return full-screen pages (`Connect`, `Screen`, `Settings`) to default chat.
+    - From default chat, back exits the app.
+  - Top bar vertical padding reduced again so the chat viewport starts slightly higher.
+- Implementation files:
+  - `app/src/main/java/ai/openclaw/app/ui/PostOnboardingTabs.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/VoiceTabScreen.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/ChatSheet.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/chat/ChatSheetContent.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/chat/ChatComposer.kt`
+  - `app/src/main/java/ai/openclaw/app/MainViewModel.kt`
+  - `app/src/main/java/ai/openclaw/app/NodeRuntime.kt`
+- Validation:
+  - Kotlin compile passed: `./gradlew :app:compileDebugKotlin`
+  - Emulator install passed: `./gradlew :app:installDebug`
+  - App launch confirmed in emulator foreground: `adb shell am start -n ai.openclaw.app/.MainActivity`
+  - User-directed follow-up acceptance requested for this step
+
 ## Session Summary (2026-03-11)
 - Codebase was explicitly rolled back to commit `66bc66212` (local + GitHub `main`).
 - Codex review completed on current baseline:
@@ -93,6 +122,9 @@ Last updated: 2026-03-11 (Asia/Shanghai)
 - Chat density iteration verified:
   - Latest branch build installed into emulator successfully.
   - User confirmed this round of chat-layout changes is acceptable and can proceed.
+- Chat-default / voice-dialog iteration prepared:
+  - Latest branch build installed into emulator successfully.
+  - App is ready for user validation of modal voice flow and edge-swipe/back behavior.
 - Process rule added from this session:
   - After UI click, wait 2 seconds before screenshot, and verify target page text before sending screenshot.
 

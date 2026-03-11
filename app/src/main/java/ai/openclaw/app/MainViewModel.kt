@@ -147,6 +147,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     runtime.setVoiceScreenActive(active)
   }
 
+  fun prepareVoiceConversation(sessionKey: String) {
+    runtime.prepareVoiceConversation(sessionKey)
+  }
+
   fun setMicEnabled(enabled: Boolean) {
     runtime.setMicEnabled(enabled)
   }
