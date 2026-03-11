@@ -3,3 +3,6 @@
 local.properties
 .idea/
 **/*.iml
+
+# macOS
+.DS_Store
