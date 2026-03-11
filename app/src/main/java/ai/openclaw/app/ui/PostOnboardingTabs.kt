@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,8 +24,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ScreenShare
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -66,6 +70,9 @@ private enum class StatusVisual {
   Offline,
 }
 
+private val bottomTabs = listOf(HomeTab.Chat, HomeTab.Voice, HomeTab.Screen)
+private val overflowMenuTabs = listOf(HomeTab.Connect, HomeTab.Settings)
+
 @Composable
 fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) {
   var activeTab by rememberSaveable { mutableStateOf(HomeTab.Connect) }
@@ -102,6 +109,8 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
       TopStatusBar(
         statusText = statusText,
         statusVisual = statusVisual,
+        activeTab = activeTab,
+        onSelectTab = { activeTab = it },
       )
     },
     bottomBar = {
@@ -179,8 +188,11 @@ private fun ScreenTabScreen(viewModel: MainViewModel) {
 private fun TopStatusBar(
   statusText: String,
   statusVisual: StatusVisual,
+  activeTab: HomeTab,
+  onSelectTab: (HomeTab) -> Unit,
 ) {
   val safeInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+  var menuExpanded by remember { mutableStateOf(false) }
 
   val (chipBg, chipDot, chipText, chipBorder) =
     when (statusVisual) {
@@ -236,29 +248,76 @@ private fun TopStatusBar(
         style = mobileTitle2,
         color = mobileText,
       )
-      Surface(
-        shape = RoundedCornerShape(999.dp),
-        color = chipBg,
-        border = androidx.compose.foundation.BorderStroke(1.dp, chipBorder),
+      Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
       ) {
-        Row(
-          modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-          horizontalArrangement = Arrangement.spacedBy(6.dp),
-          verticalAlignment = Alignment.CenterVertically,
+        Surface(
+          shape = RoundedCornerShape(999.dp),
+          color = chipBg,
+          border = androidx.compose.foundation.BorderStroke(1.dp, chipBorder),
         ) {
-          Surface(
-            modifier = Modifier.padding(top = 1.dp),
-            color = chipDot,
-            shape = RoundedCornerShape(999.dp),
+          Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
           ) {
-            Box(modifier = Modifier.padding(4.dp))
+            Surface(
+              modifier = Modifier.padding(top = 1.dp),
+              color = chipDot,
+              shape = RoundedCornerShape(999.dp),
+            ) {
+              Box(modifier = Modifier.padding(4.dp))
+            }
+            Text(
+              text = statusText.trim().ifEmpty { tr("Offline", "离线") },
+              style = mobileCaption1,
+              color = chipText,
+              maxLines = 1,
+            )
           }
-          Text(
-            text = statusText.trim().ifEmpty { tr("Offline", "离线") },
-            style = mobileCaption1,
-            color = chipText,
-            maxLines = 1,
-          )
+        }
+        Box {
+          Surface(
+            onClick = { menuExpanded = true },
+            modifier = Modifier.size(40.dp),
+            shape = RoundedCornerShape(12.dp),
+            color = if (activeTab in overflowMenuTabs) mobileAccentSoft else mobileSurface,
+            border = BorderStroke(1.dp, if (activeTab in overflowMenuTabs) Color(0xFFD5E2FA) else mobileBorder),
+            shadowElevation = 0.dp,
+          ) {
+            Box(contentAlignment = Alignment.Center) {
+              Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = tr("More options", "更多选项"),
+                tint = if (activeTab in overflowMenuTabs) mobileAccent else mobileTextSecondary,
+              )
+            }
+          }
+          DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+            overflowMenuTabs.forEach { tab ->
+              DropdownMenuItem(
+                text = {
+                  Text(
+                    text = tr(tab.labelEn, tab.labelZh),
+                    style = mobileBody.copy(fontWeight = if (tab == activeTab) FontWeight.Bold else FontWeight.Medium),
+                    color = if (tab == activeTab) mobileAccent else mobileText,
+                  )
+                },
+                leadingIcon = {
+                  Icon(
+                    imageVector = tab.icon,
+                    contentDescription = null,
+                    tint = if (tab == activeTab) mobileAccent else mobileTextSecondary,
+                  )
+                },
+                onClick = {
+                  menuExpanded = false
+                  onSelectTab(tab)
+                },
+              )
+            }
+          }
         }
       }
     }
@@ -293,7 +352,7 @@ private fun BottomTabBar(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
       ) {
-        HomeTab.entries.forEach { tab ->
+        bottomTabs.forEach { tab ->
           val active = tab == activeTab
           Surface(
             onClick = { onSelect(tab) },
