@@ -49,6 +49,18 @@ Last updated: 2026-03-11 (Asia/Shanghai)
 - These test-oriented shortcuts are accepted in the current internal testing stage.
 - Before any release/public build, these items must be removed or replaced with secure release configuration.
 
+## UI Update (2026-03-11, overflow-menu pass)
+- Post-onboarding navigation was adjusted for cleaner bottom-tab layout:
+  - Added a top-right vertical three-dot overflow button.
+  - Moved `Connect` and `Settings` out of the bottom tab bar into the overflow menu.
+  - Bottom tab bar now keeps only `Chat`, `Voice`, and `Screen`.
+- Active overflow destinations keep the top-right menu button highlighted for clearer orientation.
+- Implementation file: `app/src/main/java/ai/openclaw/app/ui/PostOnboardingTabs.kt`
+- Validation:
+  - Kotlin compile passed: `./gradlew :app:compileDebugKotlin`
+  - Emulator install + launch passed: `./gradlew :app:installDebug`
+  - Running emulator confirmed app foreground activity: `ai.openclaw.app/.MainActivity`
+
 ## Session Summary (2026-03-11)
 - Codebase was explicitly rolled back to commit `66bc66212` (local + GitHub `main`).
 - Codex review completed on current baseline:
