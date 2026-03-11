@@ -1,6 +1,6 @@
 # clawchat2 status
 
-Last updated: 2026-03-10 (Asia/Shanghai)
+Last updated: 2026-03-11 (Asia/Shanghai)
 
 ## Project Status
 - Version baseline: **0.1** (`versionName=0.1`, `versionCode=1`)
@@ -44,6 +44,26 @@ Last updated: 2026-03-10 (Asia/Shanghai)
   - Gateway port: `18789`
   - Token preloaded in secure prefs when missing.
 
-## Next Actions
+## Testing Policy Note (2026-03-11)
+- Current hardcoded/default connection settings (including preset gateway/tailscale and related convenience behavior) are **intentional for test efficiency**.
+- These test-oriented shortcuts are accepted in the current internal testing stage.
+- Before any release/public build, these items must be removed or replaced with secure release configuration.
+
+## Session Summary (2026-03-11)
+- Codebase was explicitly rolled back to commit `66bc66212` (local + GitHub `main`).
+- Codex review completed on current baseline:
+  - Verdict: not ideal as formal release baseline, but acceptable for current internal testing when test shortcuts are intentional.
+  - Key noted risks (kept intentionally for current phase): hardcoded/preset connection defaults, relaxed transport/security choices for test convenience.
+- Android emulator environment is now working on this machine (API 35 AVD created + app install/launch + screenshot loop verified).
+- Simulated app control loop verified:
+  - Can remotely click tabs/screens and return screenshots on demand.
+  - Connect page confirmed with endpoint `192.168.0.247:18789`, state observed as `Connected` during session.
+- Process rule added from this session:
+  - After UI click, wait 2 seconds before screenshot, and verify target page text before sending screenshot.
+
+## Handoff / Next Actions
+- Continue interactive simulator-driven UI testing in next chat (user directs taps; assistant executes and screenshots).
+- Keep test-efficient defaults during internal validation.
+- Before release: remove hardcoded secrets/endpoints and tighten transport/security config.
 - Brand rename pass (app name / package id / icon / default gateway config) when requested.
 - Establish standard upstream sync checklist script if needed.
