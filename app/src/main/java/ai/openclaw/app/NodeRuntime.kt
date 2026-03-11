@@ -321,6 +321,7 @@ class NodeRuntime(context: Context) {
       session = operatorSession,
       json = json,
       supportsChatSubscribe = false,
+      initialSessionKey = prefs.lastChatSessionKey.value.trim().ifEmpty { "main" },
     )
   private val voiceReplySpeakerLazy: Lazy<TalkModeManager> = lazy {
     // Reuse the existing TalkMode speech engine (ElevenLabs + deterministic system-TTS fallback)
@@ -534,6 +535,10 @@ class NodeRuntime(context: Context) {
   val lastDiscoveredStableId: StateFlow<String> = prefs.lastDiscoveredStableId
   val canvasDebugStatusEnabled: StateFlow<Boolean> = prefs.canvasDebugStatusEnabled
   val preferredLanguage: StateFlow<String> = prefs.preferredLanguage
+  val lastShellScreen: StateFlow<String> = prefs.lastShellScreen
+  val lastVoiceDialogOpen: StateFlow<Boolean> = prefs.lastVoiceDialogOpen
+  val lastChatSessionKey: StateFlow<String> = prefs.lastChatSessionKey
+  val chatLastReadAtMs: StateFlow<Map<String, Long>> = prefs.chatLastReadAtMs
 
   private var didAutoConnect = false
   private var pendingTailscaleFallback = false
@@ -639,6 +644,14 @@ class NodeRuntime(context: Context) {
       stopActiveVoiceSession()
     }
   }
+
+  fun setLastShellScreen(value: String) = prefs.setLastShellScreen(value)
+
+  fun setLastVoiceDialogOpen(value: Boolean) = prefs.setLastVoiceDialogOpen(value)
+
+  fun resetUiShellForFreshLaunch() = prefs.resetUiShellForFreshLaunch()
+
+  fun markChatSessionRead(sessionKey: String) = prefs.markChatSessionRead(sessionKey)
 
   fun setDisplayName(value: String) {
     prefs.setDisplayName(value)
@@ -900,6 +913,7 @@ class NodeRuntime(context: Context) {
 
   fun loadChat(sessionKey: String) {
     val key = sessionKey.trim().ifEmpty { resolveMainSessionKey() }
+    prefs.setLastChatSessionKey(key)
     chat.load(key)
   }
 
@@ -916,7 +930,9 @@ class NodeRuntime(context: Context) {
   }
 
   fun switchChatSession(sessionKey: String) {
-    chat.switchSession(sessionKey)
+    val key = sessionKey.trim()
+    prefs.setLastChatSessionKey(key)
+    chat.switchSession(key)
     talkMode.setMainSessionKey(resolveActiveChatSessionKey())
   }
 

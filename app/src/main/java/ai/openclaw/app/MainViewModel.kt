@@ -63,6 +63,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   val onboardingCompleted: StateFlow<Boolean> = runtime.onboardingCompleted
   val canvasDebugStatusEnabled: StateFlow<Boolean> = runtime.canvasDebugStatusEnabled
   val preferredLanguage: StateFlow<String> = runtime.preferredLanguage
+  val lastShellScreen: StateFlow<String> = runtime.lastShellScreen
+  val lastVoiceDialogOpen: StateFlow<Boolean> = runtime.lastVoiceDialogOpen
+  val lastChatSessionKey: StateFlow<String> = runtime.lastChatSessionKey
 
   val chatSessionKey: StateFlow<String> = runtime.chatSessionKey
   val chatSessionId: StateFlow<String?> = runtime.chatSessionId
@@ -73,10 +76,27 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   val chatStreamingAssistantText: StateFlow<String?> = runtime.chatStreamingAssistantText
   val chatPendingToolCalls = runtime.chatPendingToolCalls
   val chatSessions = runtime.chatSessions
+  val chatLastReadAtMs: StateFlow<Map<String, Long>> = runtime.chatLastReadAtMs
   val pendingRunCount: StateFlow<Int> = runtime.pendingRunCount
 
   fun setForeground(value: Boolean) {
     runtime.setForeground(value)
+  }
+
+  fun setLastShellScreen(value: String) {
+    runtime.setLastShellScreen(value)
+  }
+
+  fun setLastVoiceDialogOpen(value: Boolean) {
+    runtime.setLastVoiceDialogOpen(value)
+  }
+
+  fun resetUiShellForFreshLaunch() {
+    runtime.resetUiShellForFreshLaunch()
+  }
+
+  fun markChatSessionRead(sessionKey: String) {
+    runtime.markChatSessionRead(sessionKey)
   }
 
   fun setDisplayName(value: String) {

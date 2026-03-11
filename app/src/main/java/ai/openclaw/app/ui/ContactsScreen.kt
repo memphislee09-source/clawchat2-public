@@ -2,12 +2,16 @@ package ai.openclaw.app.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -34,6 +38,7 @@ fun ContactsScreen(
   val chatSessionKey by viewModel.chatSessionKey.collectAsState()
   val chatSessions by viewModel.chatSessions.collectAsState()
   val mainSessionKey by viewModel.mainSessionKey.collectAsState()
+  val chatLastReadAtMs by viewModel.chatLastReadAtMs.collectAsState()
 
   LaunchedEffect(Unit) {
     viewModel.refreshChatSessions(limit = 200)
@@ -96,6 +101,7 @@ fun ContactsScreen(
         ContactRow(
           entry = entry,
           active = entry.key == chatSessionKey,
+          unread = isSessionUnread(entry = entry, lastReadAtMs = chatLastReadAtMs[entry.key]),
           onClick = { onOpenChat(entry.key) },
         )
       }
@@ -107,6 +113,7 @@ fun ContactsScreen(
 private fun ContactRow(
   entry: ChatSessionEntry,
   active: Boolean,
+  unread: Boolean,
   onClick: () -> Unit,
 ) {
   Surface(
@@ -121,18 +128,31 @@ private fun ContactRow(
       modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
       verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-      Text(
-        text = friendlySessionName(entry.displayName ?: entry.key),
-        style = mobileHeadline,
-        color = mobileText,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-      )
-      Text(
-        text = if (active) tr("Current conversation", "当前对话") else tr("Tap to open chat", "点击进入对话"),
-        style = mobileCallout.copy(fontWeight = FontWeight.Medium),
-        color = if (active) mobileAccent else mobileTextSecondary,
-      )
+      Box(modifier = Modifier.fillMaxWidth()) {
+        Text(
+          text = friendlySessionName(entry.displayName ?: entry.key),
+          style = mobileHeadline,
+          color = mobileText,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+          modifier = Modifier.fillMaxWidth().padding(end = if (unread) 18.dp else 0.dp),
+        )
+        if (unread) {
+          Surface(
+            modifier = Modifier.align(androidx.compose.ui.Alignment.TopEnd).size(10.dp),
+            shape = CircleShape,
+            color = mobileSuccess,
+          ) {
+            Box(modifier = Modifier.size(10.dp))
+          }
+        }
+      }
     }
   }
+}
+
+private fun isSessionUnread(entry: ChatSessionEntry, lastReadAtMs: Long?): Boolean {
+  val updatedAt = entry.updatedAtMs ?: return false
+  val lastRead = lastReadAtMs ?: return true
+  return updatedAt > lastRead
 }

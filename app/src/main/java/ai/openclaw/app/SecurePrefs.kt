@@ -121,6 +121,21 @@ class SecurePrefs(context: Context) {
   private val _speakerEnabled = MutableStateFlow(plainPrefs.getBoolean("voice.speakerEnabled", true))
   val speakerEnabled: StateFlow<Boolean> = _speakerEnabled
 
+  private val _lastShellScreen =
+    MutableStateFlow(plainPrefs.getString("ui.lastShellScreen", "contacts") ?: "contacts")
+  val lastShellScreen: StateFlow<String> = _lastShellScreen
+
+  private val _lastVoiceDialogOpen =
+    MutableStateFlow(plainPrefs.getBoolean("ui.lastVoiceDialogOpen", false))
+  val lastVoiceDialogOpen: StateFlow<Boolean> = _lastVoiceDialogOpen
+
+  private val _lastChatSessionKey =
+    MutableStateFlow(plainPrefs.getString("ui.lastChatSessionKey", "") ?: "")
+  val lastChatSessionKey: StateFlow<String> = _lastChatSessionKey
+
+  private val _chatLastReadAtMs = MutableStateFlow(loadChatLastReadAtMs())
+  val chatLastReadAtMs: StateFlow<Map<String, Long>> = _chatLastReadAtMs
+
   fun setLastDiscoveredStableId(value: String) {
     val trimmed = value.trim()
     plainPrefs.edit { putString("gateway.lastDiscoveredStableID", trimmed) }
@@ -318,6 +333,43 @@ class SecurePrefs(context: Context) {
     _speakerEnabled.value = value
   }
 
+  fun setLastShellScreen(value: String) {
+    val normalized = value.trim().ifEmpty { "contacts" }
+    plainPrefs.edit { putString("ui.lastShellScreen", normalized) }
+    _lastShellScreen.value = normalized
+  }
+
+  fun setLastVoiceDialogOpen(value: Boolean) {
+    plainPrefs.edit { putBoolean("ui.lastVoiceDialogOpen", value) }
+    _lastVoiceDialogOpen.value = value
+  }
+
+  fun setLastChatSessionKey(value: String) {
+    val normalized = value.trim()
+    plainPrefs.edit { putString("ui.lastChatSessionKey", normalized) }
+    _lastChatSessionKey.value = normalized
+  }
+
+  fun markChatSessionRead(sessionKey: String, atMs: Long = System.currentTimeMillis()) {
+    val key = sessionKey.trim()
+    if (key.isEmpty()) return
+    val updated = _chatLastReadAtMs.value.toMutableMap()
+    val previous = updated[key]
+    if (previous != null && previous >= atMs) return
+    updated[key] = atMs
+    persistChatLastReadAtMs(updated)
+    _chatLastReadAtMs.value = updated.toMap()
+  }
+
+  fun resetUiShellForFreshLaunch() {
+    plainPrefs.edit {
+      putString("ui.lastShellScreen", "contacts")
+      putBoolean("ui.lastVoiceDialogOpen", false)
+    }
+    _lastShellScreen.value = "contacts"
+    _lastVoiceDialogOpen.value = false
+  }
+
   private fun loadVoiceWakeMode(): VoiceWakeMode {
     val raw = plainPrefs.getString(voiceWakeModeKey, null)
     val resolved = VoiceWakeMode.fromRawValue(raw)
@@ -357,5 +409,30 @@ class SecurePrefs(context: Context) {
     } catch (_: Throwable) {
       defaultWakeWords
     }
+  }
+
+  private fun loadChatLastReadAtMs(): Map<String, Long> {
+    val raw = plainPrefs.getString("chat.lastReadAtMs", null)?.trim().orEmpty()
+    if (raw.isEmpty()) return emptyMap()
+    return try {
+      val root = json.parseToJsonElement(raw)
+      val obj = root as? kotlinx.serialization.json.JsonObject ?: return emptyMap()
+      obj.entries.mapNotNull { (key, value) ->
+        val ts = (value as? JsonPrimitive)?.content?.toLongOrNull() ?: return@mapNotNull null
+        key.trim().takeIf { it.isNotEmpty() }?.let { it to ts }
+      }.toMap()
+    } catch (_: Throwable) {
+      emptyMap()
+    }
+  }
+
+  private fun persistChatLastReadAtMs(value: Map<String, Long>) {
+    val encoded =
+      kotlinx.serialization.json.buildJsonObject {
+        value.toSortedMap().forEach { (key, ts) ->
+          put(key, JsonPrimitive(ts))
+        }
+      }.toString()
+    plainPrefs.edit { putString("chat.lastReadAtMs", encoded) }
   }
 }

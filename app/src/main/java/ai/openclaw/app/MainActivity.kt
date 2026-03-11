@@ -63,6 +63,9 @@ class MainActivity : ComponentActivity() {
 
   override fun onStop() {
     viewModel.setForeground(false)
+    if (isFinishing && !isChangingConfigurations) {
+      viewModel.resetUiShellForFreshLaunch()
+    }
     super.onStop()
   }
 }

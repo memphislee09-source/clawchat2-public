@@ -133,6 +133,32 @@ Last updated: 2026-03-11 (Asia/Shanghai)
   - App launch confirmed in emulator foreground: `adb shell am start -n ai.openclaw.app/.MainActivity`
   - User acceptance for this step: passed
 
+## UI Update (2026-03-11, contacts-state pass)
+- Goal: make the contacts-first shell stable across launches and easier to scan visually.
+- Changes:
+  - Contacts screen now shows unread state with a compact green dot in the top-right corner of the contact row.
+  - Removed secondary helper text under each contact row to keep the list visually cleaner.
+  - App exit behavior updated so a fresh launch defaults back to the contacts screen.
+  - App background/foreground restoration updated so minimizing and returning preserves the pre-minimize shell state:
+    - current page
+    - current chat session
+    - voice dialog open/closed state
+  - Added persisted per-session read timestamps so contact rows can derive unread state from session update time.
+- Implementation files:
+  - `app/src/main/java/ai/openclaw/app/ui/ContactsScreen.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/PostOnboardingTabs.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/chat/ChatSheetContent.kt`
+  - `app/src/main/java/ai/openclaw/app/MainActivity.kt`
+  - `app/src/main/java/ai/openclaw/app/MainViewModel.kt`
+  - `app/src/main/java/ai/openclaw/app/NodeRuntime.kt`
+  - `app/src/main/java/ai/openclaw/app/SecurePrefs.kt`
+  - `app/src/main/java/ai/openclaw/app/chat/ChatController.kt`
+- Validation:
+  - Kotlin compile passed: `./gradlew :app:compileDebugKotlin`
+  - Emulator install passed: `./gradlew :app:installDebug`
+  - App launch confirmed in emulator foreground: `adb shell am start -n ai.openclaw.app/.MainActivity`
+  - User acceptance for this step: passed
+
 ## Session Summary (2026-03-11)
 - Codebase was explicitly rolled back to commit `66bc66212` (local + GitHub `main`).
 - Codex review completed on current baseline:
@@ -151,6 +177,9 @@ Last updated: 2026-03-11 (Asia/Shanghai)
 - Contacts / navigation iteration verified:
   - Latest branch build installed into emulator successfully.
   - User confirmed the final chat -> contacts -> exit navigation chain is acceptable.
+- Contacts state iteration verified:
+  - Latest branch build installed into emulator successfully.
+  - User confirmed the green-dot unread style and simplified contact rows are acceptable.
 - Process rule added from this session:
   - After UI click, wait 2 seconds before screenshot, and verify target page text before sending screenshot.
 

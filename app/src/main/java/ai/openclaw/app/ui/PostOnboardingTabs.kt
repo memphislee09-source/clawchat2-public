@@ -85,15 +85,31 @@ private val overflowMenuTabs = listOf(HomeTab.Chat, HomeTab.Connect, HomeTab.Scr
 
 @Composable
 fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) {
-  var activeTab by rememberSaveable { mutableStateOf(HomeTab.Chat) }
-  var voiceDialogOpen by rememberSaveable { mutableStateOf(false) }
   val context = LocalContext.current
   val activity = remember(context) { context.findActivity() }
   val appName = remember(context) { context.getString(R.string.app_name) }
+  val savedShellScreen by viewModel.lastShellScreen.collectAsState()
+  val savedVoiceDialogOpen by viewModel.lastVoiceDialogOpen.collectAsState()
+  val savedChatSessionKey by viewModel.lastChatSessionKey.collectAsState()
+  val currentChatSessionKey by viewModel.chatSessionKey.collectAsState()
+  var activeTab by rememberSaveable(savedShellScreen) { mutableStateOf(savedShellScreen.toHomeTab()) }
+  var voiceDialogOpen by rememberSaveable(savedVoiceDialogOpen) { mutableStateOf(savedVoiceDialogOpen) }
 
   LaunchedEffect(voiceDialogOpen) {
+    viewModel.setLastVoiceDialogOpen(voiceDialogOpen)
     if (!voiceDialogOpen) {
       viewModel.setVoiceScreenActive(false)
+    }
+  }
+
+  LaunchedEffect(activeTab) {
+    viewModel.setLastShellScreen(activeTab.persistedName)
+  }
+
+  LaunchedEffect(savedChatSessionKey, currentChatSessionKey) {
+    val restored = savedChatSessionKey.trim()
+    if (restored.isNotEmpty() && restored != currentChatSessionKey) {
+      viewModel.switchChatSession(restored)
     }
   }
 
@@ -499,4 +515,23 @@ private fun Modifier.edgeSwipeRight(
         },
       )
     }
+  }
+
+private val HomeTab.persistedName: String
+  get() =
+    when (this) {
+      HomeTab.Chat -> "chat"
+      HomeTab.Contacts -> "contacts"
+      HomeTab.Connect -> "connect"
+      HomeTab.Screen -> "screen"
+      HomeTab.Settings -> "settings"
+    }
+
+private fun String.toHomeTab(): HomeTab =
+  when (trim().lowercase()) {
+    "chat" -> HomeTab.Chat
+    "connect" -> HomeTab.Connect
+    "screen" -> HomeTab.Screen
+    "settings" -> HomeTab.Settings
+    else -> HomeTab.Contacts
   }

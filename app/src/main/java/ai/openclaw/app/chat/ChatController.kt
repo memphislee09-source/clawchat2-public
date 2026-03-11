@@ -23,8 +23,9 @@ class ChatController(
   private val session: GatewaySession,
   private val json: Json,
   private val supportsChatSubscribe: Boolean,
+  initialSessionKey: String = "main",
 ) {
-  private val _sessionKey = MutableStateFlow("main")
+  private val _sessionKey = MutableStateFlow(initialSessionKey.trim().ifEmpty { "main" })
   val sessionKey: StateFlow<String> = _sessionKey.asStateFlow()
 
   private val _sessionId = MutableStateFlow<String?>(null)

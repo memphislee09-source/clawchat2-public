@@ -56,6 +56,10 @@ fun ChatSheetContent(viewModel: MainViewModel, onOpenVoice: () -> Unit) {
     viewModel.refreshChatSessions(limit = 200)
   }
 
+  LaunchedEffect(chatSessionKey, messages.size) {
+    viewModel.markChatSessionRead(chatSessionKey)
+  }
+
   val context = LocalContext.current
   val resolver = context.contentResolver
   val scope = rememberCoroutineScope()
