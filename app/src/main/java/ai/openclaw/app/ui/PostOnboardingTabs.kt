@@ -47,8 +47,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ai.openclaw.app.MainViewModel
+import ai.openclaw.app.ui.chat.friendlySessionName
+import ai.openclaw.app.ui.chat.resolveSessionChoices
 
 private enum class HomeTab(
   val labelEn: String,
@@ -84,6 +87,21 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
 
   val statusText by viewModel.statusText.collectAsState()
   val isConnected by viewModel.isConnected.collectAsState()
+  val chatSessionKey by viewModel.chatSessionKey.collectAsState()
+  val chatSessions by viewModel.chatSessions.collectAsState()
+  val mainSessionKey by viewModel.mainSessionKey.collectAsState()
+
+  val chatTopBarTitle =
+    remember(chatSessionKey, chatSessions, mainSessionKey) {
+      val sessionChoices =
+        resolveSessionChoices(
+          currentSessionKey = chatSessionKey,
+          sessions = chatSessions,
+          mainSessionKey = mainSessionKey,
+        )
+      val currentLabel = sessionChoices.firstOrNull { it.key == chatSessionKey }?.displayName ?: chatSessionKey
+      friendlySessionName(currentLabel).ifBlank { "Conversation" }
+    }
 
   val statusVisual =
     remember(statusText, isConnected) {
@@ -107,6 +125,7 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
     contentWindowInsets = WindowInsets(0, 0, 0, 0),
     topBar = {
       TopStatusBar(
+        title = if (activeTab == HomeTab.Chat) chatTopBarTitle else tr(activeTab.labelEn, activeTab.labelZh),
         statusText = statusText,
         statusVisual = statusVisual,
         activeTab = activeTab,
@@ -186,6 +205,7 @@ private fun ScreenTabScreen(viewModel: MainViewModel) {
 
 @Composable
 private fun TopStatusBar(
+  title: String,
   statusText: String,
   statusVisual: StatusVisual,
   activeTab: HomeTab,
@@ -244,9 +264,12 @@ private fun TopStatusBar(
       horizontalArrangement = Arrangement.SpaceBetween,
     ) {
       Text(
-        text = tr("OpenClaw", "ClawChat 2"),
-        style = mobileTitle2,
+        text = title,
+        style = mobileHeadline,
         color = mobileText,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.weight(1f).padding(end = 12.dp),
       )
       Row(
         horizontalArrangement = Arrangement.spacedBy(10.dp),

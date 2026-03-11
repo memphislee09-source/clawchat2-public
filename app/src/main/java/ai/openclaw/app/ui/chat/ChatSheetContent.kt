@@ -6,7 +6,6 @@ import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -28,26 +26,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.openclaw.app.MainViewModel
-import ai.openclaw.app.chat.ChatSessionEntry
 import ai.openclaw.app.chat.OutgoingAttachment
-import ai.openclaw.app.ui.mobileAccent
 import ai.openclaw.app.ui.mobileBorder
-import ai.openclaw.app.ui.mobileBorderStrong
 import ai.openclaw.app.ui.mobileCallout
-import ai.openclaw.app.ui.mobileCaption1
 import ai.openclaw.app.ui.mobileCaption2
 import ai.openclaw.app.ui.mobileDanger
-import ai.openclaw.app.ui.mobileSuccess
-import ai.openclaw.app.ui.mobileSuccessSoft
 import ai.openclaw.app.ui.mobileText
-import ai.openclaw.app.ui.mobileTextSecondary
-import ai.openclaw.app.ui.mobileWarning
-import ai.openclaw.app.ui.mobileWarningSoft
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -59,12 +46,10 @@ fun ChatSheetContent(viewModel: MainViewModel) {
   val errorText by viewModel.chatError.collectAsState()
   val pendingRunCount by viewModel.pendingRunCount.collectAsState()
   val healthOk by viewModel.chatHealthOk.collectAsState()
-  val sessionKey by viewModel.chatSessionKey.collectAsState()
   val mainSessionKey by viewModel.mainSessionKey.collectAsState()
   val thinkingLevel by viewModel.chatThinkingLevel.collectAsState()
   val streamingAssistantText by viewModel.chatStreamingAssistantText.collectAsState()
   val pendingToolCalls by viewModel.chatPendingToolCalls.collectAsState()
-  val sessions by viewModel.chatSessions.collectAsState()
 
   LaunchedEffect(mainSessionKey) {
     viewModel.loadChat(mainSessionKey)
@@ -99,17 +84,9 @@ fun ChatSheetContent(viewModel: MainViewModel) {
     modifier =
       Modifier
         .fillMaxSize()
-        .padding(horizontal = 20.dp, vertical = 12.dp),
+        .padding(horizontal = 14.dp, vertical = 10.dp),
     verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
-    ChatThreadSelector(
-      sessionKey = sessionKey,
-      sessions = sessions,
-      mainSessionKey = mainSessionKey,
-      healthOk = healthOk,
-      onSelectSession = { key -> viewModel.switchChatSession(key) },
-    )
-
     if (!errorText.isNullOrBlank()) {
       ChatErrorRail(errorText = errorText!!)
     }
@@ -152,85 +129,6 @@ fun ChatSheetContent(viewModel: MainViewModel) {
         },
       )
     }
-  }
-}
-
-@Composable
-private fun ChatThreadSelector(
-  sessionKey: String,
-  sessions: List<ChatSessionEntry>,
-  mainSessionKey: String,
-  healthOk: Boolean,
-  onSelectSession: (String) -> Unit,
-) {
-  val sessionOptions = resolveSessionChoices(sessionKey, sessions, mainSessionKey = mainSessionKey)
-  val currentSessionLabel =
-    friendlySessionName(sessionOptions.firstOrNull { it.key == sessionKey }?.displayName ?: sessionKey)
-
-  Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-    Row(
-      modifier = Modifier.fillMaxWidth(),
-      horizontalArrangement = Arrangement.SpaceBetween,
-      verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-    ) {
-      Text(
-        text = "SESSION",
-        style = mobileCaption1.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp),
-        color = mobileTextSecondary,
-      )
-      Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-        Text(
-          text = currentSessionLabel,
-          style = mobileCallout.copy(fontWeight = FontWeight.SemiBold),
-          color = mobileText,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-        )
-        ChatConnectionPill(healthOk = healthOk)
-      }
-    }
-
-    Row(
-      modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-      horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-      for (entry in sessionOptions) {
-        val active = entry.key == sessionKey
-        Surface(
-          onClick = { onSelectSession(entry.key) },
-          shape = RoundedCornerShape(14.dp),
-          color = if (active) mobileAccent else Color.White,
-          border = BorderStroke(1.dp, if (active) Color(0xFF154CAD) else mobileBorderStrong),
-          tonalElevation = 0.dp,
-          shadowElevation = 0.dp,
-        ) {
-          Text(
-            text = friendlySessionName(entry.displayName ?: entry.key),
-            style = mobileCaption1.copy(fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold),
-            color = if (active) Color.White else mobileText,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-          )
-        }
-      }
-    }
-  }
-}
-
-@Composable
-private fun ChatConnectionPill(healthOk: Boolean) {
-  Surface(
-    shape = RoundedCornerShape(999.dp),
-    color = if (healthOk) mobileSuccessSoft else mobileWarningSoft,
-    border = BorderStroke(1.dp, if (healthOk) mobileSuccess.copy(alpha = 0.35f) else mobileWarning.copy(alpha = 0.35f)),
-  ) {
-    Text(
-      text = if (healthOk) "Connected" else "Offline",
-      style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold),
-      color = if (healthOk) mobileSuccess else mobileWarning,
-      modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-    )
   }
 }
 

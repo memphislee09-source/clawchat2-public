@@ -61,6 +61,26 @@ Last updated: 2026-03-11 (Asia/Shanghai)
   - Emulator install + launch passed: `./gradlew :app:installDebug`
   - Running emulator confirmed app foreground activity: `ai.openclaw.app/.MainActivity`
 
+## UI Update (2026-03-11, chat-density pass)
+- Goal: maximize visible message area on the `Chat` screen for internal testing.
+- Changes:
+  - Removed the in-page `session` selector section entirely.
+  - Replaced the top-left `OpenClaw` title on the chat screen with the current conversation/session title, using a smaller text style.
+  - Simplified the composer action area:
+    - `Send` changed from text button to centered icon button.
+    - `Attach` changed to a compact icon button placed to the right of send.
+    - `Thinking: low` dropdown trigger changed to a compact `T` button with the same dropdown menu.
+  - Reduced chat page outer padding slightly to return more vertical space to the message list.
+- Implementation files:
+  - `app/src/main/java/ai/openclaw/app/ui/PostOnboardingTabs.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/chat/ChatSheetContent.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/chat/ChatComposer.kt`
+- Validation:
+  - Kotlin compile passed: `./gradlew :app:compileDebugKotlin`
+  - Emulator install passed: `./gradlew :app:installDebug`
+  - App launch confirmed in emulator foreground: `adb shell am start -n ai.openclaw.app/.MainActivity`
+  - User manual acceptance for this step: passed
+
 ## Session Summary (2026-03-11)
 - Codebase was explicitly rolled back to commit `66bc66212` (local + GitHub `main`).
 - Codex review completed on current baseline:
@@ -70,6 +90,9 @@ Last updated: 2026-03-11 (Asia/Shanghai)
 - Simulated app control loop verified:
   - Can remotely click tabs/screens and return screenshots on demand.
   - Connect page confirmed with endpoint `192.168.0.247:18789`, state observed as `Connected` during session.
+- Chat density iteration verified:
+  - Latest branch build installed into emulator successfully.
+  - User confirmed this round of chat-layout changes is acceptable and can proceed.
 - Process rule added from this session:
   - After UI click, wait 2 seconds before screenshot, and verify target page text before sending screenshot.
 
