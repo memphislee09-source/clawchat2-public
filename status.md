@@ -108,7 +108,30 @@ Last updated: 2026-03-11 (Asia/Shanghai)
   - Kotlin compile passed: `./gradlew :app:compileDebugKotlin`
   - Emulator install passed: `./gradlew :app:installDebug`
   - App launch confirmed in emulator foreground: `adb shell am start -n ai.openclaw.app/.MainActivity`
-  - User-directed follow-up acceptance requested for this step
+  - User follow-up acceptance for modal voice flow: passed
+
+## UI Update (2026-03-11, contacts-nav pass)
+- Goal: make chat navigation feel conversational-first instead of page-first.
+- Changes:
+  - Added a dedicated contacts screen.
+  - Contacts screen top bar shows the app name centered.
+  - Contacts list is derived from known chat sessions; tapping a contact opens that conversation directly.
+  - Chat screen now also shows a left-side back arrow in the top bar.
+  - Chat screen back behavior was corrected:
+    - left arrow / system back / left-edge swipe from chat now enters contacts instead of exiting app directly.
+    - from contacts, left arrow / system back / left-edge swipe exits the app.
+  - Voice modal dismiss behavior tightened:
+    - tapping outside the voice popup returns directly to chat.
+  - Full-screen pages keep centered titles with a left-side back indicator to match the new gesture model.
+- Implementation files:
+  - `app/src/main/java/ai/openclaw/app/ui/PostOnboardingTabs.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/ContactsScreen.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/VoiceTabScreen.kt`
+- Validation:
+  - Kotlin compile passed: `./gradlew :app:compileDebugKotlin`
+  - Emulator install passed: `./gradlew :app:installDebug`
+  - App launch confirmed in emulator foreground: `adb shell am start -n ai.openclaw.app/.MainActivity`
+  - User acceptance for this step: passed
 
 ## Session Summary (2026-03-11)
 - Codebase was explicitly rolled back to commit `66bc66212` (local + GitHub `main`).
@@ -124,7 +147,10 @@ Last updated: 2026-03-11 (Asia/Shanghai)
   - User confirmed this round of chat-layout changes is acceptable and can proceed.
 - Chat-default / voice-dialog iteration prepared:
   - Latest branch build installed into emulator successfully.
-  - App is ready for user validation of modal voice flow and edge-swipe/back behavior.
+  - User later accepted the modal voice flow after contacts/back navigation follow-up adjustments.
+- Contacts / navigation iteration verified:
+  - Latest branch build installed into emulator successfully.
+  - User confirmed the final chat -> contacts -> exit navigation chain is acceptable.
 - Process rule added from this session:
   - After UI click, wait 2 seconds before screenshot, and verify target page text before sending screenshot.
 

@@ -9,6 +9,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,7 +45,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -61,7 +62,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -92,35 +92,43 @@ fun VoiceDialog(
   viewModel: MainViewModel,
   onDismissRequest: () -> Unit,
 ) {
-  Dialog(
-    onDismissRequest = onDismissRequest,
-    properties = DialogProperties(usePlatformDefaultWidth = false),
+  val dismissInteraction = remember { MutableInteractionSource() }
+
+  Box(
+    modifier = Modifier.fillMaxSize(),
+    contentAlignment = Alignment.Center,
   ) {
     Box(
-      modifier = Modifier.fillMaxSize(),
-      contentAlignment = Alignment.Center,
+      modifier =
+        Modifier
+          .fillMaxSize()
+          .background(Color.Black.copy(alpha = 0.16f))
+          .clickable(
+            interactionSource = dismissInteraction,
+            indication = null,
+            onClick = onDismissRequest,
+          ),
+    )
+    Surface(
+      modifier =
+        Modifier
+          .fillMaxWidth(0.92f)
+          .fillMaxHeight(0.74f)
+          .heightIn(min = 360.dp, max = 620.dp),
+      shape = RoundedCornerShape(22.dp),
+      color = Color.White,
+      border = BorderStroke(1.dp, mobileBorder),
+      shadowElevation = 12.dp,
     ) {
-      Surface(
+      VoicePanelContent(
+        viewModel = viewModel,
         modifier =
           Modifier
-            .fillMaxWidth(0.92f)
-            .fillMaxHeight(0.74f)
-            .heightIn(min = 360.dp, max = 620.dp),
-        shape = RoundedCornerShape(22.dp),
-        color = Color.White,
-        border = BorderStroke(1.dp, mobileBorder),
-        shadowElevation = 12.dp,
-      ) {
-        VoicePanelContent(
-          viewModel = viewModel,
-          modifier =
-            Modifier
-              .fillMaxSize()
-              .background(mobileBackgroundGradient)
-              .padding(horizontal = 16.dp, vertical = 14.dp),
-          showMicSettingsHint = true,
-        )
-      }
+            .fillMaxSize()
+            .background(mobileBackgroundGradient)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        showMicSettingsHint = true,
+      )
     }
   }
 }

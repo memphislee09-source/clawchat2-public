@@ -1,5 +1,8 @@
 package ai.openclaw.app.ui
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -19,8 +22,10 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ScreenShare
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.CheckCircle
@@ -45,11 +50,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ai.openclaw.app.MainViewModel
+import ai.openclaw.app.R
 import ai.openclaw.app.ui.chat.friendlySessionName
 import ai.openclaw.app.ui.chat.resolveSessionChoices
 
@@ -58,6 +66,7 @@ private enum class HomeTab(
   val labelZh: String,
   val icon: ImageVector,
 ) {
+  Contacts(labelEn = "Contacts", labelZh = "联系人", icon = Icons.Default.ChatBubble),
   Connect(labelEn = "Connect", labelZh = "连接", icon = Icons.Default.CheckCircle),
   Chat(labelEn = "Chat", labelZh = "聊天", icon = Icons.Default.ChatBubble),
   Screen(labelEn = "Screen", labelZh = "屏幕", icon = Icons.AutoMirrored.Filled.ScreenShare),
@@ -79,6 +88,8 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
   var activeTab by rememberSaveable { mutableStateOf(HomeTab.Chat) }
   var voiceDialogOpen by rememberSaveable { mutableStateOf(false) }
   val context = LocalContext.current
+  val activity = remember(context) { context.findActivity() }
+  val appName = remember(context) { context.getString(R.string.app_name) }
 
   LaunchedEffect(voiceDialogOpen) {
     if (!voiceDialogOpen) {
@@ -104,9 +115,11 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
       friendlySessionName(currentLabel).ifBlank { "Conversation" }
     }
 
-  BackHandler(enabled = voiceDialogOpen || activeTab != HomeTab.Chat) {
+  BackHandler(enabled = true) {
     when {
       voiceDialogOpen -> voiceDialogOpen = false
+      activeTab == HomeTab.Chat -> activeTab = HomeTab.Contacts
+      activeTab == HomeTab.Contacts -> activity?.finish()
       activeTab != HomeTab.Chat -> activeTab = HomeTab.Chat
     }
   }
@@ -129,11 +142,23 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
     contentWindowInsets = WindowInsets(0, 0, 0, 0),
     topBar = {
       TopStatusBar(
-        title = if (activeTab == HomeTab.Chat) chatTopBarTitle else tr(activeTab.labelEn, activeTab.labelZh),
+        title =
+          when (activeTab) {
+            HomeTab.Chat -> chatTopBarTitle
+            HomeTab.Contacts -> appName
+            else -> tr(activeTab.labelEn, activeTab.labelZh)
+          },
         statusText = statusText,
         statusVisual = statusVisual,
         activeTab = activeTab,
         onSelectTab = { activeTab = it },
+        onBack = {
+          when (activeTab) {
+            HomeTab.Chat -> activeTab = HomeTab.Contacts
+            HomeTab.Contacts -> activity?.finish()
+            else -> activeTab = HomeTab.Chat
+          }
+        },
         onOpenAppInfo = { openAppInfo(context) },
       )
     },
@@ -146,18 +171,42 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
           .consumeWindowInsets(innerPadding)
           .background(mobileBackgroundGradient),
     ) {
-      when (activeTab) {
-        HomeTab.Connect -> ConnectTabScreen(viewModel = viewModel)
-        HomeTab.Chat ->
-          ChatSheet(
-            viewModel = viewModel,
-            onOpenVoice = {
-              viewModel.prepareVoiceConversation(chatSessionKey)
-              voiceDialogOpen = true
-            },
-          )
-        HomeTab.Screen -> ScreenTabScreen(viewModel = viewModel)
-        HomeTab.Settings -> SettingsSheet(viewModel = viewModel)
+      Box(
+        modifier =
+          Modifier
+            .fillMaxSize()
+            .edgeSwipeRight(
+              enabled = activeTab == HomeTab.Chat || activeTab == HomeTab.Contacts,
+              onSwipe = {
+                when (activeTab) {
+                  HomeTab.Chat -> activeTab = HomeTab.Contacts
+                  HomeTab.Contacts -> activity?.finish()
+                  else -> Unit
+                }
+              },
+            ),
+      ) {
+        when (activeTab) {
+          HomeTab.Contacts ->
+            ContactsScreen(
+              viewModel = viewModel,
+              onOpenChat = { sessionKey ->
+                viewModel.switchChatSession(sessionKey)
+                activeTab = HomeTab.Chat
+              },
+            )
+          HomeTab.Connect -> ConnectTabScreen(viewModel = viewModel)
+          HomeTab.Chat ->
+            ChatSheet(
+              viewModel = viewModel,
+              onOpenVoice = {
+                viewModel.prepareVoiceConversation(chatSessionKey)
+                voiceDialogOpen = true
+              },
+            )
+          HomeTab.Screen -> ScreenTabScreen(viewModel = viewModel)
+          HomeTab.Settings -> SettingsSheet(viewModel = viewModel)
+        }
       }
 
       if (voiceDialogOpen) {
@@ -220,10 +269,12 @@ private fun TopStatusBar(
   statusVisual: StatusVisual,
   activeTab: HomeTab,
   onSelectTab: (HomeTab) -> Unit,
+  onBack: () -> Unit,
   onOpenAppInfo: () -> Unit,
 ) {
   val safeInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
   var menuExpanded by remember { mutableStateOf(false) }
+  val showBackButton = true
 
   val (chipBg, chipDot, chipText, chipBorder) =
     when (statusVisual) {
@@ -269,102 +320,124 @@ private fun TopStatusBar(
     color = Color.Transparent,
     shadowElevation = 0.dp,
   ) {
-    Row(
-      modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 2.dp),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
+    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 2.dp)) {
       Text(
         text = title,
+        modifier = Modifier.fillMaxWidth().align(Alignment.Center).padding(horizontal = 82.dp),
         style = mobileHeadline,
         color = mobileText,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.weight(1f).padding(end = 12.dp),
+        textAlign = TextAlign.Center,
       )
       Row(
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
       ) {
-        Surface(
-          shape = RoundedCornerShape(999.dp),
-          color = chipBg,
-          border = androidx.compose.foundation.BorderStroke(1.dp, chipBorder),
-        ) {
-          Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-          ) {
+        Box(modifier = Modifier.size(38.dp), contentAlignment = Alignment.Center) {
+          if (showBackButton) {
             Surface(
-              modifier = Modifier.padding(top = 1.dp),
-              color = chipDot,
-              shape = RoundedCornerShape(999.dp),
+              onClick = onBack,
+              modifier = Modifier.size(38.dp),
+              shape = RoundedCornerShape(12.dp),
+              color = mobileSurface,
+              border = BorderStroke(1.dp, mobileBorder),
+              shadowElevation = 0.dp,
             ) {
-              Box(modifier = Modifier.padding(4.dp))
+              Box(contentAlignment = Alignment.Center) {
+                Icon(
+                  imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                  contentDescription = tr("Back", "返回"),
+                  tint = mobileTextSecondary,
+                )
+              }
             }
-            Text(
-              text = statusText.trim().ifEmpty { tr("Offline", "离线") },
-              style = mobileCaption1,
-              color = chipText,
-              maxLines = 1,
-            )
           }
         }
-        Box {
-          Surface(
-            onClick = { menuExpanded = true },
-            modifier = Modifier.size(38.dp),
-            shape = RoundedCornerShape(12.dp),
-            color = if (activeTab in overflowMenuTabs) mobileAccentSoft else mobileSurface,
-            border = BorderStroke(1.dp, if (activeTab in overflowMenuTabs) Color(0xFFD5E2FA) else mobileBorder),
-            shadowElevation = 0.dp,
-          ) {
-            Box(contentAlignment = Alignment.Center) {
-              Icon(
-                imageVector = Icons.Default.MoreVert,
-                contentDescription = tr("More options", "更多选项"),
-                tint = if (activeTab in overflowMenuTabs) mobileAccent else mobileTextSecondary,
-              )
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+          if (!showBackButton) {
+            Surface(
+              shape = RoundedCornerShape(999.dp),
+              color = chipBg,
+              border = androidx.compose.foundation.BorderStroke(1.dp, chipBorder),
+            ) {
+              Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+              ) {
+                Surface(
+                  modifier = Modifier.padding(top = 1.dp),
+                  color = chipDot,
+                  shape = RoundedCornerShape(999.dp),
+                ) {
+                  Box(modifier = Modifier.padding(4.dp))
+                }
+                Text(
+                  text = statusText.trim().ifEmpty { tr("Offline", "离线") },
+                  style = mobileCaption1,
+                  color = chipText,
+                  maxLines = 1,
+                )
+              }
             }
           }
-          DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-            overflowMenuTabs.forEach { tab ->
+          Box {
+            Surface(
+              onClick = { menuExpanded = true },
+              modifier = Modifier.size(38.dp),
+              shape = RoundedCornerShape(12.dp),
+              color = if (activeTab in overflowMenuTabs) mobileAccentSoft else mobileSurface,
+              border = BorderStroke(1.dp, if (activeTab in overflowMenuTabs) Color(0xFFD5E2FA) else mobileBorder),
+              shadowElevation = 0.dp,
+            ) {
+              Box(contentAlignment = Alignment.Center) {
+                Icon(
+                  imageVector = Icons.Default.MoreVert,
+                  contentDescription = tr("More options", "更多选项"),
+                  tint = if (activeTab in overflowMenuTabs) mobileAccent else mobileTextSecondary,
+                )
+              }
+            }
+            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+              overflowMenuTabs.forEach { tab ->
+                DropdownMenuItem(
+                  text = {
+                    Text(
+                      text = tr(tab.labelEn, tab.labelZh),
+                      style = mobileBody.copy(fontWeight = if (tab == activeTab) FontWeight.Bold else FontWeight.Medium),
+                      color = if (tab == activeTab) mobileAccent else mobileText,
+                    )
+                  },
+                  leadingIcon = {
+                    Icon(
+                      imageVector = tab.icon,
+                      contentDescription = null,
+                      tint = if (tab == activeTab) mobileAccent else mobileTextSecondary,
+                    )
+                  },
+                  onClick = {
+                    menuExpanded = false
+                    onSelectTab(tab)
+                  },
+                )
+              }
+              HorizontalDivider(color = mobileBorder)
               DropdownMenuItem(
                 text = {
                   Text(
-                    text = tr(tab.labelEn, tab.labelZh),
-                    style = mobileBody.copy(fontWeight = if (tab == activeTab) FontWeight.Bold else FontWeight.Medium),
-                    color = if (tab == activeTab) mobileAccent else mobileText,
-                  )
-                },
-                leadingIcon = {
-                  Icon(
-                    imageVector = tab.icon,
-                    contentDescription = null,
-                    tint = if (tab == activeTab) mobileAccent else mobileTextSecondary,
+                    text = tr("App info", "应用信息"),
+                    style = mobileBody.copy(fontWeight = FontWeight.Medium),
+                    color = mobileText,
                   )
                 },
                 onClick = {
                   menuExpanded = false
-                  onSelectTab(tab)
+                  onOpenAppInfo()
                 },
               )
             }
-            HorizontalDivider(color = mobileBorder)
-            DropdownMenuItem(
-              text = {
-                Text(
-                  text = tr("App info", "应用信息"),
-                  style = mobileBody.copy(fontWeight = FontWeight.Medium),
-                  color = mobileText,
-                )
-              },
-              onClick = {
-                menuExpanded = false
-                onOpenAppInfo()
-              },
-            )
           }
         }
       }
@@ -380,3 +453,50 @@ private fun openAppInfo(context: android.content.Context) {
     )
   context.startActivity(intent)
 }
+
+private fun Context.findActivity(): Activity? =
+  when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+  }
+
+private fun Modifier.edgeSwipeRight(
+  enabled: Boolean,
+  onSwipe: () -> Unit,
+): Modifier =
+  if (!enabled) {
+    this
+  } else {
+    pointerInput(onSwipe) {
+      val edgeWidth = 32.dp.toPx()
+      val triggerDistance = 96.dp.toPx()
+      var tracking = false
+      var totalDrag = 0f
+      detectHorizontalDragGestures(
+        onDragStart = { offset ->
+          tracking = offset.x <= edgeWidth
+          totalDrag = 0f
+        },
+        onHorizontalDrag = { change, dragAmount ->
+          if (!tracking) return@detectHorizontalDragGestures
+          if (dragAmount <= 0f) return@detectHorizontalDragGestures
+          totalDrag += dragAmount
+          if (totalDrag >= triggerDistance) {
+            tracking = false
+            totalDrag = 0f
+            change.consume()
+            onSwipe()
+          }
+        },
+        onDragEnd = {
+          tracking = false
+          totalDrag = 0f
+        },
+        onDragCancel = {
+          tracking = false
+          totalDrag = 0f
+        },
+      )
+    }
+  }
