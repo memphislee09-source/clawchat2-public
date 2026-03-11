@@ -159,6 +159,28 @@ Last updated: 2026-03-11 (Asia/Shanghai)
   - App launch confirmed in emulator foreground: `adb shell am start -n ai.openclaw.app/.MainActivity`
   - User acceptance for this step: passed
 
+## UI Update (2026-03-11, branding + chat-bubble pass)
+- Goal: tighten the chat reading layout and align visible app branding with ClawChat.
+- Changes:
+  - Chat bubbles widened so they occupy nearly the full row width with only narrow side gutters.
+  - User message role label moved to the right side of the bubble header.
+  - App display name updated to `ClawChat2` for both English and Chinese resources.
+  - Launcher icon updated to match the icon used in the GitHub `clawchat` project:
+    - source confirmed from `memphislee09-source/clawchat`
+    - synced asset: `app/src/main/res/drawable/clawchat.jpg`
+  - Android manifest launcher icon now points directly to the synced `clawchat` drawable asset.
+- Implementation files:
+  - `app/src/main/java/ai/openclaw/app/ui/chat/ChatMessageViews.kt`
+  - `app/src/main/AndroidManifest.xml`
+  - `app/src/main/res/values/strings.xml`
+  - `app/src/main/res/values-zh/strings.xml`
+  - `app/src/main/res/drawable/clawchat.jpg`
+- Validation:
+  - Kotlin compile passed: `./gradlew :app:compileDebugKotlin`
+  - Emulator install passed: `./gradlew :app:installDebug`
+  - App launch confirmed in emulator foreground: `adb shell am start -n ai.openclaw.app/.MainActivity`
+  - User acceptance for this step: passed
+
 ## Session Summary (2026-03-11)
 - Codebase was explicitly rolled back to commit `66bc66212` (local + GitHub `main`).
 - Codex review completed on current baseline:
@@ -180,6 +202,9 @@ Last updated: 2026-03-11 (Asia/Shanghai)
 - Contacts state iteration verified:
   - Latest branch build installed into emulator successfully.
   - User confirmed the green-dot unread style and simplified contact rows are acceptable.
+- Branding / bubble iteration verified:
+  - Latest branch build installed into emulator successfully.
+  - User confirmed the expanded chat bubbles, `ClawChat2` naming, and icon sync are acceptable.
 - Process rule added from this session:
   - After UI click, wait 2 seconds before screenshot, and verify target page text before sending screenshot.
 

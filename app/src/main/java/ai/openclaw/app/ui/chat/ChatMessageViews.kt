@@ -23,6 +23,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.openclaw.app.chat.ChatMessage
@@ -50,6 +51,7 @@ private data class ChatBubbleStyle(
   val containerColor: Color,
   val borderColor: Color,
   val roleColor: Color,
+  val roleTextAlign: TextAlign,
 )
 
 @Composable
@@ -90,16 +92,18 @@ private fun ChatBubbleContainer(
       color = style.containerColor,
       tonalElevation = 0.dp,
       shadowElevation = 0.dp,
-      modifier = Modifier.fillMaxWidth(0.90f),
+      modifier = Modifier.fillMaxWidth(0.975f),
     ) {
       Column(
-        modifier = Modifier.padding(horizontal = 11.dp, vertical = 8.dp),
+        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
       ) {
         Text(
           text = roleLabel,
+          modifier = Modifier.fillMaxWidth(),
           style = mobileCaption2.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp),
           color = style.roleColor,
+          textAlign = style.roleTextAlign,
         )
         content()
       }
@@ -202,6 +206,7 @@ private fun bubbleStyle(role: String): ChatBubbleStyle {
         containerColor = mobileAccentSoft,
         borderColor = mobileAccent,
         roleColor = mobileAccent,
+        roleTextAlign = TextAlign.End,
       )
 
     "system" ->
@@ -210,6 +215,7 @@ private fun bubbleStyle(role: String): ChatBubbleStyle {
         containerColor = mobileWarningSoft,
         borderColor = mobileWarning.copy(alpha = 0.45f),
         roleColor = mobileWarning,
+        roleTextAlign = TextAlign.Start,
       )
 
     else ->
@@ -218,15 +224,16 @@ private fun bubbleStyle(role: String): ChatBubbleStyle {
         containerColor = Color.White,
         borderColor = mobileBorderStrong,
         roleColor = mobileTextSecondary,
+        roleTextAlign = TextAlign.Start,
       )
   }
 }
 
 private fun roleLabel(role: String): String {
   return when (role) {
-    "user" -> "USER"
-    "system" -> "SYSTEM"
-    else -> "ASSISTANT"
+    "user" -> "user"
+    "system" -> "system"
+    else -> "assistant"
   }
 }
 
