@@ -12,8 +12,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import ai.openclaw.app.chat.ChatMessage
 import ai.openclaw.app.chat.ChatPendingToolCall
@@ -32,9 +37,21 @@ fun ChatMessageListCard(
   streamingAssistantText: String?,
   healthOk: Boolean,
   assistantLabel: String = "assistant",
+  onPullDown: () -> Unit = {},
   modifier: Modifier = Modifier,
 ) {
   val listState = rememberLazyListState()
+  val dismissImeOnPullDown =
+    remember(onPullDown) {
+      object : NestedScrollConnection {
+        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+          if (source == NestedScrollSource.UserInput && available.y > 12f) {
+            onPullDown()
+          }
+          return Offset.Zero
+        }
+      }
+    }
 
   // With reverseLayout the newest item is at index 0 (bottom of screen).
   LaunchedEffect(messages.size, pendingRunCount, pendingToolCalls.size, streamingAssistantText) {
@@ -43,7 +60,7 @@ fun ChatMessageListCard(
 
   Box(modifier = modifier.fillMaxWidth()) {
     LazyColumn(
-      modifier = Modifier.fillMaxSize(),
+      modifier = Modifier.fillMaxSize().nestedScroll(dismissImeOnPullDown),
       state = listState,
       reverseLayout = true,
       verticalArrangement = Arrangement.spacedBy(10.dp),

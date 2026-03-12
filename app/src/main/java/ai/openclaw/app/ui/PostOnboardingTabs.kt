@@ -271,10 +271,10 @@ private fun TopStatusBar(
     color = mobileBackground,
     shadowElevation = 0.dp,
   ) {
-    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 10.dp)) {
+    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
       Text(
         text = title,
-        modifier = Modifier.fillMaxWidth().align(Alignment.Center).padding(horizontal = 64.dp),
+        modifier = Modifier.fillMaxWidth().align(Alignment.Center).padding(horizontal = 56.dp),
         style = if (activeTab == HomeTab.Contacts) mobileTitle2 else mobileHeadline,
         color = mobileText,
         maxLines = 1,
@@ -286,22 +286,24 @@ private fun TopStatusBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
       ) {
-        Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.size(34.dp), contentAlignment = Alignment.Center) {
           if (showBackButton) {
-            IconButton(onClick = onBack) {
+            IconButton(onClick = onBack, modifier = Modifier.size(34.dp)) {
               Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = tr("Back", "返回"),
+                modifier = Modifier.size(20.dp),
                 tint = mobileTextSecondary,
               )
             }
           }
         }
-        Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-          IconButton(onClick = { menuExpanded = true }) {
+        Box(modifier = Modifier.size(34.dp), contentAlignment = Alignment.Center) {
+          IconButton(onClick = { menuExpanded = true }, modifier = Modifier.size(34.dp)) {
             Icon(
               imageVector = Icons.Default.MoreVert,
               contentDescription = tr("More options", "更多选项"),
+              modifier = Modifier.size(20.dp),
               tint = if (activeTab in overflowMenuTabs) mobileAccent else mobileTextSecondary,
             )
           }

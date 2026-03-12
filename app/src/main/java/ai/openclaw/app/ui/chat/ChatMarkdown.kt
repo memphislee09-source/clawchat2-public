@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -129,14 +128,10 @@ private fun RenderMarkdownBlocks(
         )
       }
       is FencedCodeBlock -> {
-        SelectionContainer(modifier = Modifier.fillMaxWidth()) {
-          ChatCodeBlock(code = current.literal.orEmpty(), language = current.info?.trim()?.ifEmpty { null })
-        }
+        ChatCodeBlock(code = current.literal.orEmpty(), language = current.info?.trim()?.ifEmpty { null })
       }
       is IndentedCodeBlock -> {
-        SelectionContainer(modifier = Modifier.fillMaxWidth()) {
-          ChatCodeBlock(code = current.literal.orEmpty(), language = null)
-        }
+        ChatCodeBlock(code = current.literal.orEmpty(), language = null)
       }
       is BlockQuote -> {
         Row(

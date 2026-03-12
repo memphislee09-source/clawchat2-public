@@ -26,6 +26,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.openclaw.app.MainViewModel
@@ -66,6 +68,8 @@ fun ChatSheetContent(viewModel: MainViewModel, onOpenVoice: () -> Unit) {
   val context = LocalContext.current
   val resolver = context.contentResolver
   val scope = rememberCoroutineScope()
+  val focusManager = LocalFocusManager.current
+  val keyboardController = LocalSoftwareKeyboardController.current
 
   val attachments = remember { mutableStateListOf<PendingImageAttachment>() }
   val assistantLabel =
@@ -109,6 +113,10 @@ fun ChatSheetContent(viewModel: MainViewModel, onOpenVoice: () -> Unit) {
       streamingAssistantText = streamingAssistantText,
       healthOk = healthOk,
       assistantLabel = assistantLabel,
+      onPullDown = {
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
+      },
       modifier = Modifier.weight(1f, fill = true),
     )
 

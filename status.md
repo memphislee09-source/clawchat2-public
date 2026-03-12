@@ -347,6 +347,26 @@ Last updated: 2026-03-12 (Asia/Shanghai)
   - Emulator install passed: `./gradlew :app:installDebug`
   - App relaunch passed: `adb shell am start -n ai.openclaw.app/.MainActivity`
 
+## UI Update (2026-03-12, chat-topbar + selection + keyboard-dismiss pass)
+- Goal: reduce chat top bar height, enable partial text copy from chat bubbles, and make chat drag feel more natural when the keyboard is open.
+- Changes:
+  - Chat top bar height reduced by tightening top/bottom padding and shrinking back / overflow action hit areas slightly.
+  - Chat bubble body now supports long-press text selection, so any segment of bubble text can be selected and copied with the system text handles/menu.
+  - Selection support is applied at the message-body layer so normal markdown text and code content use the same selection flow.
+  - Chat message list now dismisses the software keyboard on downward user drag.
+  - Pull-down keyboard dismissal clears text focus first, then hides the IME explicitly for more reliable behavior.
+- Implementation files:
+  - `app/src/main/java/ai/openclaw/app/ui/PostOnboardingTabs.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/chat/ChatMarkdown.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/chat/ChatMessageListCard.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/chat/ChatMessageViews.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/chat/ChatSheetContent.kt`
+- Validation:
+  - Kotlin compile passed: `./gradlew :app:compileDebugKotlin`
+  - Emulator install passed: `./gradlew :app:installDebug`
+  - App relaunch passed: `adb shell am start -n ai.openclaw.app/.MainActivity`
+  - User manual test on emulator: passed
+
 ## Release Update (2026-03-12, version 0.2.1 test baseline)
 - Goal: roll the current accepted UI/interaction iteration into a new device-test baseline and sync it to GitHub main.
 - Changes:

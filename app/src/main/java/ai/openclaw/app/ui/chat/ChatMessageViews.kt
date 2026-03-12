@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -131,16 +132,18 @@ private fun ChatBubbleContainer(
 
 @Composable
 private fun ChatMessageBody(content: List<ChatMessageContent>, textColor: Color) {
-  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-    for (part in content) {
-      when (part.type) {
-        "text" -> {
-          val text = part.text ?: continue
-          ChatMarkdown(text = text, textColor = textColor)
-        }
-        else -> {
-          val b64 = part.base64 ?: continue
-          ChatBase64Image(base64 = b64, mimeType = part.mimeType)
+  SelectionContainer(modifier = Modifier.fillMaxWidth()) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      for (part in content) {
+        when (part.type) {
+          "text" -> {
+            val text = part.text ?: continue
+            ChatMarkdown(text = text, textColor = textColor)
+          }
+          else -> {
+            val b64 = part.base64 ?: continue
+            ChatBase64Image(base64 = b64, mimeType = part.mimeType)
+          }
         }
       }
     }
