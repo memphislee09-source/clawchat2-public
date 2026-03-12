@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ai.openclaw.app.MainViewModel
 import ai.openclaw.app.R
+import ai.openclaw.app.chat.formatAgentContactTitle
 import ai.openclaw.app.ui.chat.friendlySessionName
 import ai.openclaw.app.ui.chat.resolveSessionChoices
 
@@ -117,10 +118,14 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
   val isConnected by viewModel.isConnected.collectAsState()
   val chatSessionKey by viewModel.chatSessionKey.collectAsState()
   val chatSessions by viewModel.chatSessions.collectAsState()
+  val agentContacts by viewModel.agentContacts.collectAsState()
   val mainSessionKey by viewModel.mainSessionKey.collectAsState()
 
   val chatTopBarTitle =
-    remember(chatSessionKey, chatSessions, mainSessionKey) {
+    remember(chatSessionKey, chatSessions, agentContacts, mainSessionKey) {
+      agentContacts.firstOrNull { it.directSessionKey == chatSessionKey }?.let { contact ->
+        return@remember formatAgentContactTitle(displayName = contact.displayName, emoji = contact.emoji)
+      }
       val sessionChoices =
         resolveSessionChoices(
           currentSessionKey = chatSessionKey,
@@ -206,8 +211,8 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
           HomeTab.Contacts ->
             ContactsScreen(
               viewModel = viewModel,
-              onOpenChat = { sessionKey ->
-                viewModel.switchChatSession(sessionKey)
+              onOpenChat = { agentId ->
+                viewModel.openAgentChat(agentId)
                 activeTab = HomeTab.Chat
               },
             )
@@ -340,7 +345,7 @@ private fun TopStatusBar(
       Text(
         text = title,
         modifier = Modifier.fillMaxWidth().align(Alignment.Center).padding(horizontal = 82.dp),
-        style = mobileHeadline,
+        style = if (activeTab == HomeTab.Contacts) mobileTitle1 else mobileHeadline,
         color = mobileText,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,

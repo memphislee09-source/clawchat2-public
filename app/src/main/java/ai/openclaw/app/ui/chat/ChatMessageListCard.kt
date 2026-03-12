@@ -30,6 +30,7 @@ fun ChatMessageListCard(
   pendingToolCalls: List<ChatPendingToolCall>,
   streamingAssistantText: String?,
   healthOk: Boolean,
+  assistantLabel: String = "assistant",
   modifier: Modifier = Modifier,
 ) {
   val listState = rememberLazyListState()
@@ -53,24 +54,24 @@ fun ChatMessageListCard(
       val stream = streamingAssistantText?.trim()
       if (!stream.isNullOrEmpty()) {
         item(key = "stream") {
-          ChatStreamingAssistantBubble(text = stream)
+          ChatStreamingAssistantBubble(text = stream, assistantLabel = assistantLabel)
         }
       }
 
       if (pendingToolCalls.isNotEmpty()) {
         item(key = "tools") {
-          ChatPendingToolsBubble(toolCalls = pendingToolCalls)
+          ChatPendingToolsBubble(toolCalls = pendingToolCalls, assistantLabel = assistantLabel)
         }
       }
 
       if (pendingRunCount > 0) {
         item(key = "typing") {
-          ChatTypingIndicatorBubble()
+          ChatTypingIndicatorBubble(assistantLabel = assistantLabel)
         }
       }
 
       items(count = messages.size, key = { idx -> messages[messages.size - 1 - idx].id }) { idx ->
-        ChatMessageBubble(message = messages[messages.size - 1 - idx])
+        ChatMessageBubble(message = messages[messages.size - 1 - idx], assistantLabel = assistantLabel)
       }
     }
 

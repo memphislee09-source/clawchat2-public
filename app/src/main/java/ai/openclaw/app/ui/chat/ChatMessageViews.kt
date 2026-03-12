@@ -24,11 +24,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.openclaw.app.chat.ChatMessage
 import ai.openclaw.app.chat.ChatMessageContent
 import ai.openclaw.app.chat.ChatPendingToolCall
+import ai.openclaw.app.chat.formatAgentContactTitle
 import ai.openclaw.app.tools.ToolDisplayRegistry
 import ai.openclaw.app.ui.mobileAccent
 import ai.openclaw.app.ui.mobileAccentSoft
@@ -55,7 +57,7 @@ private data class ChatBubbleStyle(
 )
 
 @Composable
-fun ChatMessageBubble(message: ChatMessage) {
+fun ChatMessageBubble(message: ChatMessage, assistantLabel: String = "assistant") {
   val role = message.role.trim().lowercase(Locale.US)
   val style = bubbleStyle(role)
 
@@ -70,7 +72,7 @@ fun ChatMessageBubble(message: ChatMessage) {
 
   if (displayableContent.isEmpty()) return
 
-  ChatBubbleContainer(style = style, roleLabel = roleLabel(role)) {
+  ChatBubbleContainer(style = style, roleLabel = roleLabel(role, assistantLabel)) {
     ChatMessageBody(content = displayableContent, textColor = mobileText)
   }
 }
@@ -104,6 +106,8 @@ private fun ChatBubbleContainer(
           style = mobileCaption2.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp),
           color = style.roleColor,
           textAlign = style.roleTextAlign,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
         )
         content()
       }
@@ -130,10 +134,10 @@ private fun ChatMessageBody(content: List<ChatMessageContent>, textColor: Color)
 }
 
 @Composable
-fun ChatTypingIndicatorBubble() {
+fun ChatTypingIndicatorBubble(assistantLabel: String = "assistant") {
   ChatBubbleContainer(
     style = bubbleStyle("assistant"),
-    roleLabel = roleLabel("assistant"),
+    roleLabel = roleLabel("assistant", assistantLabel),
   ) {
     Row(
       verticalAlignment = Alignment.CenterVertically,
@@ -146,7 +150,7 @@ fun ChatTypingIndicatorBubble() {
 }
 
 @Composable
-fun ChatPendingToolsBubble(toolCalls: List<ChatPendingToolCall>) {
+fun ChatPendingToolsBubble(toolCalls: List<ChatPendingToolCall>, assistantLabel: String = "assistant") {
   val context = LocalContext.current
   val displays =
     remember(toolCalls, context) {
@@ -155,7 +159,7 @@ fun ChatPendingToolsBubble(toolCalls: List<ChatPendingToolCall>) {
 
   ChatBubbleContainer(
     style = bubbleStyle("assistant"),
-    roleLabel = "TOOLS",
+    roleLabel = "$assistantLabel · tools",
   ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
       Text("Running tools...", style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold), color = mobileTextSecondary)
@@ -189,10 +193,10 @@ fun ChatPendingToolsBubble(toolCalls: List<ChatPendingToolCall>) {
 }
 
 @Composable
-fun ChatStreamingAssistantBubble(text: String) {
+fun ChatStreamingAssistantBubble(text: String, assistantLabel: String = "assistant") {
   ChatBubbleContainer(
     style = bubbleStyle("assistant").copy(borderColor = mobileAccent),
-    roleLabel = "ASSISTANT · LIVE",
+    roleLabel = "$assistantLabel · live",
   ) {
     ChatMarkdown(text = text, textColor = mobileText)
   }
@@ -229,11 +233,11 @@ private fun bubbleStyle(role: String): ChatBubbleStyle {
   }
 }
 
-private fun roleLabel(role: String): String {
+private fun roleLabel(role: String, assistantLabel: String): String {
   return when (role) {
     "user" -> "user"
     "system" -> "system"
-    else -> "assistant"
+    else -> formatAgentContactTitle(displayName = assistantLabel, emoji = null)
   }
 }
 

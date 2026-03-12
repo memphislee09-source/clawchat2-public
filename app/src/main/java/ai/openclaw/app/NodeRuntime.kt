@@ -6,11 +6,17 @@ import android.content.pm.PackageManager
 import android.os.SystemClock
 import android.util.Log
 import androidx.core.content.ContextCompat
+import ai.openclaw.app.chat.AgentContactEntry
 import ai.openclaw.app.chat.ChatController
 import ai.openclaw.app.chat.ChatMessage
 import ai.openclaw.app.chat.ChatPendingToolCall
 import ai.openclaw.app.chat.ChatSessionEntry
+import ai.openclaw.app.chat.ConfiguredAgentEntry
 import ai.openclaw.app.chat.OutgoingAttachment
+import ai.openclaw.app.chat.clawChat2SessionKey
+import ai.openclaw.app.chat.extractLatestPreviewText
+import ai.openclaw.app.chat.parseConfiguredAgents
+import ai.openclaw.app.chat.resolveAgentContacts
 import ai.openclaw.app.gateway.DeviceAuthStore
 import ai.openclaw.app.gateway.DeviceIdentityStore
 import ai.openclaw.app.gateway.GatewayDiscovery
@@ -209,6 +215,14 @@ class NodeRuntime(context: Context) {
 
   private val _isForeground = MutableStateFlow(true)
   val isForeground: StateFlow<Boolean> = _isForeground.asStateFlow()
+  private val _configuredAgents = MutableStateFlow<List<ConfiguredAgentEntry>>(emptyList())
+  private val _agentContactPreviews = MutableStateFlow<Map<String, String>>(emptyMap())
+  private val _agentContacts = MutableStateFlow<List<AgentContactEntry>>(emptyList())
+  val agentContacts: StateFlow<List<AgentContactEntry>> = _agentContacts.asStateFlow()
+  private val _agentContactsRefreshing = MutableStateFlow(false)
+  val agentContactsRefreshing: StateFlow<Boolean> = _agentContactsRefreshing.asStateFlow()
+  private val _agentContactsError = MutableStateFlow<String?>(null)
+  val agentContactsError: StateFlow<String?> = _agentContactsError.asStateFlow()
 
   private var lastAutoA2uiUrl: String? = null
   private var didAutoRequestCanvasRehydrate = false
@@ -235,6 +249,7 @@ class NodeRuntime(context: Context) {
         micCapture.onGatewayConnectionChanged(true)
         scope.launch {
           refreshBrandingFromGateway()
+          refreshAgentContactsInternal()
           if (voiceReplySpeakerLazy.isInitialized()) {
             voiceReplySpeaker.refreshConfig()
           }
@@ -248,6 +263,8 @@ class NodeRuntime(context: Context) {
         if (!isCanonicalMainSessionKey(_mainSessionKey.value)) {
           _mainSessionKey.value = "main"
         }
+        _agentContactPreviews.value = emptyMap()
+        _agentContactsRefreshing.value = false
         chat.applyMainSessionKey(resolveMainSessionKey())
         chat.onDisconnected(message)
         micCapture.onGatewayConnectionChanged(false)
@@ -562,6 +579,14 @@ class NodeRuntime(context: Context) {
 
     scope.launch {
       prefs.loadGatewayToken()
+    }
+
+    scope.launch {
+      combine(_configuredAgents, chat.sessions, _agentContactPreviews) { agents, sessions, previews ->
+        resolveAgentContacts(agents = agents, sessions = sessions, previewsBySessionKey = previews)
+      }.collect { contacts ->
+        _agentContacts.value = contacts
+      }
     }
 
     scope.launch {
@@ -925,8 +950,27 @@ class NodeRuntime(context: Context) {
     chat.refreshSessions(limit = limit)
   }
 
+  fun refreshAgentContacts() {
+    scope.launch {
+      refreshAgentContactsInternal()
+    }
+  }
+
   fun setChatThinkingLevel(level: String) {
     chat.setThinkingLevel(level)
+  }
+
+  fun openAgentChat(agentId: String) {
+    val normalized = agentId.trim()
+    if (normalized.isEmpty()) return
+    val sessionKey = clawChat2SessionKey(normalized)
+    prefs.setLastChatSessionKey(sessionKey)
+    if (chat.sessionKey.value == sessionKey) {
+      chat.refresh()
+    } else {
+      chat.switchSession(sessionKey)
+    }
+    talkMode.setMainSessionKey(resolveActiveChatSessionKey())
   }
 
   fun switchChatSession(sessionKey: String) {
@@ -976,6 +1020,51 @@ class NodeRuntime(context: Context) {
     } catch (_: Throwable) {
       // ignore
     }
+  }
+
+  private suspend fun refreshAgentContactsInternal() {
+    if (!_isConnected.value) {
+      _agentContactsError.value = "Gateway not connected"
+      _agentContactsRefreshing.value = false
+      return
+    }
+
+    _agentContactsRefreshing.value = true
+    try {
+      val sessions = chat.refreshSessionsSnapshot(limit = 200)
+      val res = operatorSession.request("config.get", "{}")
+      val agents = parseConfiguredAgents(configJson = res, json = json)
+      _configuredAgents.value = agents
+      _agentContactPreviews.value = loadAgentContactPreviews(agents = agents, sessions = sessions)
+      _agentContactsError.value = null
+    } catch (err: Throwable) {
+      _agentContactsError.value = err.message ?: "Failed to refresh contacts"
+    } finally {
+      _agentContactsRefreshing.value = false
+    }
+  }
+
+  private suspend fun loadAgentContactPreviews(
+    agents: List<ConfiguredAgentEntry>,
+    sessions: List<ChatSessionEntry>,
+  ): Map<String, String> {
+    val existingKeys = sessions.map { it.key.trim() }.toSet()
+    val previews = linkedMapOf<String, String>()
+    for (agent in agents) {
+      val sessionKey = clawChat2SessionKey(agent.agentId)
+      if (!existingKeys.contains(sessionKey)) continue
+      val preview =
+        try {
+          val historyJson = operatorSession.request("chat.history", """{"sessionKey":"$sessionKey"}""")
+          extractLatestPreviewText(historyJson = historyJson, json = json)
+        } catch (_: Throwable) {
+          null
+        }
+      if (!preview.isNullOrBlank()) {
+        previews[sessionKey] = preview
+      }
+    }
+    return previews
   }
 
   private fun triggerCameraFlash() {

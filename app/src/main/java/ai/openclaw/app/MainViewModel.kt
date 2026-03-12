@@ -2,6 +2,7 @@ package ai.openclaw.app
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import ai.openclaw.app.chat.AgentContactEntry
 import ai.openclaw.app.gateway.GatewayEndpoint
 import ai.openclaw.app.chat.OutgoingAttachment
 import ai.openclaw.app.node.CameraCaptureManager
@@ -76,6 +77,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   val chatStreamingAssistantText: StateFlow<String?> = runtime.chatStreamingAssistantText
   val chatPendingToolCalls = runtime.chatPendingToolCalls
   val chatSessions = runtime.chatSessions
+  val agentContacts: StateFlow<List<AgentContactEntry>> = runtime.agentContacts
+  val agentContactsRefreshing: StateFlow<Boolean> = runtime.agentContactsRefreshing
+  val agentContactsError: StateFlow<String?> = runtime.agentContactsError
   val chatLastReadAtMs: StateFlow<Map<String, Long>> = runtime.chatLastReadAtMs
   val pendingRunCount: StateFlow<Int> = runtime.pendingRunCount
 
@@ -223,8 +227,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     runtime.refreshChatSessions(limit = limit)
   }
 
+  fun refreshAgentContacts() {
+    runtime.refreshAgentContacts()
+  }
+
   fun setChatThinkingLevel(level: String) {
     runtime.setChatThinkingLevel(level)
+  }
+
+  fun openAgentChat(agentId: String) {
+    runtime.openAgentChat(agentId)
   }
 
   fun switchChatSession(sessionKey: String) {

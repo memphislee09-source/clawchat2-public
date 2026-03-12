@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.openclaw.app.MainViewModel
 import ai.openclaw.app.chat.OutgoingAttachment
+import ai.openclaw.app.chat.formatAgentContactTitle
 import ai.openclaw.app.ui.mobileBorder
 import ai.openclaw.app.ui.mobileCallout
 import ai.openclaw.app.ui.mobileCaption2
@@ -50,6 +51,7 @@ fun ChatSheetContent(viewModel: MainViewModel, onOpenVoice: () -> Unit) {
   val thinkingLevel by viewModel.chatThinkingLevel.collectAsState()
   val streamingAssistantText by viewModel.chatStreamingAssistantText.collectAsState()
   val pendingToolCalls by viewModel.chatPendingToolCalls.collectAsState()
+  val agentContacts by viewModel.agentContacts.collectAsState()
 
   LaunchedEffect(chatSessionKey) {
     viewModel.loadChat(chatSessionKey)
@@ -65,6 +67,10 @@ fun ChatSheetContent(viewModel: MainViewModel, onOpenVoice: () -> Unit) {
   val scope = rememberCoroutineScope()
 
   val attachments = remember { mutableStateListOf<PendingImageAttachment>() }
+  val assistantLabel =
+    agentContacts.firstOrNull { it.directSessionKey == chatSessionKey }?.let { contact ->
+      formatAgentContactTitle(displayName = contact.displayName, emoji = contact.emoji)
+    } ?: "assistant"
 
   val pickImages =
     rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
@@ -101,6 +107,7 @@ fun ChatSheetContent(viewModel: MainViewModel, onOpenVoice: () -> Unit) {
       pendingToolCalls = pendingToolCalls,
       streamingAssistantText = streamingAssistantText,
       healthOk = healthOk,
+      assistantLabel = assistantLabel,
       modifier = Modifier.weight(1f, fill = true),
     )
 

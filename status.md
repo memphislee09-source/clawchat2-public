@@ -1,9 +1,9 @@
 # clawchat2 status
 
-Last updated: 2026-03-11 (Asia/Shanghai)
+Last updated: 2026-03-12 (Asia/Shanghai)
 
 ## Project Status
-- Version baseline: **0.1** (`versionName=0.1`, `versionCode=1`)
+- Version baseline: **0.2** (`versionName=0.2`, `versionCode=2`)
 - Stage: internal testing
 
 ## Project Baseline
@@ -16,13 +16,62 @@ Last updated: 2026-03-11 (Asia/Shanghai)
 - Project initialized from official Android codebase.
 - Initial bootstrap commit pushed to `main`.
 - `upstream` remote configured and fetched.
-- v1 feature pass in progress: language selector + Tailscale connection mode.
+- Current working baseline promoted to `0.2`.
+- After this update, GitHub `main` should be treated as the development mainline going forward.
 
 ## Development Rules
 - Before each development session: read this file first.
 - All future development is based on latest official Android code.
 - Keep regular upstream sync before feature work.
 - Do not use `MEMORY.md` to track project progress/status; update this file instead.
+
+## Android Environment (2026-03-12)
+- Project root for Android work on this machine: `/Users/memphis/.openclaw/workspace-mira/clawchat2`
+- Main compile check:
+  - `./gradlew :app:compileDebugKotlin`
+- Targeted unit test example:
+  - `./gradlew :app:testDebugUnitTest --tests ai.openclaw.app.chat.AgentContactsTest`
+- Install debug build:
+  - `./gradlew :app:installDebug`
+- Launch app on device/emulator:
+  - `adb shell am start -n ai.openclaw.app/.MainActivity`
+- Check foreground app:
+  - `adb shell dumpsys window | rg 'mCurrentFocus|mFocusedApp'`
+
+### Android Tools Paths
+- `adb` on PATH: `/opt/homebrew/bin/adb`
+- `adb` real binary: `/opt/homebrew/Caskroom/android-platform-tools/36.0.2/platform-tools/adb`
+- `sdkmanager`: `/opt/homebrew/bin/sdkmanager`
+- `avdmanager`: `/opt/homebrew/bin/avdmanager`
+- Emulator binary is **not** on PATH; use:
+  - `/opt/homebrew/share/android-commandlinetools/emulator/emulator`
+
+### Emulator / AVD
+- Current AVD name: `clawchat2_api35`
+- AVD path: `/Users/memphis/.android/avd/clawchat2_api35.avd`
+- AVD target:
+  - Android 15 / API 35
+  - `google_apis/arm64-v8a`
+- List AVDs:
+  - `avdmanager list avd`
+- Start this AVD directly:
+  - `/opt/homebrew/share/android-commandlinetools/emulator/emulator -avd clawchat2_api35 -no-snapshot-save`
+- Check device readiness:
+  - `adb devices -l`
+  - `adb shell getprop sys.boot_completed`
+
+### Installed SDK Components
+- Confirmed installed via `sdkmanager --list_installed`:
+  - `cmdline-tools;latest`
+  - `emulator`
+  - `platform-tools`
+  - `platforms;android-35`
+  - `platforms;android-36`
+  - `system-images;android-35;google_apis;arm64-v8a`
+
+### Notes
+- On this machine, `emulator` is installed but not exported to PATH.
+- If Gradle fails inside sandbox with `FileLockContentionHandler` / socket permission errors, rerun build commands outside sandbox.
 
 ## Test & Build (2026-03-10)
 - Targeted test passed: `:app:testDebugUnitTest --tests ai.openclaw.app.ui.GatewayConfigResolverTest*`
@@ -180,6 +229,85 @@ Last updated: 2026-03-11 (Asia/Shanghai)
   - Emulator install passed: `./gradlew :app:installDebug`
   - App launch confirmed in emulator foreground: `adb shell am start -n ai.openclaw.app/.MainActivity`
   - User acceptance for this step: passed
+
+## Feature Update (2026-03-12, agent-contacts + clawchat2-session pass)
+- Goal: make contacts sync from OpenClaw agents instead of raw sessions, and ensure app-created chats use a strict `ClawChat2` session key per agent.
+- Changes:
+  - Contacts screen now syncs from OpenClaw `agents.list`, using each agent's identity name and emoji.
+  - Contacts manual refresh now uses Material 3 pull-to-refresh.
+  - Agent contacts auto-refresh after operator connection succeeds.
+  - Each agent's app-owned direct session key is now fixed to `agent:<agentId>:clawchat2`.
+  - Contact tap behavior now only checks for and opens that strict `ClawChat2` key.
+  - WhatsApp / Slack / other channel sessions no longer count as the agent's app chat.
+  - If a strict `ClawChat2` session does not yet exist, opening the contact now enters a fresh empty chat state for that key instead of treating missing history as an error.
+  - Chat top bar now prefers the current agent identity (`emoji + name`) when the active session is a `ClawChat2` agent chat.
+- Implementation files:
+  - `app/src/main/java/ai/openclaw/app/chat/AgentContacts.kt`
+  - `app/src/main/java/ai/openclaw/app/chat/ChatController.kt`
+  - `app/src/main/java/ai/openclaw/app/MainViewModel.kt`
+  - `app/src/main/java/ai/openclaw/app/NodeRuntime.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/ContactsScreen.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/PostOnboardingTabs.kt`
+  - `app/src/test/java/ai/openclaw/app/chat/AgentContactsTest.kt`
+- Validation:
+  - Kotlin compile passed: `./gradlew :app:compileDebugKotlin`
+  - Targeted unit test passed: `./gradlew :app:testDebugUnitTest --tests ai.openclaw.app.chat.AgentContactsTest`
+  - Emulator install passed: `./gradlew :app:installDebug`
+  - App launch confirmed in emulator foreground: `adb shell am start -n ai.openclaw.app/.MainActivity`
+
+## UI Update (2026-03-12, agent-label + contact-preview + icon-source pass)
+- Goal: align visible chat identity with the selected agent, simplify the contacts page, and standardize app icons from the provided `ClawChat.jpg` source file.
+- Changes:
+  - Assistant-side chat bubble headers now show the current agent label instead of the generic `assistant`.
+  - Live / typing / tool-running assistant bubbles now use the same agent label.
+  - Contacts page in-content `Contacts` header block removed for a cleaner layout.
+  - Top bar `ClawChat2` title on the contacts page now uses the larger title style previously used by the in-page `Contacts` heading.
+  - Contact subtitle now shows the latest message from that contact's strict `agent:<agentId>:clawchat2` session:
+    - single-line only
+    - ellipsized when too long
+    - falls back to `No messages yet` when no direct app conversation exists
+  - Contact preview text is derived from latest non-system chat history content for that strict `ClawChat2` session.
+  - New icon source path for this repo:
+    - `app/src/ClawChat.jpg`
+  - App icon resources were resynced from that image into:
+    - `app/src/main/res/drawable/clawchat.jpg`
+    - launcher mipmap assets (`ic_launcher*.png`)
+  - Android manifest launcher icon config now points to standard mipmap launcher resources again:
+    - `@mipmap/ic_launcher`
+    - `@mipmap/ic_launcher_round`
+- Implementation files:
+  - `app/src/main/java/ai/openclaw/app/chat/AgentContacts.kt`
+  - `app/src/main/java/ai/openclaw/app/MainViewModel.kt`
+  - `app/src/main/java/ai/openclaw/app/NodeRuntime.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/ContactsScreen.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/PostOnboardingTabs.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/chat/ChatMessageListCard.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/chat/ChatMessageViews.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/chat/ChatSheetContent.kt`
+  - `app/src/main/AndroidManifest.xml`
+  - `app/src/main/res/drawable/clawchat.jpg`
+  - `app/src/main/res/mipmap-*/ic_launcher*.png`
+  - `app/src/test/java/ai/openclaw/app/chat/AgentContactsTest.kt`
+- Validation:
+  - Kotlin compile passed: `./gradlew :app:compileDebugKotlin`
+  - Targeted unit test passed: `./gradlew :app:testDebugUnitTest --tests ai.openclaw.app.chat.AgentContactsTest`
+  - Emulator install passed: `./gradlew :app:installDebug`
+  - App launch confirmed in emulator foreground: `adb shell am start -n ai.openclaw.app/.MainActivity`
+
+## Release Update (2026-03-12, version 0.2 mainline sync)
+- Goal: close the current iteration, promote the accepted baseline to `0.2`, and use it as the future development mainline.
+- Changes:
+  - Android app version updated to:
+    - `versionName=0.2`
+    - `versionCode=2`
+  - Project status updated to mark `0.2` as the current baseline.
+  - Local environment notes and latest accepted UI/chat/icon changes are now recorded in this file.
+  - `.kotlin/` is now ignored in git for this repo.
+  - Tracked macOS junk file `app/.DS_Store` removed from version control.
+- Git intent:
+  - Commit accepted `0.2` baseline.
+  - Sync commit to GitHub.
+  - Promote GitHub `main` to this same `0.2` baseline.
 
 ## Session Summary (2026-03-11)
 - Codebase was explicitly rolled back to commit `66bc66212` (local + GitHub `main`).

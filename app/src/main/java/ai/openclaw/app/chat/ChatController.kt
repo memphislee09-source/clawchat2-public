@@ -93,7 +93,9 @@ class ChatController(
   }
 
   fun refreshSessions(limit: Int? = null) {
-    scope.launch { fetchSessions(limit = limit) }
+    scope.launch {
+      _sessions.value = requestSessions(limit = limit)
+    }
   }
 
   fun setThinkingLevel(thinkingLevel: String) {
@@ -272,13 +274,26 @@ class ChatController(
       history.thinkingLevel?.trim()?.takeIf { it.isNotEmpty() }?.let { _thinkingLevel.value = it }
 
       pollHealthIfNeeded(force = forceHealth)
-      fetchSessions(limit = 50)
+      _sessions.value = requestSessions(limit = 50)
     } catch (err: Throwable) {
-      _errorText.value = err.message
+      if (isMissingSessionError(err)) {
+        _messages.value = emptyList()
+        _sessionId.value = null
+        pollHealthIfNeeded(force = forceHealth)
+        _sessions.value = requestSessions(limit = 50)
+      } else {
+        _errorText.value = err.message
+      }
     }
   }
 
-  private suspend fun fetchSessions(limit: Int?) {
+  suspend fun refreshSessionsSnapshot(limit: Int? = null): List<ChatSessionEntry> {
+    val sessions = requestSessions(limit = limit)
+    _sessions.value = sessions
+    return sessions
+  }
+
+  private suspend fun requestSessions(limit: Int?): List<ChatSessionEntry> {
     try {
       val params =
         buildJsonObject {
@@ -287,9 +302,9 @@ class ChatController(
           if (limit != null && limit > 0) put("limit", JsonPrimitive(limit))
         }
       val res = session.request("sessions.list", params.toString())
-      _sessions.value = parseSessions(res)
+      return parseSessions(res)
     } catch (_: Throwable) {
-      // best-effort
+      return _sessions.value
     }
   }
 
@@ -517,6 +532,15 @@ class ChatController(
       "high" -> "high"
       else -> "off"
     }
+  }
+
+  private fun isMissingSessionError(err: Throwable): Boolean {
+    val message = err.message?.lowercase() ?: return false
+    return (
+      (message.contains("session") && message.contains("not found")) ||
+        message.contains("unknown session") ||
+        message.contains("missing session")
+    )
   }
 }
 
