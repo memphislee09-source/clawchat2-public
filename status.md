@@ -3,7 +3,7 @@
 Last updated: 2026-03-12 (Asia/Shanghai)
 
 ## Project Status
-- Version baseline: **0.2** (`versionName=0.2`, `versionCode=2`)
+- Version baseline: **0.2.1** (`versionName=0.2.1`, `versionCode=3`)
 - Stage: internal testing
 
 ## Project Baseline
@@ -16,8 +16,24 @@ Last updated: 2026-03-12 (Asia/Shanghai)
 - Project initialized from official Android codebase.
 - Initial bootstrap commit pushed to `main`.
 - `upstream` remote configured and fetched.
-- Current working baseline promoted to `0.2`.
+- Current working baseline promoted to `0.2.1`.
 - After this update, GitHub `main` should be treated as the development mainline going forward.
+
+## Upstream Sync Check (2026-03-12, v2026.3.11 review)
+- Scope checked:
+  - official source: `openclaw/openclaw`
+  - compare range: `v2026.3.8..v2026.3.11`
+  - Android subtree: `apps/android`
+- Result:
+  - no Android feature/code changes need to be merged into `clawchat2`
+  - upstream Android diff in this range only changed `apps/android/app/build.gradle.kts`
+  - upstream change was version-only:
+    - `versionCode`: `202603081` -> `202603110`
+    - `versionName`: `2026.3.8` -> `2026.3.11`
+- Local decision:
+  - keep `clawchat2` on its own product baseline versioning for now
+  - continue using local version baseline `0.2.1` (`versionName=0.2.1`, `versionCode=3`)
+  - do not apply the upstream `v2026.3.11` version bump into this repo unless we later choose to align release numbering with official OpenClaw
 
 ## Development Rules
 - Before each development session: read this file first.
@@ -294,20 +310,56 @@ Last updated: 2026-03-12 (Asia/Shanghai)
   - Emulator install passed: `./gradlew :app:installDebug`
   - App launch confirmed in emulator foreground: `adb shell am start -n ai.openclaw.app/.MainActivity`
 
-## Release Update (2026-03-12, version 0.2 mainline sync)
-- Goal: close the current iteration, promote the accepted baseline to `0.2`, and use it as the future development mainline.
+## UI Update (2026-03-12, reference-ui polish pass)
+- Goal: align contacts/chat presentation with locally provided reference screens and tighten the in-chat interaction surface for device testing.
+- Changes:
+  - Reworked top bars toward a flatter reference style:
+    - removed button chrome around the back and overflow affordances
+    - contacts page keeps no visible back arrow
+    - overflow menu now contains only `Connect`, `Screen`, `Settings`, and `About`
+    - overflow menu icons removed; menu palette normalized to app surfaces
+  - Contacts screen visual structure simplified:
+    - flatter list rows with smaller corner radii
+    - lighter robot-style leading icon treatment
+    - tighter spacing to match the provided contact-list reference
+  - Chat composer simplified further:
+    - input box remains a single main surface with flatter corners
+    - bottom action row now keeps 6 actions evenly distributed
+    - `T` is fixed as the visible thinking control label
+    - `T` popup widened so `Medium` fits on one line
+    - `T` popup is floating and outside-click dismissible
+    - opening the `T` popup no longer shifts the other bottom-row actions
+  - Chat bubbles refined for closer reference alignment:
+    - smaller corner radii across bubbles and supporting panels
+    - wider bubble width with only narrow edge gutters
+    - timestamp appended after the speaker label in the bubble header
+  - Voice modal reduced in size for lower visual dominance during in-chat use.
+- Implementation files:
+  - `app/src/main/java/ai/openclaw/app/ui/ContactsScreen.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/PostOnboardingTabs.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/VoiceTabScreen.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/chat/ChatComposer.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/chat/ChatMessageListCard.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/chat/ChatMessageViews.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/chat/ChatSheetContent.kt`
+- Validation:
+  - Kotlin compile passed: `./gradlew :app:compileDebugKotlin`
+  - Emulator install passed: `./gradlew :app:installDebug`
+  - App relaunch passed: `adb shell am start -n ai.openclaw.app/.MainActivity`
+
+## Release Update (2026-03-12, version 0.2.1 test baseline)
+- Goal: roll the current accepted UI/interaction iteration into a new device-test baseline and sync it to GitHub main.
 - Changes:
   - Android app version updated to:
-    - `versionName=0.2`
-    - `versionCode=2`
-  - Project status updated to mark `0.2` as the current baseline.
-  - Local environment notes and latest accepted UI/chat/icon changes are now recorded in this file.
-  - `.kotlin/` is now ignored in git for this repo.
-  - Tracked macOS junk file `app/.DS_Store` removed from version control.
+    - `versionName=0.2.1`
+    - `versionCode=3`
+  - Project status updated to mark `0.2.1` as the current baseline.
+  - Current README baseline version updated accordingly.
+  - Latest reference-driven UI refinement pass recorded in this file.
 - Git intent:
-  - Commit accepted `0.2` baseline.
+  - Commit accepted `0.2.1` baseline.
   - Sync commit to GitHub.
-  - Promote GitHub `main` to this same `0.2` baseline.
+  - Promote GitHub `main` to this same `0.2.1` baseline.
 
 ## Session Summary (2026-03-11)
 - Codebase was explicitly rolled back to commit `66bc66212` (local + GitHub `main`).

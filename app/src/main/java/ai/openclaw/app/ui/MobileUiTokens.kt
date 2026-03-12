@@ -1,5 +1,6 @@
 package ai.openclaw.app.ui
 
+import androidx.compose.material3.Typography
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -9,32 +10,32 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import ai.openclaw.app.R
 
+internal val mobileBackground = Color(0xFFF4F8F2)
 internal val mobileBackgroundGradient =
   Brush.verticalGradient(
     listOf(
-      Color(0xFFFFFFFF),
-      Color(0xFFF7F8FA),
-      Color(0xFFEFF1F5),
+      mobileBackground,
+      mobileBackground,
     ),
   )
 
-internal val mobileSurface = Color(0xFFF6F7FA)
-internal val mobileSurfaceStrong = Color(0xFFECEEF3)
-internal val mobileBorder = Color(0xFFE5E7EC)
-internal val mobileBorderStrong = Color(0xFFD6DAE2)
-internal val mobileText = Color(0xFF17181C)
-internal val mobileTextSecondary = Color(0xFF5D6472)
-internal val mobileTextTertiary = Color(0xFF99A0AE)
-internal val mobileAccent = Color(0xFF1D5DD8)
-internal val mobileAccentSoft = Color(0xFFECF3FF)
-internal val mobileSuccess = Color(0xFF2F8C5A)
-internal val mobileSuccessSoft = Color(0xFFEEF9F3)
-internal val mobileWarning = Color(0xFFC8841A)
-internal val mobileWarningSoft = Color(0xFFFFF8EC)
-internal val mobileDanger = Color(0xFFD04B4B)
-internal val mobileDangerSoft = Color(0xFFFFF2F2)
-internal val mobileCodeBg = Color(0xFF15171B)
-internal val mobileCodeText = Color(0xFFE8EAEE)
+internal val mobileSurface = Color(0xFFFFFFFF)
+internal val mobileSurfaceStrong = Color(0xFFEAF3E7)
+internal val mobileBorder = Color(0xFFD4E1D0)
+internal val mobileBorderStrong = Color(0xFFBFD0BC)
+internal val mobileText = Color(0xFF182119)
+internal val mobileTextSecondary = Color(0xFF556358)
+internal val mobileTextTertiary = Color(0xFF8B978D)
+internal val mobileAccent = Color(0xFF49A25A)
+internal val mobileAccentSoft = Color(0xFFE6F4E8)
+internal val mobileSuccess = Color(0xFF2E8A51)
+internal val mobileSuccessSoft = Color(0xFFE8F6ED)
+internal val mobileWarning = Color(0xFFB67B28)
+internal val mobileWarningSoft = Color(0xFFFFF6E7)
+internal val mobileDanger = Color(0xFFBF5A5A)
+internal val mobileDangerSoft = Color(0xFFFBECEC)
+internal val mobileCodeBg = Color(0xFF182119)
+internal val mobileCodeText = Color(0xFFEAF4EB)
 
 internal val mobileFontFamily =
   FontFamily(
@@ -103,4 +104,18 @@ internal val mobileCaption2 =
     fontSize = 11.sp,
     lineHeight = 14.sp,
     letterSpacing = 0.4.sp,
+  )
+
+internal val mobileTypography =
+  Typography(
+    displayLarge = mobileTitle1,
+    titleLarge = mobileTitle1,
+    titleMedium = mobileTitle2,
+    titleSmall = mobileHeadline,
+    bodyLarge = mobileBody,
+    bodyMedium = mobileBody,
+    bodySmall = mobileCallout,
+    labelLarge = mobileHeadline,
+    labelMedium = mobileCaption1,
+    labelSmall = mobileCaption2,
   )

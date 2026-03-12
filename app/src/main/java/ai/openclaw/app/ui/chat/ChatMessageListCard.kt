@@ -20,6 +20,7 @@ import ai.openclaw.app.chat.ChatPendingToolCall
 import ai.openclaw.app.ui.mobileBorder
 import ai.openclaw.app.ui.mobileCallout
 import ai.openclaw.app.ui.mobileHeadline
+import ai.openclaw.app.ui.mobileSurface
 import ai.openclaw.app.ui.mobileText
 import ai.openclaw.app.ui.mobileTextSecondary
 
@@ -85,13 +86,13 @@ fun ChatMessageListCard(
 private fun EmptyChatHint(modifier: Modifier = Modifier, healthOk: Boolean) {
   Surface(
     modifier = modifier.fillMaxWidth(),
-    shape = RoundedCornerShape(14.dp),
-    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.9f),
+    shape = RoundedCornerShape(6.dp),
+    color = mobileSurface,
     border = androidx.compose.foundation.BorderStroke(1.dp, mobileBorder),
   ) {
     androidx.compose.foundation.layout.Column(
-      modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
-      verticalArrangement = Arrangement.spacedBy(4.dp),
+      modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
+      verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
       Text("No messages yet", style = mobileHeadline, color = mobileText)
       Text(

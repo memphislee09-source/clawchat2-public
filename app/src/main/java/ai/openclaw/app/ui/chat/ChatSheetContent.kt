@@ -35,6 +35,7 @@ import ai.openclaw.app.ui.mobileBorder
 import ai.openclaw.app.ui.mobileCallout
 import ai.openclaw.app.ui.mobileCaption2
 import ai.openclaw.app.ui.mobileDanger
+import ai.openclaw.app.ui.mobileDangerSoft
 import ai.openclaw.app.ui.mobileText
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
@@ -94,8 +95,8 @@ fun ChatSheetContent(viewModel: MainViewModel, onOpenVoice: () -> Unit) {
     modifier =
       Modifier
         .fillMaxSize()
-        .padding(horizontal = 14.dp, vertical = 10.dp),
-    verticalArrangement = Arrangement.spacedBy(8.dp),
+        .padding(horizontal = 8.dp, vertical = 10.dp),
+    verticalArrangement = Arrangement.spacedBy(10.dp),
   ) {
     if (!errorText.isNullOrBlank()) {
       ChatErrorRail(errorText = errorText!!)
@@ -151,11 +152,11 @@ fun ChatSheetContent(viewModel: MainViewModel, onOpenVoice: () -> Unit) {
 private fun ChatErrorRail(errorText: String) {
   Surface(
     modifier = Modifier.fillMaxWidth(),
-    color = androidx.compose.ui.graphics.Color.White,
-    shape = RoundedCornerShape(12.dp),
-    border = androidx.compose.foundation.BorderStroke(1.dp, mobileDanger),
+    color = mobileDangerSoft,
+    shape = RoundedCornerShape(6.dp),
+    border = androidx.compose.foundation.BorderStroke(1.dp, mobileDanger.copy(alpha = 0.35f)),
   ) {
-    Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
       Text(
         text = "CHAT ERROR",
         style = mobileCaption2.copy(letterSpacing = 0.6.sp),

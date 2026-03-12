@@ -112,13 +112,13 @@ fun VoiceDialog(
     Surface(
       modifier =
         Modifier
-          .fillMaxWidth(0.92f)
-          .fillMaxHeight(0.74f)
-          .heightIn(min = 360.dp, max = 620.dp),
-      shape = RoundedCornerShape(22.dp),
+          .fillMaxWidth(0.82f)
+          .fillMaxHeight(0.54f)
+          .heightIn(min = 250.dp, max = 420.dp),
+      shape = RoundedCornerShape(7.dp),
       color = Color.White,
       border = BorderStroke(1.dp, mobileBorder),
-      shadowElevation = 12.dp,
+      shadowElevation = 0.dp,
     ) {
       VoicePanelContent(
         viewModel = viewModel,
@@ -126,7 +126,7 @@ fun VoiceDialog(
           Modifier
             .fillMaxSize()
             .background(mobileBackgroundGradient)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         showMicSettingsHint = true,
       )
     }
@@ -252,7 +252,7 @@ private fun VoicePanelContent(
       if (!micLiveTranscript.isNullOrBlank()) {
         Surface(
           modifier = Modifier.fillMaxWidth(),
-          shape = RoundedCornerShape(14.dp),
+          shape = RoundedCornerShape(5.dp),
           color = mobileAccentSoft,
           border = BorderStroke(1.dp, mobileAccent.copy(alpha = 0.2f)),
         ) {
@@ -397,7 +397,7 @@ private fun VoiceTurnBubble(entry: VoiceConversationEntry) {
   ) {
     Surface(
       modifier = Modifier.fillMaxWidth(0.90f),
-      shape = RoundedCornerShape(12.dp),
+      shape = RoundedCornerShape(5.dp),
       color = if (isUser) mobileAccentSoft else Color.White,
       border = BorderStroke(1.dp, if (isUser) mobileAccent else mobileBorderStrong),
     ) {
@@ -425,7 +425,7 @@ private fun VoiceThinkingBubble() {
   Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
     Surface(
       modifier = Modifier.fillMaxWidth(0.68f),
-      shape = RoundedCornerShape(12.dp),
+      shape = RoundedCornerShape(5.dp),
       color = Color.White,
       border = BorderStroke(1.dp, mobileBorderStrong),
     ) {

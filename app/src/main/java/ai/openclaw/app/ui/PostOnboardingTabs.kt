@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -26,15 +27,11 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ScreenShare
-import androidx.compose.material.icons.filled.ChatBubble
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -49,7 +46,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -65,24 +61,15 @@ import ai.openclaw.app.ui.chat.resolveSessionChoices
 private enum class HomeTab(
   val labelEn: String,
   val labelZh: String,
-  val icon: ImageVector,
 ) {
-  Contacts(labelEn = "Contacts", labelZh = "联系人", icon = Icons.Default.ChatBubble),
-  Connect(labelEn = "Connect", labelZh = "连接", icon = Icons.Default.CheckCircle),
-  Chat(labelEn = "Chat", labelZh = "聊天", icon = Icons.Default.ChatBubble),
-  Screen(labelEn = "Screen", labelZh = "屏幕", icon = Icons.AutoMirrored.Filled.ScreenShare),
-  Settings(labelEn = "Settings", labelZh = "设置", icon = Icons.Default.Settings),
+  Contacts(labelEn = "Contacts", labelZh = "联系人"),
+  Connect(labelEn = "Connect", labelZh = "连接"),
+  Chat(labelEn = "Chat", labelZh = "聊天"),
+  Screen(labelEn = "Screen", labelZh = "屏幕"),
+  Settings(labelEn = "Settings", labelZh = "设置"),
 }
 
-private enum class StatusVisual {
-  Connected,
-  Connecting,
-  Warning,
-  Error,
-  Offline,
-}
-
-private val overflowMenuTabs = listOf(HomeTab.Chat, HomeTab.Connect, HomeTab.Screen, HomeTab.Settings)
+private val overflowMenuTabs = listOf(HomeTab.Connect, HomeTab.Screen, HomeTab.Settings)
 
 @Composable
 fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) {
@@ -114,8 +101,6 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
     }
   }
 
-  val statusText by viewModel.statusText.collectAsState()
-  val isConnected by viewModel.isConnected.collectAsState()
   val chatSessionKey by viewModel.chatSessionKey.collectAsState()
   val chatSessions by viewModel.chatSessions.collectAsState()
   val agentContacts by viewModel.agentContacts.collectAsState()
@@ -145,18 +130,6 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
     }
   }
 
-  val statusVisual =
-    remember(statusText, isConnected) {
-      val lower = statusText.lowercase()
-      when {
-        isConnected -> StatusVisual.Connected
-        lower.contains("connecting") || lower.contains("reconnecting") -> StatusVisual.Connecting
-        lower.contains("pairing") || lower.contains("approval") || lower.contains("auth") -> StatusVisual.Warning
-        lower.contains("error") || lower.contains("failed") -> StatusVisual.Error
-        else -> StatusVisual.Offline
-      }
-    }
-
   Scaffold(
     modifier = modifier,
     containerColor = Color.Transparent,
@@ -169,8 +142,6 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
             HomeTab.Contacts -> appName
             else -> tr(activeTab.labelEn, activeTab.labelZh)
           },
-        statusText = statusText,
-        statusVisual = statusVisual,
         activeTab = activeTab,
         onSelectTab = { activeTab = it },
         onBack = {
@@ -190,7 +161,7 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
           .fillMaxSize()
           .padding(innerPadding)
           .consumeWindowInsets(innerPadding)
-          .background(mobileBackgroundGradient),
+          .background(mobileBackground),
     ) {
       Box(
         modifier =
@@ -286,8 +257,6 @@ private fun ScreenTabScreen(viewModel: MainViewModel) {
 @Composable
 private fun TopStatusBar(
   title: String,
-  statusText: String,
-  statusVisual: StatusVisual,
   activeTab: HomeTab,
   onSelectTab: (HomeTab) -> Unit,
   onBack: () -> Unit,
@@ -295,57 +264,18 @@ private fun TopStatusBar(
 ) {
   val safeInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
   var menuExpanded by remember { mutableStateOf(false) }
-  val showBackButton = true
-
-  val (chipBg, chipDot, chipText, chipBorder) =
-    when (statusVisual) {
-      StatusVisual.Connected ->
-        listOf(
-          mobileSuccessSoft,
-          mobileSuccess,
-          mobileSuccess,
-          Color(0xFFCFEBD8),
-        )
-      StatusVisual.Connecting ->
-        listOf(
-          mobileAccentSoft,
-          mobileAccent,
-          mobileAccent,
-          Color(0xFFD5E2FA),
-        )
-      StatusVisual.Warning ->
-        listOf(
-          mobileWarningSoft,
-          mobileWarning,
-          mobileWarning,
-          Color(0xFFEED8B8),
-        )
-      StatusVisual.Error ->
-        listOf(
-          mobileDangerSoft,
-          mobileDanger,
-          mobileDanger,
-          Color(0xFFF3C8C8),
-        )
-      StatusVisual.Offline ->
-        listOf(
-          mobileSurface,
-          mobileTextTertiary,
-          mobileTextSecondary,
-          mobileBorder,
-        )
-    }
+  val showBackButton = activeTab != HomeTab.Contacts
 
   Surface(
     modifier = Modifier.fillMaxWidth().windowInsetsPadding(safeInsets),
-    color = Color.Transparent,
+    color = mobileBackground,
     shadowElevation = 0.dp,
   ) {
-    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 2.dp)) {
+    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 10.dp)) {
       Text(
         text = title,
-        modifier = Modifier.fillMaxWidth().align(Alignment.Center).padding(horizontal = 82.dp),
-        style = if (activeTab == HomeTab.Contacts) mobileTitle1 else mobileHeadline,
+        modifier = Modifier.fillMaxWidth().align(Alignment.Center).padding(horizontal = 64.dp),
+        style = if (activeTab == HomeTab.Contacts) mobileTitle2 else mobileHeadline,
         color = mobileText,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
@@ -356,109 +286,64 @@ private fun TopStatusBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
       ) {
-        Box(modifier = Modifier.size(38.dp), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
           if (showBackButton) {
-            Surface(
-              onClick = onBack,
-              modifier = Modifier.size(38.dp),
-              shape = RoundedCornerShape(12.dp),
-              color = mobileSurface,
-              border = BorderStroke(1.dp, mobileBorder),
-              shadowElevation = 0.dp,
-            ) {
-              Box(contentAlignment = Alignment.Center) {
-                Icon(
-                  imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                  contentDescription = tr("Back", "返回"),
-                  tint = mobileTextSecondary,
-                )
-              }
+            IconButton(onClick = onBack) {
+              Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = tr("Back", "返回"),
+                tint = mobileTextSecondary,
+              )
             }
           }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-          if (!showBackButton) {
-            Surface(
-              shape = RoundedCornerShape(999.dp),
-              color = chipBg,
-              border = androidx.compose.foundation.BorderStroke(1.dp, chipBorder),
-            ) {
-              Row(
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-              ) {
-                Surface(
-                  modifier = Modifier.padding(top = 1.dp),
-                  color = chipDot,
-                  shape = RoundedCornerShape(999.dp),
-                ) {
-                  Box(modifier = Modifier.padding(4.dp))
-                }
-                Text(
-                  text = statusText.trim().ifEmpty { tr("Offline", "离线") },
-                  style = mobileCaption1,
-                  color = chipText,
-                  maxLines = 1,
-                )
-              }
-            }
+        Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+          IconButton(onClick = { menuExpanded = true }) {
+            Icon(
+              imageVector = Icons.Default.MoreVert,
+              contentDescription = tr("More options", "更多选项"),
+              tint = if (activeTab in overflowMenuTabs) mobileAccent else mobileTextSecondary,
+            )
           }
-          Box {
-            Surface(
-              onClick = { menuExpanded = true },
-              modifier = Modifier.size(38.dp),
-              shape = RoundedCornerShape(12.dp),
-              color = if (activeTab in overflowMenuTabs) mobileAccentSoft else mobileSurface,
-              border = BorderStroke(1.dp, if (activeTab in overflowMenuTabs) Color(0xFFD5E2FA) else mobileBorder),
-              shadowElevation = 0.dp,
-            ) {
-              Box(contentAlignment = Alignment.Center) {
-                Icon(
-                  imageVector = Icons.Default.MoreVert,
-                  contentDescription = tr("More options", "更多选项"),
-                  tint = if (activeTab in overflowMenuTabs) mobileAccent else mobileTextSecondary,
-                )
-              }
-            }
-            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-              overflowMenuTabs.forEach { tab ->
-                DropdownMenuItem(
-                  text = {
-                    Text(
-                      text = tr(tab.labelEn, tab.labelZh),
-                      style = mobileBody.copy(fontWeight = if (tab == activeTab) FontWeight.Bold else FontWeight.Medium),
-                      color = if (tab == activeTab) mobileAccent else mobileText,
-                    )
-                  },
-                  leadingIcon = {
-                    Icon(
-                      imageVector = tab.icon,
-                      contentDescription = null,
-                      tint = if (tab == activeTab) mobileAccent else mobileTextSecondary,
-                    )
-                  },
-                  onClick = {
-                    menuExpanded = false
-                    onSelectTab(tab)
-                  },
-                )
-              }
-              HorizontalDivider(color = mobileBorder)
+          DropdownMenu(
+            expanded = menuExpanded,
+            onDismissRequest = { menuExpanded = false },
+            shape = RoundedCornerShape(6.dp),
+            containerColor = mobileSurface,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
+            border = BorderStroke(1.dp, mobileBorder),
+          ) {
+            overflowMenuTabs.forEach { tab ->
               DropdownMenuItem(
                 text = {
                   Text(
-                    text = tr("App info", "应用信息"),
-                    style = mobileBody.copy(fontWeight = FontWeight.Medium),
-                    color = mobileText,
+                    text = tr(tab.labelEn, tab.labelZh),
+                    style = mobileBody.copy(fontWeight = if (tab == activeTab) FontWeight.Bold else FontWeight.Medium),
+                    color = if (tab == activeTab) mobileAccent else mobileText,
                   )
                 },
+                colors = androidx.compose.material3.MenuDefaults.itemColors(textColor = if (tab == activeTab) mobileAccent else mobileText),
                 onClick = {
                   menuExpanded = false
-                  onOpenAppInfo()
+                  onSelectTab(tab)
                 },
               )
             }
+            DropdownMenuItem(
+              text = {
+                Text(
+                  text = tr("About", "关于"),
+                  style = mobileBody.copy(fontWeight = FontWeight.Medium),
+                  color = mobileText,
+                )
+              },
+              colors = androidx.compose.material3.MenuDefaults.itemColors(textColor = mobileText),
+              onClick = {
+                menuExpanded = false
+                onOpenAppInfo()
+              },
+            )
           }
         }
       }

@@ -42,10 +42,14 @@ import ai.openclaw.app.ui.mobileCaption2
 import ai.openclaw.app.ui.mobileCodeBg
 import ai.openclaw.app.ui.mobileCodeText
 import ai.openclaw.app.ui.mobileHeadline
+import ai.openclaw.app.ui.mobileSurface
 import ai.openclaw.app.ui.mobileText
 import ai.openclaw.app.ui.mobileTextSecondary
 import ai.openclaw.app.ui.mobileWarning
 import ai.openclaw.app.ui.mobileWarningSoft
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private data class ChatBubbleStyle(
@@ -72,7 +76,11 @@ fun ChatMessageBubble(message: ChatMessage, assistantLabel: String = "assistant"
 
   if (displayableContent.isEmpty()) return
 
-  ChatBubbleContainer(style = style, roleLabel = roleLabel(role, assistantLabel)) {
+  ChatBubbleContainer(
+    style = style,
+    roleLabel = roleLabel(role, assistantLabel),
+    timestampLabel = formatBubbleTimestamp(message.timestampMs),
+  ) {
     ChatMessageBody(content = displayableContent, textColor = mobileText)
   }
 }
@@ -81,6 +89,7 @@ fun ChatMessageBubble(message: ChatMessage, assistantLabel: String = "assistant"
 private fun ChatBubbleContainer(
   style: ChatBubbleStyle,
   roleLabel: String,
+  timestampLabel: String? = null,
   modifier: Modifier = Modifier,
   content: @Composable () -> Unit,
 ) {
@@ -89,19 +98,24 @@ private fun ChatBubbleContainer(
     horizontalArrangement = if (style.alignEnd) Arrangement.End else Arrangement.Start,
   ) {
     Surface(
-      shape = RoundedCornerShape(12.dp),
+      shape = RoundedCornerShape(6.dp),
       border = BorderStroke(1.dp, style.borderColor),
       color = style.containerColor,
       tonalElevation = 0.dp,
       shadowElevation = 0.dp,
-      modifier = Modifier.fillMaxWidth(0.975f),
+      modifier = Modifier.fillMaxWidth(0.99f),
     ) {
       Column(
-        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
       ) {
         Text(
-          text = roleLabel,
+          text =
+            if (timestampLabel.isNullOrBlank()) {
+              roleLabel
+            } else {
+              "$roleLabel  $timestampLabel"
+            },
           modifier = Modifier.fillMaxWidth(),
           style = mobileCaption2.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp),
           color = style.roleColor,
@@ -195,7 +209,7 @@ fun ChatPendingToolsBubble(toolCalls: List<ChatPendingToolCall>, assistantLabel:
 @Composable
 fun ChatStreamingAssistantBubble(text: String, assistantLabel: String = "assistant") {
   ChatBubbleContainer(
-    style = bubbleStyle("assistant").copy(borderColor = mobileAccent),
+    style = bubbleStyle("assistant").copy(borderColor = mobileAccent.copy(alpha = 0.4f)),
     roleLabel = "$assistantLabel · live",
   ) {
     ChatMarkdown(text = text, textColor = mobileText)
@@ -208,7 +222,7 @@ private fun bubbleStyle(role: String): ChatBubbleStyle {
       ChatBubbleStyle(
         alignEnd = true,
         containerColor = mobileAccentSoft,
-        borderColor = mobileAccent,
+        borderColor = mobileAccent.copy(alpha = 0.32f),
         roleColor = mobileAccent,
         roleTextAlign = TextAlign.End,
       )
@@ -225,7 +239,7 @@ private fun bubbleStyle(role: String): ChatBubbleStyle {
     else ->
       ChatBubbleStyle(
         alignEnd = false,
-        containerColor = Color.White,
+        containerColor = mobileSurface,
         borderColor = mobileBorderStrong,
         roleColor = mobileTextSecondary,
         roleTextAlign = TextAlign.Start,
@@ -248,9 +262,9 @@ private fun ChatBase64Image(base64: String, mimeType: String?) {
 
   if (image != null) {
     Surface(
-      shape = RoundedCornerShape(10.dp),
+      shape = RoundedCornerShape(5.dp),
       border = BorderStroke(1.dp, mobileBorder),
-      color = Color.White,
+      color = mobileSurface,
       modifier = Modifier.fillMaxWidth(),
     ) {
       Image(
@@ -286,9 +300,9 @@ private fun PulseDot(alpha: Float, color: Color) {
 @Composable
 fun ChatCodeBlock(code: String, language: String?) {
   Surface(
-    shape = RoundedCornerShape(8.dp),
+    shape = RoundedCornerShape(5.dp),
     color = mobileCodeBg,
-    border = BorderStroke(1.dp, Color(0xFF2B2E35)),
+    border = BorderStroke(1.dp, mobileBorderStrong.copy(alpha = 0.4f)),
     modifier = Modifier.fillMaxWidth(),
   ) {
     Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -307,4 +321,13 @@ fun ChatCodeBlock(code: String, language: String?) {
       )
     }
   }
+}
+
+private fun formatBubbleTimestamp(timestampMs: Long?): String? {
+  val value = timestampMs ?: return null
+  return runCatching {
+    DateTimeFormatter.ofPattern("HH:mm")
+      .withZone(ZoneId.systemDefault())
+      .format(Instant.ofEpochMilli(value))
+  }.getOrNull()
 }

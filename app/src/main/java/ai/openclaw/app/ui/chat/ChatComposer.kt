@@ -1,17 +1,16 @@
 package ai.openclaw.app.ui.chat
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,12 +20,11 @@ import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -43,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,6 +51,7 @@ import ai.openclaw.app.ui.mobileBorder
 import ai.openclaw.app.ui.mobileBorderStrong
 import ai.openclaw.app.ui.mobileCallout
 import ai.openclaw.app.ui.mobileCaption1
+import ai.openclaw.app.ui.mobileHeadline
 import ai.openclaw.app.ui.mobileSurface
 import ai.openclaw.app.ui.mobileText
 import ai.openclaw.app.ui.mobileTextSecondary
@@ -77,7 +77,10 @@ fun ChatComposer(
   val canSend = pendingRunCount == 0 && (input.trim().isNotEmpty() || attachments.isNotEmpty()) && healthOk
   val sendBusy = pendingRunCount > 0
 
-  Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+  Column(
+    modifier = Modifier.fillMaxWidth(),
+    verticalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
     if (attachments.isNotEmpty()) {
       AttachmentsStrip(attachments = attachments, onRemoveAttachment = onRemoveAttachment)
     }
@@ -85,162 +88,138 @@ fun ChatComposer(
     OutlinedTextField(
       value = input,
       onValueChange = { input = it },
-      modifier = Modifier.fillMaxWidth().heightIn(min = 78.dp, max = 108.dp),
-      placeholder = { Text("Type a message", style = mobileBodyStyle(), color = mobileTextTertiary) },
+      modifier = Modifier.fillMaxWidth().heightIn(min = 82.dp, max = 118.dp),
+      placeholder = { Text("输入消息", style = mobileBodyStyle(), color = mobileTextTertiary) },
       minLines = 2,
       maxLines = 5,
       textStyle = mobileBodyStyle().copy(color = mobileText),
-      shape = RoundedCornerShape(14.dp),
+      shape = RoundedCornerShape(6.dp),
       colors = chatTextFieldColors(),
     )
 
     if (!healthOk) {
       Text(
-        text = "Gateway is offline. Connect first in the Connect tab.",
+        text = "Gateway offline. Open Connect first.",
         style = mobileCallout,
         color = ai.openclaw.app.ui.mobileWarning,
       )
     }
 
-    Box(
-      modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
+    Row(
+      modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+      horizontalArrangement = Arrangement.spacedBy(2.dp),
+      verticalAlignment = Alignment.CenterVertically,
     ) {
-      Row(
-        modifier = Modifier.align(Alignment.CenterStart),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-      ) {
-        CompactUtilityButton(
-          icon = Icons.Default.Refresh,
-          contentDescription = "Refresh chat",
-          enabled = true,
-          onClick = onRefresh,
-        )
-        CompactUtilityButton(
-          icon = Icons.Default.Stop,
-          contentDescription = "Abort response",
-          enabled = pendingRunCount > 0,
-          onClick = onAbort,
-        )
-      }
-
-      Box(modifier = Modifier.align(Alignment.Center)) {
-        CompactUtilityButton(
-          icon = Icons.AutoMirrored.Filled.Send,
-          contentDescription = "Send message",
-          enabled = canSend,
-          filled = true,
-          onClick = {
-            val text = input
-            input = ""
-            onSend(text)
-          },
-          content = {
-            if (sendBusy) {
-              CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.White)
-            } else {
-              Icon(
-                imageVector = Icons.AutoMirrored.Filled.Send,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-              )
-            }
-          },
-        )
-      }
-
-      Row(
-        modifier = Modifier.align(Alignment.CenterEnd),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-      ) {
-        Box {
-          CompactTextButton(
-            text = "T",
-            onClick = { showThinkingMenu = true },
-          )
-          DropdownMenu(expanded = showThinkingMenu, onDismissRequest = { showThinkingMenu = false }) {
-            ThinkingMenuItem("off", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
-            ThinkingMenuItem("low", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
-            ThinkingMenuItem("medium", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
-            ThinkingMenuItem("high", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
+      FlatIconAction(
+        modifier = Modifier.weight(1f),
+        icon = Icons.Default.Refresh,
+        contentDescription = "Refresh chat",
+        enabled = true,
+        tint = mobileTextSecondary,
+        onClick = onRefresh,
+      )
+      FlatIconAction(
+        modifier = Modifier.weight(1f),
+        icon = Icons.Default.AttachFile,
+        contentDescription = "Add attachment",
+        enabled = true,
+        tint = mobileTextSecondary,
+        onClick = onPickImages,
+      )
+      FlatIconAction(
+        modifier = Modifier.weight(1f),
+        icon = Icons.AutoMirrored.Filled.Send,
+        contentDescription = "Send message",
+        enabled = canSend,
+        tint = mobileAccent,
+        onClick = {
+          val text = input
+          input = ""
+          onSend(text)
+        },
+        content = {
+          if (sendBusy) {
+            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = mobileAccent)
+          } else {
+            Icon(
+              imageVector = Icons.AutoMirrored.Filled.Send,
+              contentDescription = null,
+              modifier = Modifier.size(22.dp),
+              tint = if (canSend) mobileAccent else mobileTextTertiary,
+            )
           }
+        },
+      )
+      Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+        Text(
+          text = "T",
+          modifier =
+            Modifier
+              .clickable { showThinkingMenu = !showThinkingMenu }
+              .padding(horizontal = 8.dp, vertical = 10.dp),
+          style = mobileHeadline.copy(fontWeight = FontWeight.Bold),
+          color = mobileAccent,
+          textAlign = TextAlign.Center,
+        )
+        DropdownMenu(
+          expanded = showThinkingMenu,
+          onDismissRequest = { showThinkingMenu = false },
+          modifier = Modifier.width(148.dp),
+          shape = RoundedCornerShape(6.dp),
+          containerColor = mobileSurface,
+          tonalElevation = 0.dp,
+          shadowElevation = 0.dp,
+          border = BorderStroke(1.dp, mobileBorder),
+        ) {
+          ThinkingMenuItem("off", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
+          ThinkingMenuItem("low", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
+          ThinkingMenuItem("medium", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
+          ThinkingMenuItem("high", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
         }
-
-        CompactUtilityButton(
-          icon = Icons.Default.Mic,
-          contentDescription = "Open voice conversation",
-          enabled = healthOk,
-          onClick = onOpenVoice,
-        )
-
-        CompactUtilityButton(
-          icon = Icons.Default.AttachFile,
-          contentDescription = "Add attachment",
-          enabled = true,
-          onClick = onPickImages,
-        )
       }
+      FlatIconAction(
+        modifier = Modifier.weight(1f),
+        icon = Icons.Default.Mic,
+        contentDescription = "Open voice conversation",
+        enabled = healthOk,
+        tint = mobileAccent,
+        onClick = onOpenVoice,
+      )
+      FlatIconAction(
+        modifier = Modifier.weight(1f),
+        icon = Icons.Default.Stop,
+        contentDescription = "Abort response",
+        enabled = pendingRunCount > 0,
+        tint = if (pendingRunCount > 0) mobileAccent else mobileTextTertiary,
+        onClick = onAbort,
+      )
     }
   }
 }
 
 @Composable
-private fun CompactUtilityButton(
+private fun FlatIconAction(
+  modifier: Modifier,
   icon: ImageVector,
   contentDescription: String,
   enabled: Boolean,
-  filled: Boolean = false,
+  tint: Color,
   onClick: () -> Unit,
   content: @Composable (() -> Unit)? = null,
 ) {
-  Button(
-    onClick = onClick,
-    enabled = enabled,
-    modifier = Modifier.size(44.dp),
-    shape = RoundedCornerShape(14.dp),
-    colors =
-      ButtonDefaults.buttonColors(
-        containerColor = if (filled) mobileAccent else Color.White,
-        contentColor = if (filled) Color.White else mobileTextSecondary,
-        disabledContainerColor = if (filled) mobileBorderStrong else Color.White,
-        disabledContentColor = mobileTextTertiary,
-      ),
-    border = BorderStroke(1.dp, if (filled && enabled) Color(0xFF154CAD) else mobileBorderStrong),
-    contentPadding = PaddingValues(0.dp),
-  ) {
-    if (content != null) {
-      content()
-    } else {
-      Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(16.dp))
+  Box(modifier = modifier, contentAlignment = Alignment.Center) {
+    IconButton(onClick = onClick, enabled = enabled) {
+      if (content != null) {
+        content()
+      } else {
+        Icon(
+          imageVector = icon,
+          contentDescription = contentDescription,
+          modifier = Modifier.size(22.dp),
+          tint = if (enabled) tint else mobileTextTertiary,
+        )
+      }
     }
-  }
-}
-
-@Composable
-private fun CompactTextButton(
-  text: String,
-  onClick: () -> Unit,
-) {
-  Button(
-    onClick = onClick,
-    modifier = Modifier.size(44.dp),
-    shape = RoundedCornerShape(14.dp),
-    colors =
-      ButtonDefaults.buttonColors(
-        containerColor = mobileAccentSoft,
-        contentColor = mobileText,
-      ),
-    border = BorderStroke(1.dp, mobileBorderStrong),
-    contentPadding = PaddingValues(0.dp),
-  ) {
-    Text(
-      text = text,
-      color = mobileText,
-      style = mobileCaption1.copy(fontWeight = FontWeight.Bold),
-      maxLines = 1,
-      overflow = TextOverflow.Ellipsis,
-    )
   }
 }
 
@@ -252,7 +231,14 @@ private fun ThinkingMenuItem(
   onDismiss: () -> Unit,
 ) {
   DropdownMenuItem(
-    text = { Text(thinkingLabel(value), style = mobileCallout, color = mobileText) },
+    text = {
+      Text(
+        text = thinkingLabel(value),
+        style = mobileCallout,
+        color = if (value == current.trim().lowercase()) mobileAccent else mobileText,
+        maxLines = 1,
+      )
+    },
     onClick = {
       onSet(value)
       onDismiss()
@@ -260,8 +246,6 @@ private fun ThinkingMenuItem(
     trailingIcon = {
       if (value == current.trim().lowercase()) {
         Text("✓", style = mobileCallout, color = mobileAccent)
-      } else {
-        Spacer(modifier = Modifier.width(10.dp))
       }
     },
   )
@@ -316,7 +300,7 @@ private fun AttachmentChip(fileName: String, onRemove: () -> Unit) {
       Surface(
         onClick = onRemove,
         shape = RoundedCornerShape(999.dp),
-        color = Color.White,
+        color = mobileSurface,
         border = BorderStroke(1.dp, mobileBorderStrong),
       ) {
         Text(
@@ -335,7 +319,7 @@ private fun chatTextFieldColors() =
   OutlinedTextFieldDefaults.colors(
     focusedContainerColor = mobileSurface,
     unfocusedContainerColor = mobileSurface,
-    focusedBorderColor = mobileAccent,
+    focusedBorderColor = mobileBorderStrong,
     unfocusedBorderColor = mobileBorder,
     focusedTextColor = mobileText,
     unfocusedTextColor = mobileText,
