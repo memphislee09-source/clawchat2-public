@@ -29,40 +29,50 @@ Current product direction includes:
 Some internal-testing shortcuts are intentionally still present for faster validation.
 Do not treat the current build as release-ready.
 
-## Chat Attachment Support
+## Agent Media Contract
 
-Current direct-chat attachment support is intentionally narrow:
+ClawChat2 now renders agent-sent `image`, `audio`, and `video` attachments when they reach the Android client as structured chat content.
 
-- Supported today: image attachments
-- Not supported today: audio file attachments
-- Not supported today: video file attachments
-
-Current agent/operator attachment path is image-only end-to-end.
-This repo's Android UI only lets the user pick `image/*`, and current upstream Gateway/OpenClaw chat attachment handling is documented as image-oriented as well.
-
-When an agent needs to send an image into a `ClawChat2` direct session, use the chat attachment structure below:
+Preferred local contract for agents:
 
 ```json
-{
-  "sessionKey": "agent:<agentId>:clawchat2",
-  "message": "Please see the attached image.",
-  "thinking": "off",
-  "attachments": [
-    {
-      "type": "image",
-      "mimeType": "image/jpeg",
-      "fileName": "photo.jpg",
-      "content": "<base64-bytes-without-data-uri-prefix>"
-    }
-  ]
-}
+[
+  { "type": "text", "text": "Optional caption" },
+  {
+    "type": "image|audio|video",
+    "mimeType": "real MIME type",
+    "fileName": "original file name",
+    "mediaUrl": "http://10.0.2.2:39393/media/<token>",
+    "mediaSha256": "<sha256>",
+    "sizeBytes": 123456
+  }
+]
 ```
+
+Rules:
+
+- target session key: `agent:<agentId>:clawchat2`
+- do not send URL-only media
+- do not send markdown image syntax
+- do not send `data:` URIs
+- for local testing, prefer `mediaUrl` reference delivery instead of inline base64
+- `mimeType` must be the real file MIME type
+
+Recommended first-pass formats:
+
+- image: `image/jpeg`, `image/png`, `image/webp`
+- audio: `audio/mpeg`, `audio/mp4`, `audio/wav`
+- video: `video/mp4`
 
 Notes:
 
-- `type` must currently be `image`
-- `content` is raw base64 payload, not a `data:` URL
-- non-image attachments should not be treated as supported until Gateway + Android client support is expanded together
+- This repo ships `scripts/send-clawchat-media.mjs`, which:
+  - stores the file in a local media store
+  - auto-starts a tiny HTTP server
+  - writes a structured assistant media message into the target transcript
+- Emulator default `mediaUrl` host is `10.0.2.2`; use `--public-host` for real devices.
+- The Android chat composer in this repo still only exposes image picking for user-originated sends; audio/video support added here is focused on agent -> ClawChat2 receive and render.
+- Usage guide: `AGENT_MEDIA_SEND.md`
 
 ## Open In Android Studio
 

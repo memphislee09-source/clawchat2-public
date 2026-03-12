@@ -18,31 +18,42 @@ Last updated: 2026-03-12 (Asia/Shanghai)
 - `upstream` remote configured and fetched.
 - Current working baseline promoted to `0.2.1`.
 - After this update, GitHub `main` should be treated as the development mainline going forward.
+- Large-image agent delivery is now validated on the local media-reference protocol:
+  - sender script stores media locally and injects `mediaUrl` messages
+  - ClawChat2 image rendering test passed in emulator manual validation
+- Audio/video media-reference injection is now validated at protocol level:
+  - local sender writes structured `audio` / `video` messages with `mediaUrl`
+  - `chat.history` retains these entries without oversized placeholder replacement
+- End-to-end media manual validation status:
+  - image render: passed
+  - audio playback: passed
+  - video preview + playback: passed
 
-## Chat Attachment Capability Note (2026-03-12)
+## Agent Media Capability Note (2026-03-12)
 - Scope checked:
   - local ClawChat2 Android client
   - local upstream docs snapshot under `builds/openclaw-main-android`
 - Current conclusion:
-  - image attachments: supported
-  - audio file attachments: not supported
-  - video file attachments: not supported
-- Reasoning:
-  - local Android chat composer currently only picks `image/*`
-  - local Android chat send path currently emits attachment `type = "image"` from the chat UI
-  - local Android chat render path currently treats non-text attachments as image/base64 render attempts
-  - upstream docs snapshot currently describes Gateway chat attachment handling as image-oriented
-  - upstream changelog note states Gateway/Control UI `chat.send` sniffs image attachments and drops non-images
-- Current agent send contract for direct ClawChat2 image delivery:
-  - send through `chat.send`
+  - ClawChat2 Android render path now supports `image`, `audio`, and `video` media attachments
+  - local Android composer still only exposes `image/*` for user-originated attachment picking
+  - agent-driven media support in this repo is based on a strict structured-media contract, not markdown URLs
+  - large files should use local `mediaUrl` references, not inline base64
+- Current agent send contract for direct ClawChat2 media delivery:
   - target session key pattern: `agent:<agentId>:clawchat2`
   - attachment payload shape:
-    - `type`: `image`
-    - `mimeType`: real image MIME type such as `image/jpeg` or `image/png`
+    - `type`: `image` / `audio` / `video`
+    - `mimeType`: real file MIME type such as `image/jpeg`, `audio/mpeg`, `video/mp4`
     - `fileName`: source file name
-    - `content`: raw base64 bytes without `data:` URI prefix
+    - `mediaUrl`: local HTTP reference reachable by the Android client
+    - `mediaSha256`: SHA-256 of the file bytes
+    - `sizeBytes`: original file size
+  - agent should not send:
+    - markdown image syntax
+    - URL-only media
+    - `data:` URIs
 - Implementation note:
-  - do not mark audio/video chat attachments as supported in this repo until Gateway/agent + Android client are expanded together end-to-end
+  - if the agent writes assistant `content[]` directly, the same media objects should appear as structured non-text content parts
+  - upstream docs snapshot is still image-oriented, so this repo's agent media contract should be treated as a local ClawChat2 convention unless/until upstream Gateway media handling is aligned
 
 ## Upstream Sync Check (2026-03-12, v2026.3.11 review)
 - Scope checked:
@@ -391,6 +402,52 @@ Last updated: 2026-03-12 (Asia/Shanghai)
   - Emulator install passed: `./gradlew :app:installDebug`
   - App relaunch passed: `adb shell am start -n ai.openclaw.app/.MainActivity`
   - User manual test on emulator: passed
+
+## Feature Update (2026-03-12, agent-media-render pass)
+- Goal: let ClawChat2 render agent-sent image, audio, and video files without relying on markdown media URLs.
+- Changes:
+  - Added explicit attachment kind detection for chat content parts using `type` and MIME fallback.
+  - Chat message rendering now routes non-text content through dedicated media attachment UI instead of assuming every attachment is an image.
+  - Image attachments keep the existing inline base64 render path.
+  - Image, audio, and video attachments can now also resolve from `mediaUrl` references, not only inline base64.
+  - Audio attachments are decoded into app cache and rendered as playable inline cards with progress + play/pause.
+  - Video attachments are decoded into app cache, rendered as video cards with preview extraction when available, and play in an in-app dialog.
+  - Unsupported or malformed attachments now fall back to a readable attachment card instead of silently failing image decode.
+  - Added a small unit test for attachment classification behavior.
+  - Added a local helper script plus local HTTP media server for environments where the agent does not have direct `chat.send(attachments)` access:
+    - `scripts/send-clawchat-media.mjs`
+    - `scripts/clawchat-media-server.mjs`
+    - the sender stores files under `~/.openclaw/clawchat-media-store/`
+    - the sender writes an assistant media message with `mediaUrl/mediaSha256/sizeBytes` into the target ClawChat2 session transcript
+- Agent send contract:
+  - `sessionKey = agent:<agentId>:clawchat2`
+  - `content[].type = image|audio|video`
+  - `content[].mimeType = real MIME`
+  - `content[].fileName = original file name`
+  - `content[].mediaUrl = local HTTP reference`
+  - `content[].mediaSha256 = file SHA-256`
+  - `content[].sizeBytes = original file size`
+- Implementation files:
+  - `scripts/send-clawchat-media.mjs`
+  - `scripts/clawchat-media-server.mjs`
+  - `app/src/main/java/ai/openclaw/app/ui/chat/ChatAttachmentSupport.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/chat/ChatMediaAttachments.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/chat/ChatMessageViews.kt`
+  - `app/src/test/java/ai/openclaw/app/ui/chat/ChatAttachmentSupportTest.kt`
+  - `AGENT_MEDIA_SEND.md`
+  - `README.md`
+  - `status.md`
+- Validation:
+  - Kotlin compile passed: `./gradlew :app:compileDebugKotlin`
+  - Targeted unit test passed: `./gradlew :app:testDebugUnitTest --tests ai.openclaw.app.ui.chat.ChatAttachmentSupportTest`
+  - Local script image injection verified against session `agent:main:clawchat2`
+  - Manual image test passed with media-reference delivery:
+    - verified image display in ClawChat2 after agent send
+    - confirms large-image path should use `mediaUrl`, not inline base64
+  - Local script audio injection verified against session `agent:main:clawchat2`
+  - Local script video injection verified against session `agent:main:clawchat2`
+  - Manual audio playback test passed in ClawChat2
+  - Manual video preview + playback test passed in ClawChat2
 
 ## Release Update (2026-03-12, version 0.2.1 test baseline)
 - Goal: roll the current accepted UI/interaction iteration into a new device-test baseline and sync it to GitHub main.

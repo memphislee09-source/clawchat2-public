@@ -13,6 +13,9 @@ data class ChatMessageContent(
   val mimeType: String? = null,
   val fileName: String? = null,
   val base64: String? = null,
+  val mediaUrl: String? = null,
+  val mediaSha256: String? = null,
+  val sizeBytes: Long? = null,
 )
 
 data class ChatPendingToolCall(

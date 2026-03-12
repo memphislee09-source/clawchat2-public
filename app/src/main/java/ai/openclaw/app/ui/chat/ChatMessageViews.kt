@@ -66,12 +66,16 @@ fun ChatMessageBubble(message: ChatMessage, assistantLabel: String = "assistant"
   val role = message.role.trim().lowercase(Locale.US)
   val style = bubbleStyle(role)
 
-  // Filter to only displayable content parts (text with content, or base64 images).
+  // Filter to text content or attachment-like parts with at least some metadata.
   val displayableContent =
     message.content.filter { part ->
       when (part.type) {
         "text" -> !part.text.isNullOrBlank()
-        else -> part.base64 != null
+        else ->
+          !part.base64.isNullOrBlank() ||
+            !part.mediaUrl.isNullOrBlank() ||
+            !part.fileName.isNullOrBlank() ||
+            !part.mimeType.isNullOrBlank()
       }
     }
 
@@ -90,8 +94,8 @@ fun ChatMessageBubble(message: ChatMessage, assistantLabel: String = "assistant"
 private fun ChatBubbleContainer(
   style: ChatBubbleStyle,
   roleLabel: String,
-  timestampLabel: String? = null,
   modifier: Modifier = Modifier,
+  timestampLabel: String? = null,
   content: @Composable () -> Unit,
 ) {
   Row(
@@ -132,18 +136,20 @@ private fun ChatBubbleContainer(
 
 @Composable
 private fun ChatMessageBody(content: List<ChatMessageContent>, textColor: Color) {
-  SelectionContainer(modifier = Modifier.fillMaxWidth()) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-      for (part in content) {
-        when (part.type) {
-          "text" -> {
-            val text = part.text ?: continue
+  Column(
+    modifier = Modifier.fillMaxWidth(),
+    verticalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    for (part in content) {
+      when (part.type) {
+        "text" -> {
+          val text = part.text ?: continue
+          SelectionContainer(modifier = Modifier.fillMaxWidth()) {
             ChatMarkdown(text = text, textColor = textColor)
           }
-          else -> {
-            val b64 = part.base64 ?: continue
-            ChatBase64Image(base64 = b64, mimeType = part.mimeType)
-          }
+        }
+        else -> {
+          ChatMediaAttachment(descriptor = part.toAttachmentDescriptor())
         }
       }
     }
@@ -259,7 +265,7 @@ private fun roleLabel(role: String, assistantLabel: String): String {
 }
 
 @Composable
-private fun ChatBase64Image(base64: String, mimeType: String?) {
+internal fun ChatBase64Image(base64: String, mimeType: String?) {
   val imageState = rememberBase64ImageState(base64)
   val image = imageState.image
 

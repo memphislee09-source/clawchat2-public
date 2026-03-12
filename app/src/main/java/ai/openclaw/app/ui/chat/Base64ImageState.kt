@@ -1,6 +1,9 @@
 package ai.openclaw.app.ui.chat
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
+import android.os.Build
 import android.util.Base64
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -10,6 +13,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import java.io.File
+import java.nio.ByteBuffer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -29,7 +34,7 @@ internal fun rememberBase64ImageState(base64: String): Base64ImageState {
       withContext(Dispatchers.Default) {
         try {
           val bytes = Base64.decode(base64, Base64.DEFAULT)
-          val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return@withContext null
+          val bitmap = decodeImageBitmap(bytes) ?: return@withContext null
           bitmap.asImageBitmap()
         } catch (_: Throwable) {
           null
@@ -39,4 +44,37 @@ internal fun rememberBase64ImageState(base64: String): Base64ImageState {
   }
 
   return Base64ImageState(image = image, failed = failed)
+}
+
+@Composable
+internal fun rememberImageFileState(file: File): Base64ImageState {
+  var image by remember(file.absolutePath, file.lastModified()) { mutableStateOf<ImageBitmap?>(null) }
+  var failed by remember(file.absolutePath, file.lastModified()) { mutableStateOf(false) }
+
+  LaunchedEffect(file.absolutePath, file.lastModified()) {
+    failed = false
+    image =
+      withContext(Dispatchers.Default) {
+        runCatching {
+          val bytes = file.readBytes()
+          decodeImageBitmap(bytes)?.asImageBitmap()
+        }.getOrNull()
+      }
+    if (image == null) failed = true
+  }
+
+  return Base64ImageState(image = image, failed = failed)
+}
+
+internal fun decodeImageBitmap(bytes: ByteArray): Bitmap? {
+  BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.let { return it }
+  if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return null
+
+  return runCatching {
+    val source = ImageDecoder.createSource(ByteBuffer.wrap(bytes))
+    ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+      decoder.isMutableRequired = false
+      decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+    }
+  }.getOrNull()
 }
