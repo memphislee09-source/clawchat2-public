@@ -29,6 +29,41 @@ Current product direction includes:
 Some internal-testing shortcuts are intentionally still present for faster validation.
 Do not treat the current build as release-ready.
 
+## Chat Attachment Support
+
+Current direct-chat attachment support is intentionally narrow:
+
+- Supported today: image attachments
+- Not supported today: audio file attachments
+- Not supported today: video file attachments
+
+Current agent/operator attachment path is image-only end-to-end.
+This repo's Android UI only lets the user pick `image/*`, and current upstream Gateway/OpenClaw chat attachment handling is documented as image-oriented as well.
+
+When an agent needs to send an image into a `ClawChat2` direct session, use the chat attachment structure below:
+
+```json
+{
+  "sessionKey": "agent:<agentId>:clawchat2",
+  "message": "Please see the attached image.",
+  "thinking": "off",
+  "attachments": [
+    {
+      "type": "image",
+      "mimeType": "image/jpeg",
+      "fileName": "photo.jpg",
+      "content": "<base64-bytes-without-data-uri-prefix>"
+    }
+  ]
+}
+```
+
+Notes:
+
+- `type` must currently be `image`
+- `content` is raw base64 payload, not a `data:` URL
+- non-image attachments should not be treated as supported until Gateway + Android client support is expanded together
+
 ## Open In Android Studio
 
 Open this repository root directly:

@@ -19,6 +19,31 @@ Last updated: 2026-03-12 (Asia/Shanghai)
 - Current working baseline promoted to `0.2.1`.
 - After this update, GitHub `main` should be treated as the development mainline going forward.
 
+## Chat Attachment Capability Note (2026-03-12)
+- Scope checked:
+  - local ClawChat2 Android client
+  - local upstream docs snapshot under `builds/openclaw-main-android`
+- Current conclusion:
+  - image attachments: supported
+  - audio file attachments: not supported
+  - video file attachments: not supported
+- Reasoning:
+  - local Android chat composer currently only picks `image/*`
+  - local Android chat send path currently emits attachment `type = "image"` from the chat UI
+  - local Android chat render path currently treats non-text attachments as image/base64 render attempts
+  - upstream docs snapshot currently describes Gateway chat attachment handling as image-oriented
+  - upstream changelog note states Gateway/Control UI `chat.send` sniffs image attachments and drops non-images
+- Current agent send contract for direct ClawChat2 image delivery:
+  - send through `chat.send`
+  - target session key pattern: `agent:<agentId>:clawchat2`
+  - attachment payload shape:
+    - `type`: `image`
+    - `mimeType`: real image MIME type such as `image/jpeg` or `image/png`
+    - `fileName`: source file name
+    - `content`: raw base64 bytes without `data:` URI prefix
+- Implementation note:
+  - do not mark audio/video chat attachments as supported in this repo until Gateway/agent + Android client are expanded together end-to-end
+
 ## Upstream Sync Check (2026-03-12, v2026.3.11 review)
 - Scope checked:
   - official source: `openclaw/openclaw`
