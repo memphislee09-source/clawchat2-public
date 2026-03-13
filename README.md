@@ -85,9 +85,12 @@ Notes:
   - Android 11 real-device install + launch: passed
   - user-confirmed real-device image/audio/video behavior: passed
   - user-confirmed Android 11 real-device fullscreen image/video behavior: passed on the stable in-app dialog path
+  - current accepted fullscreen video sizing is aspect-fit and non-cropping
 - Media server lifecycle:
   - the sender script now installs and refreshes a macOS `launchd` agent for the local media HTTP server
   - after the first media send on macOS, the media server should auto-recover if the prior server process exits or the local OpenClaw host environment is restarted
+- Current known UI limitation:
+  - on the stable `VideoView` fullscreen path, letterbox space is accepted for aspect-fit playback, but that empty area is not yet guaranteed to render as pure black on every real-device path
 - The Android chat composer in this repo still only exposes image picking for user-originated sends; audio/video support added here is focused on agent -> ClawChat2 receive and render.
 - Usage guide: `AGENT_MEDIA_SEND.md`
 

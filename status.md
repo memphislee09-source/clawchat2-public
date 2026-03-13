@@ -42,10 +42,12 @@ Last updated: 2026-03-13 (Asia/Shanghai)
   - video fullscreen playback: passed on the stable in-app `Dialog + VideoView` path
   - long video playback: passed after enabling HTTP range responses and sender-side MP4 faststart normalization
   - orientation handling: current stable behavior auto-switches fullscreen video to portrait/landscape based on video metadata
+  - fullscreen video sizing: current accepted behavior is aspect-fit, non-cropping playback; depending on video ratio, only one axis should letterbox
   - accepted rollback note: experimental fullscreen video implementations using a dedicated activity / custom `TextureView` player were rejected and removed after causing real-device exits
 - Current known media limitation:
   - resolved on macOS by installing a `launchd` media server agent from the sender script
   - after first successful media send, the local media HTTP server should auto-recover if the previous server process exits or the local OpenClaw host environment is restarted
+  - fullscreen video letterbox areas are not yet fully hardened to pure black on all real-device `VideoView` paths; current accepted baseline keeps the stable non-cropping player behavior and leaves this visual issue for a later pass
 
 ## Agent Media Capability Note (2026-03-12)
 - Scope checked:
@@ -94,7 +96,7 @@ Last updated: 2026-03-13 (Asia/Shanghai)
 - Accepted result:
   - image tap opens fullscreen viewer
   - video tap opens fullscreen in-app dialog playback
-  - fullscreen video keeps black background and uses the stable `VideoView` path
+  - fullscreen video uses the stable `VideoView` path with non-cropping aspect-fit sizing
   - auto-orientation based on video metadata is retained on the accepted path
   - large videos now benefit from:
     - sender-side MP4 faststart normalization when available
@@ -109,6 +111,22 @@ Last updated: 2026-03-13 (Asia/Shanghai)
   - APK assemble passed: `./gradlew :app:assembleDebug`
   - Android 11 real-device image/audio/video verification: passed
   - Android 11 real-device fullscreen video verification after rollback to stable path: passed
+
+## UI Update (2026-03-13, fullscreen video aspect-fit rollback)
+- Goal: keep fullscreen video playback stable on the Android 11 validation device without reintroducing crashes or cropping.
+- Accepted result:
+  - fullscreen video remains on the in-app `Dialog + VideoView` implementation
+  - video is displayed with aspect-fit sizing and without cropping
+  - depending on video ratio, letterboxing on a single axis is accepted
+- Explicitly not accepted in the current baseline:
+  - forcing extra `VideoView` background handling that destabilizes or changes the accepted playback path
+  - further fullscreen rendering experiments in this session
+- Known limitation kept open:
+  - some real-device letterbox space can still appear non-black/transparent on the current `VideoView` path
+- Validation:
+  - Kotlin compile passed: `./gradlew :app:compileDebugKotlin`
+  - APK assemble passed: `./gradlew :app:assembleDebug`
+  - Android 11 real-device install + launch after rollback: passed
 
 ## Tooling Update (2026-03-13, media-server auto-recover pass)
 - Goal: avoid manual restarts of the local media HTTP server after host-side OpenClaw / terminal restarts.

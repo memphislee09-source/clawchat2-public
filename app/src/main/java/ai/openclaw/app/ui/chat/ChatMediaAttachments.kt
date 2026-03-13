@@ -1,6 +1,7 @@
 package ai.openclaw.app.ui.chat
 
 import android.app.Activity
+import android.graphics.drawable.ColorDrawable
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
@@ -8,6 +9,7 @@ import android.media.AudioAttributes
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.util.Base64
+import android.view.ViewGroup
 import android.widget.MediaController
 import android.widget.VideoView
 import androidx.compose.foundation.BorderStroke
@@ -16,8 +18,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -53,12 +57,17 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import ai.openclaw.app.SecurePrefs
 import ai.openclaw.app.ui.mobileAccent
 import ai.openclaw.app.ui.mobileAccentSoft
@@ -648,8 +657,9 @@ private fun FullscreenImageDialog(
 
   Dialog(
     onDismissRequest = onDismiss,
-    properties = DialogProperties(usePlatformDefaultWidth = false),
+    properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
   ) {
+    PrepareFullscreenDialogWindow()
     Surface(
       color = Color.Black,
       modifier = Modifier.fillMaxSize(),
@@ -717,42 +727,65 @@ private fun FullscreenVideoDialog(
 
   Dialog(
     onDismissRequest = onDismiss,
-    properties = DialogProperties(usePlatformDefaultWidth = false),
+    properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
   ) {
+    PrepareFullscreenDialogWindow()
     Surface(
       color = Color.Black,
       modifier = Modifier.fillMaxSize(),
     ) {
       Box(modifier = Modifier.fillMaxSize()) {
         if (playbackSource != null) {
-          AndroidView(
-            modifier =
-              Modifier
-                .fillMaxSize()
-                .background(Color.Black),
-            factory = { context ->
-              VideoView(context).apply {
-                setMediaController(MediaController(context).also { controller -> controller.setAnchorView(this) })
-                setOnPreparedListener { mediaPlayer ->
-                  mediaPlayer.isLooping = false
-                  mediaPlayer.setOnVideoSizeChangedListener { _, _, _ ->
-                    applyFullscreenVideoZoom(this, mediaPlayer, displayAspectRatio)
+          BoxWithConstraints(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+          ) {
+            val containerAspectRatio =
+              if (maxHeight.value > 0f) {
+                maxWidth.value / maxHeight.value
+              } else {
+                displayAspectRatio ?: (16f / 9f)
+              }
+            val playerModifier =
+              when {
+                displayAspectRatio == null ->
+                  Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+
+                displayAspectRatio >= containerAspectRatio ->
+                  Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(displayAspectRatio)
+                    .background(Color.Black)
+
+                else ->
+                  Modifier
+                    .fillMaxHeight()
+                    .aspectRatio(displayAspectRatio)
+                    .background(Color.Black)
+              }
+
+            AndroidView(
+              modifier = playerModifier,
+              factory = { context ->
+                VideoView(context).apply {
+                  setMediaController(MediaController(context).also { controller -> controller.setAnchorView(this) })
+                  setOnPreparedListener { mediaPlayer ->
+                    mediaPlayer.isLooping = false
+                    start()
                   }
-                  applyFullscreenVideoZoom(this, mediaPlayer, displayAspectRatio)
-                  start()
                 }
-              }
-            },
-            update = { videoView ->
-              if (videoView.tag != playbackSource) {
-                videoView.tag = playbackSource
-                videoView.stopPlayback()
-                videoView.scaleX = 1f
-                videoView.scaleY = 1f
-                videoView.setVideoPath(playbackSource)
-              }
-            },
-          )
+              },
+              update = { videoView ->
+                if (videoView.tag != playbackSource) {
+                  videoView.tag = playbackSource
+                  videoView.stopPlayback()
+                  videoView.setVideoPath(playbackSource)
+                }
+              },
+            )
+          }
         }
 
         Box(
@@ -775,6 +808,26 @@ private fun FullscreenVideoDialog(
           }
         }
       }
+    }
+  }
+}
+
+@Composable
+private fun PrepareFullscreenDialogWindow() {
+  val view = LocalView.current
+  val dialogWindow = (view.parent as? DialogWindowProvider)?.window ?: return
+
+  DisposableEffect(dialogWindow) {
+    dialogWindow.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+    dialogWindow.setBackgroundDrawable(ColorDrawable(android.graphics.Color.BLACK))
+    WindowCompat.setDecorFitsSystemWindows(dialogWindow, false)
+    val insetsController = WindowInsetsControllerCompat(dialogWindow, dialogWindow.decorView)
+    insetsController.hide(WindowInsetsCompat.Type.systemBars())
+    insetsController.systemBarsBehavior =
+      WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+
+    onDispose {
+      insetsController.show(WindowInsetsCompat.Type.systemBars())
     }
   }
 }
@@ -1120,33 +1173,6 @@ private fun mediaDisplayAspectRatio(state: MediaPreviewState): Float? {
   val (displayWidth, displayHeight) = mediaDisplaySize(state) ?: return null
   if (displayWidth <= 0 || displayHeight <= 0) return null
   return displayWidth.toFloat() / displayHeight.toFloat()
-}
-
-private fun applyFullscreenVideoZoom(videoView: VideoView, mediaPlayer: MediaPlayer, fallbackAspectRatio: Float?) {
-  videoView.post {
-    val viewWidth = videoView.width
-    val viewHeight = videoView.height
-    if (viewWidth <= 0 || viewHeight <= 0) return@post
-
-    val videoWidth = mediaPlayer.videoWidth
-    val videoHeight = mediaPlayer.videoHeight
-    val videoAspectRatio =
-      when {
-        videoWidth > 0 && videoHeight > 0 -> videoWidth.toFloat() / videoHeight.toFloat()
-        fallbackAspectRatio != null && fallbackAspectRatio > 0f -> fallbackAspectRatio
-        else -> return@post
-      }
-
-    val viewAspectRatio = viewWidth.toFloat() / viewHeight.toFloat()
-    videoView.scaleX = 1f
-    videoView.scaleY = 1f
-
-    if (videoAspectRatio > viewAspectRatio) {
-      videoView.scaleX = videoAspectRatio / viewAspectRatio
-    } else if (videoAspectRatio < viewAspectRatio) {
-      videoView.scaleY = viewAspectRatio / videoAspectRatio
-    }
-  }
 }
 
 private fun preferredVideoFullscreenOrientation(state: MediaPreviewState?): Int? {
