@@ -59,7 +59,7 @@ class ChatAttachmentSupportTest {
       )
 
     assertTrue(message.contains("emulator-only host 10.0.2.2"))
-    assertTrue(message.contains("--public-host"))
+    assertTrue(message.contains("mediaPath/mediaPort"))
   }
 
   @Test

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
@@ -59,9 +59,6 @@ async function main(parsedArgs) {
     );
   }
 
-  const mediaBytes = fs.readFileSync(resolvedFilePath);
-  if (mediaBytes.length === 0) fail(`File is empty: ${resolvedFilePath}`);
-
   const detectedMime = parsedArgs.mime ?? detectMimeType(resolvedFilePath);
   const detectedType = parsedArgs.type ?? detectAttachmentKind(detectedMime, resolvedFilePath);
   if (!detectedType) {
@@ -70,6 +67,15 @@ async function main(parsedArgs) {
         'Use --type image|audio|video or --mime <mime>.',
     );
   }
+
+  const normalizedSource = maybeNormalizeVideoForStreaming({
+    filePath: resolvedFilePath,
+    mimeType: detectedMime,
+    attachmentKind: detectedType,
+  });
+  const sourceFilePath = normalizedSource.filePath;
+  const mediaBytes = fs.readFileSync(sourceFilePath);
+  if (mediaBytes.length === 0) fail(`File is empty: ${sourceFilePath}`);
 
   const openClawDir = path.join(os.homedir(), '.openclaw');
   const storeDir = path.resolve(parsedArgs['store-dir'] ?? path.join(openClawDir, 'clawchat-media-store'));
@@ -81,12 +87,12 @@ async function main(parsedArgs) {
 
   const fileName = parsedArgs.name ?? path.basename(resolvedFilePath);
   const sha256 = crypto.createHash('sha256').update(mediaBytes).digest('hex');
-  const extension = resolveStoredExtension(fileName, resolvedFilePath, detectedMime, detectedType);
+  const extension = resolveStoredExtension(fileName, sourceFilePath, detectedMime, detectedType);
   const token = `${sha256}.${extension}`;
   const storedFilePath = path.join(filesDir, token);
   const metadataPath = path.join(metaDir, `${token}.json`);
   if (!fs.existsSync(storedFilePath) || fs.statSync(storedFilePath).size !== mediaBytes.length) {
-    fs.copyFileSync(resolvedFilePath, storedFilePath);
+    fs.copyFileSync(sourceFilePath, storedFilePath);
   }
   fs.writeFileSync(
     metadataPath,
@@ -99,6 +105,8 @@ async function main(parsedArgs) {
         sha256,
         sizeBytes: mediaBytes.length,
         sourcePath: resolvedFilePath,
+        normalizedSourcePath: normalizedSource.usedFaststart ? sourceFilePath : null,
+        usedFaststart: normalizedSource.usedFaststart,
         storedFilePath,
         createdAt: new Date().toISOString(),
       },
@@ -107,6 +115,9 @@ async function main(parsedArgs) {
     ) + '\n',
     'utf8',
   );
+  if (normalizedSource.usedFaststart) {
+    safeUnlink(sourceFilePath);
+  }
 
   await ensureMediaServer({
     bindHost,
@@ -220,6 +231,7 @@ async function main(parsedArgs) {
       mediaPath,
       mediaPort: port,
       mediaUrl,
+      usedFaststart: normalizedSource.usedFaststart,
     },
     mediaServer: {
       bindHost,
@@ -235,6 +247,35 @@ async function main(parsedArgs) {
   };
 
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+}
+
+function maybeNormalizeVideoForStreaming({ filePath, mimeType, attachmentKind }) {
+  if (attachmentKind !== 'video' || mimeType !== 'video/mp4') {
+    return { filePath, usedFaststart: false };
+  }
+
+  if (!isCommandAvailable('ffmpeg')) {
+    return { filePath, usedFaststart: false };
+  }
+
+  const tempPath = path.join(os.tmpdir(), `clawchat-faststart-${process.pid}-${Date.now()}-${path.basename(filePath)}`);
+  const result = spawnSync(
+    'ffmpeg',
+    ['-y', '-i', filePath, '-c', 'copy', '-movflags', '+faststart', tempPath],
+    { stdio: 'ignore' },
+  );
+
+  if (result.status !== 0 || !fs.existsSync(tempPath)) {
+    safeUnlink(tempPath);
+    return { filePath, usedFaststart: false };
+  }
+
+  if (fs.statSync(tempPath).size <= 0) {
+    safeUnlink(tempPath);
+    return { filePath, usedFaststart: false };
+  }
+
+  return { filePath: tempPath, usedFaststart: true };
 }
 
 function parseArgs(argv) {
@@ -450,6 +491,21 @@ function parsePort(value) {
 
 function randomId() {
   return crypto.randomBytes(4).toString('hex');
+}
+
+function isCommandAvailable(command) {
+  const result = spawnSync(command, ['-version'], { stdio: 'ignore' });
+  return result.status === 0;
+}
+
+function safeUnlink(targetPath) {
+  try {
+    if (targetPath && fs.existsSync(targetPath)) {
+      fs.unlinkSync(targetPath);
+    }
+  } catch {
+    // Ignore best-effort cleanup failures.
+  }
 }
 
 function fail(message) {

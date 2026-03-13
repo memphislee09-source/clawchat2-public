@@ -2,6 +2,7 @@ package ai.openclaw.app.ui.chat
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -265,7 +266,7 @@ private fun roleLabel(role: String, assistantLabel: String): String {
 }
 
 @Composable
-internal fun ChatBase64Image(base64: String, mimeType: String?) {
+internal fun ChatBase64Image(base64: String, mimeType: String?, onClick: (() -> Unit)? = null) {
   val imageState = rememberBase64ImageState(base64)
   val image = imageState.image
 
@@ -274,10 +275,10 @@ internal fun ChatBase64Image(base64: String, mimeType: String?) {
       shape = RoundedCornerShape(5.dp),
       border = BorderStroke(1.dp, mobileBorder),
       color = mobileSurface,
-      modifier = Modifier.fillMaxWidth(),
+      modifier = if (onClick != null) Modifier.fillMaxWidth().clickable(onClick = onClick) else Modifier.fillMaxWidth(),
     ) {
       Image(
-        bitmap = image!!,
+        bitmap = image,
         contentDescription = mimeType ?: "attachment",
         contentScale = ContentScale.Fit,
         modifier = Modifier.fillMaxWidth(),

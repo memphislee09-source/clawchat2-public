@@ -1,5 +1,9 @@
 package ai.openclaw.app.ui.chat
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.pm.ActivityInfo
 import android.media.AudioAttributes
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
@@ -13,10 +17,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -52,6 +57,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.viewinterop.AndroidView
 import ai.openclaw.app.SecurePrefs
 import ai.openclaw.app.ui.mobileAccent
@@ -85,6 +91,9 @@ internal data class ResolvedMediaFileState(
 private data class MediaPreviewState(
   val durationMs: Long?,
   val previewFrame: ImageBitmap?,
+  val videoWidth: Int?,
+  val videoHeight: Int?,
+  val rotationDegrees: Int?,
   val failed: Boolean,
 )
 
@@ -111,15 +120,34 @@ internal fun ChatMediaAttachment(descriptor: ChatAttachmentDescriptor) {
 
 @Composable
 private fun ChatImageAttachment(descriptor: ChatAttachmentDescriptor) {
+  var showViewer by remember(
+    descriptor.base64,
+    descriptor.mediaUrl,
+    descriptor.mediaPath,
+    descriptor.mediaPort,
+    descriptor.fileName,
+  ) {
+    mutableStateOf(false)
+  }
+
   when {
     descriptor.base64 != null -> {
-      ChatBase64Image(base64 = descriptor.base64, mimeType = descriptor.mimeType)
+      ChatBase64Image(
+        base64 = descriptor.base64,
+        mimeType = descriptor.mimeType,
+        onClick = { showViewer = true },
+      )
     }
 
-    descriptor.mediaUrl != null -> {
+    descriptor.mediaUrl != null || descriptor.mediaPath != null -> {
       val fileState = rememberResolvedMediaFileState(descriptor = descriptor)
       when {
-        fileState.file != null -> ChatFileImage(file = fileState.file, mimeType = descriptor.mimeType)
+        fileState.file != null ->
+          ChatFileImage(
+            file = fileState.file,
+            mimeType = descriptor.mimeType,
+            onClick = { showViewer = true },
+          )
         fileState.loading ->
           ChatLoadingAttachmentCard(
             descriptor = descriptor,
@@ -146,11 +174,22 @@ private fun ChatImageAttachment(descriptor: ChatAttachmentDescriptor) {
       )
     }
   }
+
+  if (showViewer) {
+    val fileState = if (descriptor.base64 == null) rememberResolvedMediaFileState(descriptor) else null
+    FullscreenImageDialog(
+      title = attachmentDisplayName(descriptor),
+      mimeType = descriptor.mimeType,
+      file = fileState?.file,
+      base64 = descriptor.base64,
+      onDismiss = { showViewer = false },
+    )
+  }
 }
 
 @Composable
 private fun ChatAudioAttachment(descriptor: ChatAttachmentDescriptor) {
-  if (descriptor.base64 == null && descriptor.mediaUrl == null) {
+  if (descriptor.base64 == null && descriptor.mediaUrl == null && descriptor.mediaPath == null) {
     ChatUnsupportedAttachmentCard(
       descriptor = descriptor,
       title = "Audio unavailable",
@@ -315,7 +354,7 @@ private fun ChatAudioAttachment(descriptor: ChatAttachmentDescriptor) {
 
 @Composable
 private fun ChatVideoAttachment(descriptor: ChatAttachmentDescriptor) {
-  if (descriptor.base64 == null && descriptor.mediaUrl == null) {
+  if (descriptor.base64 == null && descriptor.mediaUrl == null && descriptor.mediaPath == null) {
     ChatUnsupportedAttachmentCard(
       descriptor = descriptor,
       title = "Video unavailable",
@@ -325,28 +364,32 @@ private fun ChatVideoAttachment(descriptor: ChatAttachmentDescriptor) {
     return
   }
 
-  val fileState = rememberResolvedMediaFileState(descriptor = descriptor)
-  if (fileState.file == null) {
-    if (fileState.loading) {
-      ChatLoadingAttachmentCard(
-        descriptor = descriptor,
-        title = "Loading video",
-        detail = descriptor.mimeType ?: "Fetching remote media",
-      )
-    } else {
-      ChatUnsupportedAttachmentCard(
-        descriptor = descriptor,
-        title = "Video unavailable",
-        detail = fileState.errorText ?: "Could not decode video attachment",
-        iconTint = mobileTextSecondary,
-      )
+  val context = LocalContext.current
+  val prefs = remember(context.applicationContext) { SecurePrefs(context.applicationContext) }
+  val streamUrl =
+    remember(
+      descriptor.mediaUrl,
+      descriptor.mediaPath,
+      descriptor.mediaPort,
+      prefs.lastGatewayRemoteAddress.value,
+      prefs.manualHost.value,
+      prefs.tailscaleHost.value,
+    ) {
+      resolveAttachmentFetchUrls(
+        mediaUrl = descriptor.mediaUrl,
+        mediaPath = descriptor.mediaPath,
+        mediaPort = descriptor.mediaPort,
+        gatewayRemoteAddress = prefs.lastGatewayRemoteAddress.value,
+        manualHost = prefs.manualHost.value,
+        tailscaleHost = prefs.tailscaleHost.value,
+      ).firstOrNull()
     }
-    return
-  }
-
+  val fileState = rememberResolvedMediaFileState(descriptor = descriptor)
   val file = fileState.file
-  val previewState = rememberMediaPreviewState(file = file, includeFrame = true)
-  var showPlayer by remember(file.absolutePath) { mutableStateOf(false) }
+  val previewState = file?.let { rememberMediaPreviewState(file = it, includeFrame = true) }
+  val playbackSource = file?.absolutePath ?: streamUrl
+  var showPlayer by remember(file?.absolutePath, streamUrl) { mutableStateOf(false) }
+  val openFullscreenVideo = remember(playbackSource) { { if (playbackSource != null) showPlayer = true } }
 
   ChatAttachmentCard(
     descriptor = descriptor,
@@ -354,7 +397,8 @@ private fun ChatVideoAttachment(descriptor: ChatAttachmentDescriptor) {
     subtitle =
       listOfNotNull(
         descriptor.mimeType,
-        previewState.durationMs?.takeIf { it > 0L }?.let(::formatMediaDuration),
+        previewState?.durationMs?.takeIf { it > 0L }?.let(::formatMediaDuration),
+        if (fileState.loading && streamUrl != null) "Tap to stream" else null,
       ).joinToString(" · ").ifBlank { "Tap to play" },
     leadingIcon = {
       Icon(
@@ -365,7 +409,7 @@ private fun ChatVideoAttachment(descriptor: ChatAttachmentDescriptor) {
       )
     },
     action = {
-      IconButton(onClick = { showPlayer = true }) {
+      IconButton(onClick = openFullscreenVideo) {
         Icon(
           imageVector = Icons.Default.PlayArrow,
           contentDescription = "Play video",
@@ -374,111 +418,38 @@ private fun ChatVideoAttachment(descriptor: ChatAttachmentDescriptor) {
       }
     },
     footer = {
-      if (previewState.previewFrame != null) {
-        Surface(
-          shape = RoundedCornerShape(5.dp),
-          border = BorderStroke(1.dp, mobileBorder),
-          color = mobileCodeBg,
-          modifier =
-            Modifier
-              .fillMaxWidth()
-              .aspectRatio(16f / 9f)
-              .clickable { showPlayer = true },
-        ) {
-          Box {
-            Image(
-              bitmap = previewState.previewFrame,
-              contentDescription = descriptor.mimeType ?: "video preview",
-              contentScale = ContentScale.Crop,
-              modifier = Modifier.fillMaxWidth(),
-            )
-            Box(
-              modifier =
-                Modifier
-                  .matchParentSize()
-                  .background(Color.Black.copy(alpha = 0.16f)),
-            )
-            Surface(
-              color = Color.Black.copy(alpha = 0.55f),
-              shape = RoundedCornerShape(999.dp),
-              modifier = Modifier.align(Alignment.Center),
-            ) {
-              Icon(
-                imageVector = Icons.Default.PlayArrow,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.padding(10.dp),
-              )
-            }
-          }
-        }
-      } else if (previewState.failed) {
+      if (previewState?.previewFrame != null) {
+        VideoPreviewTile(
+          preview = previewState.previewFrame,
+          mimeType = descriptor.mimeType,
+          onClick = openFullscreenVideo,
+        )
+      } else if (fileState.loading && streamUrl != null) {
+        VideoPlaceholderTile(
+          message = "Tap to stream full screen",
+          onClick = openFullscreenVideo,
+        )
+      } else if (previewState?.failed == true) {
         Text("Preview unavailable", style = mobileCaption1, color = mobileTextSecondary)
+      } else if (fileState.loading) {
+        Text("Preparing preview", style = mobileCaption1, color = mobileTextSecondary)
+      } else {
+        Text(
+          fileState.errorText ?: "Could not decode video attachment",
+          style = mobileCaption1,
+          color = mobileTextSecondary,
+        )
       }
     },
   )
 
   if (showPlayer) {
-    Dialog(onDismissRequest = { showPlayer = false }) {
-      Surface(
-        shape = RoundedCornerShape(10.dp),
-        color = mobileSurface,
-        border = BorderStroke(1.dp, mobileBorderStrong),
-      ) {
-        Column(
-          modifier = Modifier.padding(12.dp),
-          verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-          ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-              Text(
-                text = attachmentDisplayName(descriptor),
-                style = mobileCallout.copy(fontWeight = FontWeight.SemiBold),
-                color = mobileText,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-              )
-              Text(
-                text = descriptor.mimeType ?: "video",
-                style = mobileCaption1,
-                color = mobileTextSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-              )
-            }
-            IconButton(onClick = { showPlayer = false }) {
-              Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Close video",
-                tint = mobileTextSecondary,
-              )
-            }
-          }
-
-          AndroidView(
-            modifier =
-              Modifier
-                .fillMaxWidth()
-                .aspectRatio(16f / 9f)
-                .background(Color.Black, RoundedCornerShape(8.dp)),
-            factory = { context ->
-              VideoView(context).apply {
-                setVideoPath(file.absolutePath)
-                setMediaController(MediaController(context).also { controller -> controller.setAnchorView(this) })
-                setOnPreparedListener { mediaPlayer ->
-                  mediaPlayer.isLooping = false
-                  start()
-                }
-              }
-            },
-          )
-        }
-      }
-    }
+    FullscreenVideoDialog(
+      playbackSource = playbackSource,
+      preferredOrientation = preferredVideoFullscreenOrientation(previewState),
+      displayAspectRatio = previewState?.let(::mediaDisplayAspectRatio),
+      onDismiss = { showPlayer = false },
+    )
   }
 }
 
@@ -544,7 +515,7 @@ private fun ChatAttachmentCard(
 }
 
 @Composable
-private fun ChatFileImage(file: File, mimeType: String?) {
+private fun ChatFileImage(file: File, mimeType: String?, onClick: () -> Unit) {
   val imageState = rememberImageFileState(file)
   val image = imageState.image
 
@@ -553,7 +524,7 @@ private fun ChatFileImage(file: File, mimeType: String?) {
       shape = RoundedCornerShape(5.dp),
       border = BorderStroke(1.dp, mobileBorder),
       color = mobileSurface,
-      modifier = Modifier.fillMaxWidth(),
+      modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
     ) {
       Image(
         bitmap = image,
@@ -581,6 +552,230 @@ private fun ChatFileImage(file: File, mimeType: String?) {
       title = "Loading image",
       detail = mimeType ?: "Decoding image",
     )
+  }
+}
+
+@Composable
+private fun VideoPreviewTile(
+  preview: ImageBitmap,
+  mimeType: String?,
+  onClick: () -> Unit,
+) {
+  Surface(
+    shape = RoundedCornerShape(5.dp),
+    border = BorderStroke(1.dp, mobileBorder),
+    color = mobileCodeBg,
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .aspectRatio(16f / 9f)
+        .clickable(onClick = onClick),
+  ) {
+    Box {
+      Image(
+        bitmap = preview,
+        contentDescription = mimeType ?: "video preview",
+        contentScale = ContentScale.Crop,
+        modifier = Modifier.fillMaxWidth(),
+      )
+      Box(
+        modifier =
+          Modifier
+            .matchParentSize()
+            .background(Color.Black.copy(alpha = 0.16f)),
+      )
+      Surface(
+        color = Color.Black.copy(alpha = 0.55f),
+        shape = RoundedCornerShape(999.dp),
+        modifier = Modifier.align(Alignment.Center),
+      ) {
+        Icon(
+          imageVector = Icons.Default.PlayArrow,
+          contentDescription = null,
+          tint = Color.White,
+          modifier = Modifier.padding(10.dp),
+        )
+      }
+    }
+  }
+}
+
+@Composable
+private fun VideoPlaceholderTile(message: String, onClick: () -> Unit) {
+  Surface(
+    shape = RoundedCornerShape(5.dp),
+    border = BorderStroke(1.dp, mobileBorder),
+    color = Color.Black,
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .aspectRatio(16f / 9f)
+        .clickable(onClick = onClick),
+  ) {
+    Box(contentAlignment = Alignment.Center) {
+      Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+      ) {
+        Icon(
+          imageVector = Icons.Default.Videocam,
+          contentDescription = null,
+          tint = Color.White,
+          modifier = Modifier.size(28.dp),
+        )
+        Text(
+          text = message,
+          style = mobileCaption1,
+          color = Color.White,
+        )
+      }
+    }
+  }
+}
+
+@Composable
+private fun FullscreenImageDialog(
+  title: String,
+  mimeType: String?,
+  file: File?,
+  base64: String?,
+  onDismiss: () -> Unit,
+) {
+  val fileImageState = if (file != null) rememberImageFileState(file) else null
+  val base64ImageState = if (base64 != null) rememberBase64ImageState(base64) else null
+  val image = fileImageState?.image ?: base64ImageState?.image
+  val failed = fileImageState?.failed == true || base64ImageState?.failed == true
+
+  Dialog(
+    onDismissRequest = onDismiss,
+    properties = DialogProperties(usePlatformDefaultWidth = false),
+  ) {
+    Surface(
+      color = Color.Black,
+      modifier = Modifier.fillMaxSize(),
+    ) {
+      Box(modifier = Modifier.fillMaxSize()) {
+        if (image != null) {
+          Image(
+            bitmap = image,
+            contentDescription = mimeType ?: "image",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxSize(),
+          )
+        } else if (failed) {
+          Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Image unavailable", style = mobileCallout, color = Color.White)
+          }
+        } else {
+          Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp)
+          }
+        }
+
+        Row(
+          modifier = Modifier.fillMaxWidth().padding(12.dp),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+              text = title,
+              style = mobileCallout.copy(fontWeight = FontWeight.SemiBold),
+              color = Color.White,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+              text = mimeType ?: "image",
+              style = mobileCaption1,
+              color = Color.White.copy(alpha = 0.72f),
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+            )
+          }
+          IconButton(onClick = onDismiss) {
+            Icon(
+              imageVector = Icons.Default.Close,
+              contentDescription = "Close image",
+              tint = Color.White,
+            )
+          }
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun FullscreenVideoDialog(
+  playbackSource: String?,
+  preferredOrientation: Int?,
+  displayAspectRatio: Float?,
+  onDismiss: () -> Unit,
+) {
+  ApplyRequestedOrientation(preferredOrientation = preferredOrientation)
+
+  Dialog(
+    onDismissRequest = onDismiss,
+    properties = DialogProperties(usePlatformDefaultWidth = false),
+  ) {
+    Surface(
+      color = Color.Black,
+      modifier = Modifier.fillMaxSize(),
+    ) {
+      Box(modifier = Modifier.fillMaxSize()) {
+        if (playbackSource != null) {
+          AndroidView(
+            modifier =
+              Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+            factory = { context ->
+              VideoView(context).apply {
+                setMediaController(MediaController(context).also { controller -> controller.setAnchorView(this) })
+                setOnPreparedListener { mediaPlayer ->
+                  mediaPlayer.isLooping = false
+                  mediaPlayer.setOnVideoSizeChangedListener { _, _, _ ->
+                    applyFullscreenVideoZoom(this, mediaPlayer, displayAspectRatio)
+                  }
+                  applyFullscreenVideoZoom(this, mediaPlayer, displayAspectRatio)
+                  start()
+                }
+              }
+            },
+            update = { videoView ->
+              if (videoView.tag != playbackSource) {
+                videoView.tag = playbackSource
+                videoView.stopPlayback()
+                videoView.scaleX = 1f
+                videoView.scaleY = 1f
+                videoView.setVideoPath(playbackSource)
+              }
+            },
+          )
+        }
+
+        Box(
+          modifier =
+            Modifier
+              .align(Alignment.TopEnd)
+              .padding(12.dp),
+        ) {
+          Surface(
+            color = Color.Black.copy(alpha = 0.52f),
+            shape = RoundedCornerShape(999.dp),
+          ) {
+            IconButton(onClick = onDismiss) {
+              Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Close video",
+                tint = Color.White,
+              )
+            }
+          }
+        }
+      }
+    }
   }
 }
 
@@ -708,35 +903,44 @@ internal fun rememberResolvedMediaFileState(
 @Composable
 private fun rememberMediaPreviewState(file: File, includeFrame: Boolean): MediaPreviewState {
   var state by remember(file.absolutePath, includeFrame) {
-    mutableStateOf(MediaPreviewState(durationMs = null, previewFrame = null, failed = false))
+    mutableStateOf(
+      MediaPreviewState(
+        durationMs = null,
+        previewFrame = null,
+        videoWidth = null,
+        videoHeight = null,
+        rotationDegrees = null,
+        failed = false,
+      ),
+    )
   }
 
   LaunchedEffect(file.absolutePath, includeFrame) {
     state =
       withContext(Dispatchers.IO) {
-        runCatching {
-          val retriever = MediaMetadataRetriever()
-          try {
-            retriever.setDataSource(file.absolutePath)
-            val durationMs =
-              retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
-            val preview =
-              if (includeFrame) {
-                retriever.getFrameAtTime(0L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)?.asImageBitmap()
-              } else {
-                null
-              }
-            MediaPreviewState(durationMs = durationMs, previewFrame = preview, failed = false)
-          } finally {
-            runCatching { retriever.release() }
-          }
-        }.getOrElse {
-          MediaPreviewState(durationMs = null, previewFrame = null, failed = true)
-        }
+        loadMediaPreviewState(source = file.absolutePath, includeFrame = includeFrame)
       }
   }
 
   return state
+}
+
+@Composable
+private fun ApplyRequestedOrientation(preferredOrientation: Int?) {
+  val context = LocalContext.current
+  val activity = remember(context) { context.findActivity() }
+
+  DisposableEffect(activity, preferredOrientation) {
+    if (activity == null || preferredOrientation == null) {
+      onDispose {}
+    } else {
+      val previousOrientation = activity.requestedOrientation
+      activity.requestedOrientation = preferredOrientation
+      onDispose {
+        activity.requestedOrientation = previousOrientation
+      }
+    }
+  }
 }
 
 private suspend fun prepareAudioPlayer(
@@ -864,6 +1068,114 @@ private fun sha256Hex(bytes: ByteArray): String {
   return MessageDigest.getInstance("SHA-256")
     .digest(bytes)
     .joinToString(separator = "") { each -> "%02x".format(each) }
+}
+
+private fun loadMediaPreviewState(source: String, includeFrame: Boolean): MediaPreviewState {
+  return runCatching {
+    val retriever = MediaMetadataRetriever()
+    try {
+      if (source.startsWith("http://") || source.startsWith("https://")) {
+        retriever.setDataSource(source, emptyMap())
+      } else {
+        retriever.setDataSource(source)
+      }
+      val durationMs =
+        retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+      val videoWidth =
+        retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull()
+      val videoHeight =
+        retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull()
+      val rotationDegrees =
+        retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull()
+      val preview =
+        if (includeFrame) {
+          retriever.getFrameAtTime(0L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)?.asImageBitmap()
+        } else {
+          null
+        }
+      MediaPreviewState(
+        durationMs = durationMs,
+        previewFrame = preview,
+        videoWidth = videoWidth,
+        videoHeight = videoHeight,
+        rotationDegrees = rotationDegrees,
+        failed = false,
+      )
+    } finally {
+      runCatching { retriever.release() }
+    }
+  }.getOrElse {
+    MediaPreviewState(
+      durationMs = null,
+      previewFrame = null,
+      videoWidth = null,
+      videoHeight = null,
+      rotationDegrees = null,
+      failed = true,
+    )
+  }
+}
+
+private fun mediaDisplayAspectRatio(state: MediaPreviewState): Float? {
+  val (displayWidth, displayHeight) = mediaDisplaySize(state) ?: return null
+  if (displayWidth <= 0 || displayHeight <= 0) return null
+  return displayWidth.toFloat() / displayHeight.toFloat()
+}
+
+private fun applyFullscreenVideoZoom(videoView: VideoView, mediaPlayer: MediaPlayer, fallbackAspectRatio: Float?) {
+  videoView.post {
+    val viewWidth = videoView.width
+    val viewHeight = videoView.height
+    if (viewWidth <= 0 || viewHeight <= 0) return@post
+
+    val videoWidth = mediaPlayer.videoWidth
+    val videoHeight = mediaPlayer.videoHeight
+    val videoAspectRatio =
+      when {
+        videoWidth > 0 && videoHeight > 0 -> videoWidth.toFloat() / videoHeight.toFloat()
+        fallbackAspectRatio != null && fallbackAspectRatio > 0f -> fallbackAspectRatio
+        else -> return@post
+      }
+
+    val viewAspectRatio = viewWidth.toFloat() / viewHeight.toFloat()
+    videoView.scaleX = 1f
+    videoView.scaleY = 1f
+
+    if (videoAspectRatio > viewAspectRatio) {
+      videoView.scaleX = videoAspectRatio / viewAspectRatio
+    } else if (videoAspectRatio < viewAspectRatio) {
+      videoView.scaleY = viewAspectRatio / videoAspectRatio
+    }
+  }
+}
+
+private fun preferredVideoFullscreenOrientation(state: MediaPreviewState?): Int? {
+  val (displayWidth, displayHeight) = mediaDisplaySize(state) ?: return null
+  return if (displayWidth > displayHeight) {
+    ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+  } else {
+    ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+  }
+}
+
+private fun mediaDisplaySize(state: MediaPreviewState?): Pair<Int, Int>? {
+  val videoWidth = state?.videoWidth ?: return null
+  val videoHeight = state.videoHeight ?: return null
+  if (videoWidth <= 0 || videoHeight <= 0) return null
+  val rotation = ((state.rotationDegrees ?: 0) % 360 + 360) % 360
+  return if (rotation == 90 || rotation == 270) {
+    videoHeight to videoWidth
+  } else {
+    videoWidth to videoHeight
+  }
+}
+
+private tailrec fun Context.findActivity(): Activity? {
+  return when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+  }
 }
 
 private fun formatMediaDuration(durationMs: Long): String {

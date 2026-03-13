@@ -37,6 +37,16 @@ Last updated: 2026-03-13 (Asia/Shanghai)
   - emulator validation: passed
   - Android 11 real-device install: passed
   - Android 11 real-device app launch: passed
+- Current accepted media playback baseline on Android 11 real device:
+  - image fullscreen view: passed
+  - video fullscreen playback: passed on the stable in-app `Dialog + VideoView` path
+  - long video playback: passed after enabling HTTP range responses and sender-side MP4 faststart normalization
+  - orientation handling: current stable behavior auto-switches fullscreen video to portrait/landscape based on video metadata
+  - accepted rollback note: experimental fullscreen video implementations using a dedicated activity / custom `TextureView` player were rejected and removed after causing real-device exits
+- Current known media limitation:
+  - if `openclaw` or the local media sender environment is restarted, the local media HTTP server may not auto-recover
+  - symptom on device: media falls back to the legacy `10.0.2.2` compatibility warning and attachments do not open
+  - current workaround: restart `scripts/clawchat-media-server.mjs`
 
 ## Agent Media Capability Note (2026-03-12)
 - Scope checked:
@@ -79,6 +89,27 @@ Last updated: 2026-03-13 (Asia/Shanghai)
   - keep `clawchat2` on its own product baseline versioning for now
   - continue using local version baseline `0.2.1` (`versionName=0.2.1`, `versionCode=3`)
   - do not apply the upstream `v2026.3.11` version bump into this repo unless we later choose to align release numbering with official OpenClaw
+
+## UI Update (2026-03-13, media-fullscreen stabilization pass)
+- Goal: keep fullscreen media behavior stable on Android 11 real devices while preserving the media reference protocol improvements.
+- Accepted result:
+  - image tap opens fullscreen viewer
+  - video tap opens fullscreen in-app dialog playback
+  - fullscreen video keeps black background and uses the stable `VideoView` path
+  - auto-orientation based on video metadata is retained on the accepted path
+  - large videos now benefit from:
+    - sender-side MP4 faststart normalization when available
+    - HTTP `Range` support in the local media server
+    - direct stream-first playback while the local cache is still being resolved
+- Rejected during this pass:
+  - dedicated fullscreen video activity
+  - custom `TextureView` fullscreen video player
+  - both were removed after causing exits on the Android 11 validation device
+- Validation:
+  - Kotlin compile passed: `./gradlew :app:compileDebugKotlin`
+  - APK assemble passed: `./gradlew :app:assembleDebug`
+  - Android 11 real-device image/audio/video verification: passed
+  - Android 11 real-device fullscreen video verification after rollback to stable path: passed
 
 ## Development Rules
 - Before each development session: read this file first.
