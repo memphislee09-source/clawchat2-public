@@ -80,6 +80,7 @@ Notes:
   - includes `mediaPath`/`mediaPort` so the Android client can resolve media from the current gateway host
 - Emulator default `mediaUrl` host is `10.0.2.2` as a legacy fallback; updated ClawChat2 builds no longer require `--public-host` when the media server runs on the same host as the gateway.
 - For agent instructions, prefer `AGENT_MEDIA_SEND.md` as the operational source of truth.
+- For media-server start/recovery instructions, prefer `AGENT_MEDIA_SERVER.md` as the operational source of truth.
 - Current validation status:
   - emulator image/audio/video receive: passed
   - Android 11 real-device install + launch: passed
@@ -89,10 +90,12 @@ Notes:
 - Media server lifecycle:
   - the sender script now installs and refreshes a macOS `launchd` agent for the local media HTTP server
   - after the first media send on macOS, the media server should auto-recover if the prior server process exits or the local OpenClaw host environment is restarted
+  - if media does not recover after a restart, use `AGENT_MEDIA_SERVER.md` to health-check and restart the LaunchAgent directly
 - Current known UI limitation:
   - on the stable `VideoView` fullscreen path, letterbox space is accepted for aspect-fit playback, but that empty area is not yet guaranteed to render as pure black on every real-device path
 - The Android chat composer in this repo still only exposes image picking for user-originated sends; audio/video support added here is focused on agent -> ClawChat2 receive and render.
 - Usage guide: `AGENT_MEDIA_SEND.md`
+- Media-server guide: `AGENT_MEDIA_SERVER.md`
 
 ## Open In Android Studio
 

@@ -153,6 +153,19 @@ Last updated: 2026-03-13 (Asia/Shanghai)
   - simulator round icon path: updated to use the dedicated round PNG resource set
   - note: some real-device system app-info / about surfaces may still depend on OEM icon caching behavior until the system refreshes its cached icon view
 
+## Ops Update (2026-03-13, media-server startup doc)
+- Goal: give future agents a deterministic way to verify and restart the local macOS media HTTP server after OpenClaw host restarts.
+- Changes:
+  - added `AGENT_MEDIA_SERVER.md` with the exact recovery flow:
+    - health check: `curl -sf http://127.0.0.1:39393/health`
+    - fast restart: `launchctl kickstart -k gui/$(id -u)/ai.openclaw.clawchat-media-server`
+    - full recovery: `bootout -> bootstrap -> kickstart`
+  - updated `README.md` to point agents to the new media-server startup guide
+- Validation:
+  - launch agent was present in `launchctl list` under `ai.openclaw.clawchat-media-server`
+  - health endpoint returned `{"ok":true,...}` on `127.0.0.1:39393`
+  - explicit `kickstart -k` recycle was attempted; brief restart window caused an immediate health probe miss once, but the service came back healthy right after and remained healthy
+
 ## Tooling Update (2026-03-13, media-server auto-recover pass)
 - Goal: avoid manual restarts of the local media HTTP server after host-side OpenClaw / terminal restarts.
 - Changes:
