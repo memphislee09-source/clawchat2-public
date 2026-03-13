@@ -128,6 +128,31 @@ Last updated: 2026-03-13 (Asia/Shanghai)
   - APK assemble passed: `./gradlew :app:assembleDebug`
   - Android 11 real-device install + launch after rollback: passed
 
+## UI Update (2026-03-13, fullscreen video black-backdrop hardening)
+- Goal: keep the accepted `Dialog + VideoView` fullscreen path, but guarantee that the UI behind fullscreen playback is obscured on real devices where the letterbox area could still reveal the chat screen.
+- Accepted result:
+  - fullscreen video still uses the stable in-app `Dialog + VideoView` implementation
+  - aspect-fit, non-cropping sizing remains unchanged
+  - fullscreen dialog now forces a black backdrop and a full black dim-behind layer so the UI beneath fullscreen playback is not visible on the validated Android 11 real device path
+- Validation:
+  - Kotlin compile passed: `./gradlew :app:compileDebugKotlin`
+  - APK assemble passed: `./gradlew :app:assembleDebug`
+  - Android 11 real-device user verification after reinstall: passed for the backdrop/black-background fix
+
+## Branding Update (2026-03-13, launcher/app icon resource split)
+- Goal: preserve the full green-background square icon where square icons are expected, while also providing a clean round icon path for Android surfaces that prefer a round icon.
+- Changes:
+  - manifest `android:icon` now points to a dedicated square PNG resource set: `@mipmap/ic_app_icon`
+  - manifest `android:roundIcon` now points to a dedicated round PNG resource set: `@mipmap/ic_app_icon_round`
+  - foreground-service notification small icon was switched to `R.mipmap.ic_app_icon`
+  - round icon assets were generated from the provided `Downloads/test/ClawChat.jpg` source using a maximum-area centered circular crop
+- Validation:
+  - Kotlin compile passed: `./gradlew :app:compileDebugKotlin`
+  - APK assemble passed: `./gradlew :app:assembleDebug`
+  - square icon on Android device launcher: user-verified as correct
+  - simulator round icon path: updated to use the dedicated round PNG resource set
+  - note: some real-device system app-info / about surfaces may still depend on OEM icon caching behavior until the system refreshes its cached icon view
+
 ## Tooling Update (2026-03-13, media-server auto-recover pass)
 - Goal: avoid manual restarts of the local media HTTP server after host-side OpenClaw / terminal restarts.
 - Changes:

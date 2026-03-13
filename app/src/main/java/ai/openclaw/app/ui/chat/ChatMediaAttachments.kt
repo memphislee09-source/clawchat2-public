@@ -9,7 +9,9 @@ import android.media.AudioAttributes
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.util.Base64
+import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.MediaController
 import android.widget.VideoView
 import androidx.compose.foundation.BorderStroke
@@ -735,6 +737,13 @@ private fun FullscreenVideoDialog(
       modifier = Modifier.fillMaxSize(),
     ) {
       Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+          modifier =
+            Modifier
+              .fillMaxSize()
+              .background(Color.Black),
+        )
+
         if (playbackSource != null) {
           BoxWithConstraints(
             modifier = Modifier.fillMaxSize(),
@@ -820,6 +829,10 @@ private fun PrepareFullscreenDialogWindow() {
   DisposableEffect(dialogWindow) {
     dialogWindow.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
     dialogWindow.setBackgroundDrawable(ColorDrawable(android.graphics.Color.BLACK))
+    dialogWindow.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+    dialogWindow.setDimAmount(1f)
+    dialogWindow.decorView.setBackgroundColor(android.graphics.Color.BLACK)
+    dialogWindow.findViewById<View>(android.R.id.content)?.setBackgroundColor(android.graphics.Color.BLACK)
     WindowCompat.setDecorFitsSystemWindows(dialogWindow, false)
     val insetsController = WindowInsetsControllerCompat(dialogWindow, dialogWindow.decorView)
     insetsController.hide(WindowInsetsCompat.Type.systemBars())

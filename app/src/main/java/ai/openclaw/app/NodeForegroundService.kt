@@ -112,7 +112,7 @@ class NodeForegroundService : Service() {
       )
 
     return NotificationCompat.Builder(this, CHANNEL_ID)
-      .setSmallIcon(R.mipmap.ic_launcher)
+      .setSmallIcon(R.mipmap.ic_app_icon)
       .setContentTitle(title)
       .setContentText(text)
       .setContentIntent(launchPending)
