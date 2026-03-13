@@ -85,8 +85,9 @@ Notes:
   - Android 11 real-device install + launch: passed
   - user-confirmed real-device image/audio/video behavior: passed
   - user-confirmed Android 11 real-device fullscreen image/video behavior: passed on the stable in-app dialog path
-- Current known limitation:
-  - if the local sender/media environment is restarted, the local media HTTP server may need to be relaunched before previously injected attachments can open again
+- Media server lifecycle:
+  - the sender script now installs and refreshes a macOS `launchd` agent for the local media HTTP server
+  - after the first media send on macOS, the media server should auto-recover if the prior server process exits or the local OpenClaw host environment is restarted
 - The Android chat composer in this repo still only exposes image picking for user-originated sends; audio/video support added here is focused on agent -> ClawChat2 receive and render.
 - Usage guide: `AGENT_MEDIA_SEND.md`
 

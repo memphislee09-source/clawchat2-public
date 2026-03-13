@@ -304,6 +304,17 @@ async function ensureMediaServer({ bindHost, port, publicHost, storeDir, stateFi
   const localHealthUrl = `http://127.0.0.1:${port}`;
   if (await isServerHealthy(localHealthUrl)) return;
 
+  if (process.platform === 'darwin' && typeof process.getuid === 'function' && isCommandAvailable('launchctl', ['help'])) {
+    await ensureLaunchAgentMediaServer({
+      bindHost,
+      port,
+      storeDir,
+      stateFile,
+      localHealthUrl,
+    });
+    if (await waitForHealthy(localHealthUrl, 40, 250)) return;
+  }
+
   const serverScript = path.join(__dirname, 'clawchat-media-server.mjs');
   const logPath = path.join(storeDir, 'server.log');
   const outFd = fs.openSync(logPath, 'a');
@@ -328,12 +339,121 @@ async function ensureMediaServer({ bindHost, port, publicHost, storeDir, stateFi
   child.unref();
   fs.closeSync(outFd);
 
-  for (let attempt = 0; attempt < 25; attempt += 1) {
-    await sleep(200);
-    if (await isServerHealthy(localHealthUrl)) return;
-  }
+  if (await waitForHealthy(localHealthUrl, 25, 200)) return;
 
   fail(`Media server did not become ready at ${publicBaseUrl}`);
+}
+
+async function ensureLaunchAgentMediaServer({ bindHost, port, storeDir, stateFile, localHealthUrl }) {
+  const label = 'ai.openclaw.clawchat-media-server';
+  const launchAgentDir = path.join(os.homedir(), 'Library', 'LaunchAgents');
+  const plistPath = path.join(launchAgentDir, `${label}.plist`);
+  const logPath = path.join(storeDir, 'server.log');
+  const domainTarget = `gui/${process.getuid()}`;
+  const launchdProgram = process.execPath;
+  const serverScript = path.join(__dirname, 'clawchat-media-server.mjs');
+
+  fs.mkdirSync(launchAgentDir, { recursive: true });
+  fs.mkdirSync(storeDir, { recursive: true });
+
+  const plistContent = renderLaunchAgentPlist({
+    label,
+    launchdProgram,
+    serverScript,
+    bindHost,
+    port,
+    storeDir,
+    stateFile,
+    logPath,
+  });
+
+  if (!fs.existsSync(plistPath) || fs.readFileSync(plistPath, 'utf8') !== plistContent) {
+    fs.writeFileSync(plistPath, plistContent, 'utf8');
+  }
+
+  spawnSync('launchctl', ['bootout', domainTarget, plistPath], { stdio: 'ignore' });
+  const bootstrapResult = spawnSync('launchctl', ['bootstrap', domainTarget, plistPath], {
+    stdio: 'pipe',
+    encoding: 'utf8',
+  });
+  if (bootstrapResult.status !== 0) {
+    fail(
+      `Failed to bootstrap media launch agent: ${
+        bootstrapResult.stderr?.trim() || bootstrapResult.stdout?.trim() || 'unknown launchctl error'
+      }`,
+    );
+  }
+
+  const kickstartResult = spawnSync('launchctl', ['kickstart', '-k', `${domainTarget}/${label}`], {
+    stdio: 'pipe',
+    encoding: 'utf8',
+  });
+  if (kickstartResult.status !== 0 && !(await isServerHealthy(localHealthUrl))) {
+    fail(
+      `Failed to kickstart media launch agent: ${
+        kickstartResult.stderr?.trim() || kickstartResult.stdout?.trim() || 'unknown launchctl error'
+      }`,
+    );
+  }
+}
+
+function renderLaunchAgentPlist({
+  label,
+  launchdProgram,
+  serverScript,
+  bindHost,
+  port,
+  storeDir,
+  stateFile,
+  logPath,
+}) {
+  const programArguments = [
+    launchdProgram,
+    serverScript,
+    '--host',
+    bindHost,
+    '--port',
+    String(port),
+    '--store-dir',
+    storeDir,
+    '--state-file',
+    stateFile,
+  ];
+  const escapedArgs = programArguments.map((value) => `    <string>${escapePlistValue(value)}</string>`).join('\n');
+
+  return (
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n' +
+    '<plist version="1.0">\n' +
+    '<dict>\n' +
+    '  <key>Label</key>\n' +
+    `  <string>${escapePlistValue(label)}</string>\n` +
+    '  <key>ProgramArguments</key>\n' +
+    '  <array>\n' +
+    `${escapedArgs}\n` +
+    '  </array>\n' +
+    '  <key>RunAtLoad</key>\n' +
+    '  <true/>\n' +
+    '  <key>KeepAlive</key>\n' +
+    '  <true/>\n' +
+    '  <key>WorkingDirectory</key>\n' +
+    `  <string>${escapePlistValue(storeDir)}</string>\n` +
+    '  <key>StandardOutPath</key>\n' +
+    `  <string>${escapePlistValue(logPath)}</string>\n` +
+    '  <key>StandardErrorPath</key>\n' +
+    `  <string>${escapePlistValue(logPath)}</string>\n` +
+    '</dict>\n' +
+    '</plist>\n'
+  );
+}
+
+function escapePlistValue(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&apos;');
 }
 
 function isServerHealthy(baseUrl) {
@@ -352,6 +472,14 @@ function isServerHealthy(baseUrl) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForHealthy(baseUrl, attempts, delayMs) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    await sleep(delayMs);
+    if (await isServerHealthy(baseUrl)) return true;
+  }
+  return false;
 }
 
 function ensureSessionEntry({ sessionsIndex, sessionsDir, sessionKey, nowMs }) {
@@ -493,8 +621,8 @@ function randomId() {
   return crypto.randomBytes(4).toString('hex');
 }
 
-function isCommandAvailable(command) {
-  const result = spawnSync(command, ['-version'], { stdio: 'ignore' });
+function isCommandAvailable(command, args = ['-version']) {
+  const result = spawnSync(command, args, { stdio: 'ignore' });
   return result.status === 0;
 }
 

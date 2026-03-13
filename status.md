@@ -44,9 +44,8 @@ Last updated: 2026-03-13 (Asia/Shanghai)
   - orientation handling: current stable behavior auto-switches fullscreen video to portrait/landscape based on video metadata
   - accepted rollback note: experimental fullscreen video implementations using a dedicated activity / custom `TextureView` player were rejected and removed after causing real-device exits
 - Current known media limitation:
-  - if `openclaw` or the local media sender environment is restarted, the local media HTTP server may not auto-recover
-  - symptom on device: media falls back to the legacy `10.0.2.2` compatibility warning and attachments do not open
-  - current workaround: restart `scripts/clawchat-media-server.mjs`
+  - resolved on macOS by installing a `launchd` media server agent from the sender script
+  - after first successful media send, the local media HTTP server should auto-recover if the previous server process exits or the local OpenClaw host environment is restarted
 
 ## Agent Media Capability Note (2026-03-12)
 - Scope checked:
@@ -110,6 +109,21 @@ Last updated: 2026-03-13 (Asia/Shanghai)
   - APK assemble passed: `./gradlew :app:assembleDebug`
   - Android 11 real-device image/audio/video verification: passed
   - Android 11 real-device fullscreen video verification after rollback to stable path: passed
+
+## Tooling Update (2026-03-13, media-server auto-recover pass)
+- Goal: avoid manual restarts of the local media HTTP server after host-side OpenClaw / terminal restarts.
+- Changes:
+  - `scripts/send-clawchat-media.mjs` now installs and refreshes a macOS `launchd` agent:
+    - label: `ai.openclaw.clawchat-media-server`
+    - plist path: `~/Library/LaunchAgents/ai.openclaw.clawchat-media-server.plist`
+  - sender script still waits for `127.0.0.1:39393/health`, but now prefers the managed launch agent before falling back to the legacy detached child process path
+- Validation:
+  - script syntax check passed: `node --check scripts/send-clawchat-media.mjs`
+  - launch agent bootstrap passed during real run of `scripts/send-clawchat-media.mjs`
+  - forced process kill recovery passed:
+    - killed running media server PID
+    - `launchd` rescheduled and restarted the service automatically
+    - health endpoint recovered at `http://127.0.0.1:39393/health`
 
 ## Development Rules
 - Before each development session: read this file first.
