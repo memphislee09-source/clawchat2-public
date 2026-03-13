@@ -1,6 +1,7 @@
 # Agent Media Send
 
-Preferred method: call the local script directly.
+If you are sending image, audio, or video into ClawChat2, use the local sender script.
+Do not hand-build `mediaUrl` unless you have no other option.
 
 Script:
 
@@ -8,7 +9,7 @@ Script:
 /Users/memphis/.openclaw/workspace-mira/clawchat2/scripts/send-clawchat-media.mjs
 ```
 
-Use it like this:
+Default usage:
 
 ```bash
 /Users/memphis/.openclaw/workspace-mira/clawchat2/scripts/send-clawchat-media.mjs \
@@ -17,18 +18,34 @@ Use it like this:
   --message "Optional caption"
 ```
 
-Rules:
+What the script does:
 
-- default session is `agent:<agentId>:clawchat2`
-- script writes an `assistant` media message directly into the ClawChat2 session transcript
-- script stores the real file in a local media store and puts a `mediaUrl` reference into the message
+- writes an `assistant` media message directly into session `agent:<agentId>:clawchat2`
+- stores the real file in the local media store
+- writes stable gateway-relative fields:
+  - `mediaPath`
+  - `mediaPort`
+- also writes legacy compatibility field:
+  - `mediaUrl`
+
+Current rule:
+
+- current ClawChat2 builds resolve media primarily from `mediaPath + mediaPort + current gateway host`
+- `mediaUrl` is only a fallback for older builds or older messages
+- in normal use, do not worry about LAN vs Tailscale switching if the media server runs on the same host as the gateway
+- only use `--public-host <LAN-or-tailnet-host>` when you explicitly need a legacy absolute `mediaUrl` to point somewhere else
+
+Hard requirements:
+
 - use absolute file paths
-- supported media kinds: `image`, `audio`, `video`
-- type and MIME are auto-detected from the file name; override only if needed
-- emulator default host is `10.0.2.2`
-- for a real device, override `--public-host <LAN-or-tailnet-host>`
+- target session key must be `agent:<agentId>:clawchat2`
+- supported media kinds are `image`, `audio`, `video`
+- `mimeType` must be the real MIME type
+- do not send markdown image syntax
+- do not send URL-only media
+- do not send `data:` URIs
 
-Image example:
+Examples:
 
 ```bash
 /Users/memphis/.openclaw/workspace-mira/clawchat2/scripts/send-clawchat-media.mjs \
@@ -37,16 +54,12 @@ Image example:
   --message "Please see the image."
 ```
 
-Audio example:
-
 ```bash
 /Users/memphis/.openclaw/workspace-mira/clawchat2/scripts/send-clawchat-media.mjs \
   --agent main \
   --file /tmp/voice.mp3 \
   --message "Please play this audio."
 ```
-
-Video example:
 
 ```bash
 /Users/memphis/.openclaw/workspace-mira/clawchat2/scripts/send-clawchat-media.mjs \
@@ -55,7 +68,31 @@ Video example:
   --message "Please see this video."
 ```
 
-Optional overrides:
+If you cannot call the script and must write structured content directly, use this shape:
+
+```json
+[
+  { "type": "text", "text": "Optional caption" },
+  {
+    "type": "image|audio|video",
+    "mimeType": "real MIME type",
+    "fileName": "original file name",
+    "mediaPath": "/media/<token>",
+    "mediaPort": 39393,
+    "mediaUrl": "http://10.0.2.2:39393/media/<token>",
+    "mediaSha256": "<sha256>",
+    "sizeBytes": 123456
+  }
+]
+```
+
+Direct-payload rules:
+
+- `mediaPath` + `mediaPort` are the important fields
+- keep `mediaUrl` only as a compatibility hint
+- `mediaUrl` may point to `10.0.2.2` for emulator fallback, but current ClawChat2 builds should not depend on it
+
+Optional script overrides:
 
 - `--session-key agent:<agentId>:clawchat2`
 - `--type image|audio|video`

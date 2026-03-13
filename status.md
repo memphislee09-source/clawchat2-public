@@ -1,10 +1,11 @@
 # clawchat2 status
 
-Last updated: 2026-03-12 (Asia/Shanghai)
+Last updated: 2026-03-13 (Asia/Shanghai)
 
 ## Project Status
 - Version baseline: **0.2.1** (`versionName=0.2.1`, `versionCode=3`)
 - Stage: internal testing
+- Android compatibility baseline: **minSdk 30** (Android 11+)
 
 ## Project Baseline
 - Upstream source: `openclaw/openclaw` -> `apps/android`
@@ -28,6 +29,14 @@ Last updated: 2026-03-12 (Asia/Shanghai)
   - image render: passed
   - audio playback: passed
   - video preview + playback: passed
+- Current media reference model is now gateway-relative first:
+  - sender script writes `mediaPath` + `mediaPort`
+  - Android client resolves media against the current gateway host
+  - legacy `mediaUrl` is retained only as a compatibility fallback
+- Current Android device compatibility was revalidated after lowering `minSdk`:
+  - emulator validation: passed
+  - Android 11 real-device install: passed
+  - Android 11 real-device app launch: passed
 
 ## Agent Media Capability Note (2026-03-12)
 - Scope checked:
@@ -124,6 +133,10 @@ Last updated: 2026-03-12 (Asia/Shanghai)
 ### Notes
 - On this machine, `emulator` is installed but not exported to PATH.
 - If Gradle fails inside sandbox with `FileLockContentionHandler` / socket permission errors, rerun build commands outside sandbox.
+- Current real-device validation target:
+  - device: `Redmi K20`
+  - Android: `11`
+  - adb serial: `c2f22adf`
 
 ## Test & Build (2026-03-10)
 - Targeted test passed: `:app:testDebugUnitTest --tests ai.openclaw.app.ui.GatewayConfigResolverTest*`
@@ -449,6 +462,59 @@ Last updated: 2026-03-12 (Asia/Shanghai)
   - Manual audio playback test passed in ClawChat2
   - Manual video preview + playback test passed in ClawChat2
 
+## Feature Update (2026-03-13, gateway-relative media reference pass)
+- Goal: stop binding agent-sent media history to a single LAN or emulator host when ClawChat2 switches between LAN and Tailscale.
+- Changes:
+  - agent media payloads now include gateway-relative `mediaPath` + `mediaPort` fields in addition to the legacy `mediaUrl`
+  - Android attachment resolution now prefers:
+    - current connected gateway remote host
+    - saved manual gateway host
+    - saved Tailscale host
+  - legacy `mediaUrl` remains as a compatibility fallback for older messages/builds
+  - last connected gateway remote address is persisted so attachment resolution can follow the active gateway endpoint instead of the send-time host
+  - script warning text updated to clarify that `--public-host` is mainly for legacy clients or non-gateway media hosts
+- Implementation files:
+  - `scripts/send-clawchat-media.mjs`
+  - `app/src/main/java/ai/openclaw/app/chat/ChatModels.kt`
+  - `app/src/main/java/ai/openclaw/app/chat/ChatController.kt`
+  - `app/src/main/java/ai/openclaw/app/SecurePrefs.kt`
+  - `app/src/main/java/ai/openclaw/app/NodeRuntime.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/chat/ChatAttachmentSupport.kt`
+  - `app/src/main/java/ai/openclaw/app/ui/chat/ChatMediaAttachments.kt`
+  - `app/src/test/java/ai/openclaw/app/ui/chat/ChatAttachmentSupportTest.kt`
+  - `README.md`
+  - `AGENT_MEDIA_SEND.md`
+- Validation:
+  - Kotlin compile passed: `./gradlew :app:compileDebugKotlin`
+  - Targeted unit test passed: `./gradlew :app:testDebugUnitTest --tests ai.openclaw.app.ui.chat.ChatAttachmentSupportTest`
+
+## Compatibility Update (2026-03-13, Android 11 install pass)
+- Goal: verify whether ClawChat2 can run on the available Android 11 real device instead of requiring Android 12+.
+- Changes:
+  - lowered Android app `minSdk` from `31` to `30`
+  - kept current app behavior unchanged while validating install/runtime baseline first
+- Validation:
+  - debug APK rebuild passed: `./gradlew :app:assembleDebug`
+  - previous install failure root cause identified from MIUI logs:
+    - old APK required `minSdk 31`
+    - target device was Android 11 / API 30
+  - updated APK install passed on real device:
+    - device: `Redmi K20`
+    - adb serial: `c2f22adf`
+  - real-device app launch passed:
+    - foreground activity confirmed: `ai.openclaw.app/.MainActivity`
+
+## Validation Update (2026-03-13, media receive pass on emulator + real device)
+- Goal: verify the current gateway-relative media protocol works in actual ClawChat2 runtime, not only unit tests.
+- Validation:
+  - emulator install + launch passed
+  - emulator media injection passed for:
+    - image render
+    - audio card render + playback/decode
+    - video preview card render + in-app dialog open
+  - real-device install baseline passed after lowering `minSdk` to `30`
+  - user-confirmed real-device image/audio/video behavior: passed
+
 ## Release Update (2026-03-12, version 0.2.1 test baseline)
 - Goal: roll the current accepted UI/interaction iteration into a new device-test baseline and sync it to GitHub main.
 - Changes:
@@ -496,3 +562,4 @@ Last updated: 2026-03-12 (Asia/Shanghai)
 - Before release: remove hardcoded secrets/endpoints and tighten transport/security config.
 - Brand rename pass (app name / package id / icon / default gateway config) when requested.
 - Establish standard upstream sync checklist script if needed.
+- Agent-side operational guidance now assumes agents should call the local media sender script instead of hand-writing media payload JSON.

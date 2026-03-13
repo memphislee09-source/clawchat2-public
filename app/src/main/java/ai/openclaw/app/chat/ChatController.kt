@@ -501,6 +501,8 @@ class ChatController(
         fileName = obj["fileName"].asStringOrNull(),
         base64 = obj["content"].asStringOrNull(),
         mediaUrl = obj["mediaUrl"].asStringOrNull(),
+        mediaPath = obj["mediaPath"].asStringOrNull(),
+        mediaPort = obj["mediaPort"].asLongOrNull()?.toInt(),
         mediaSha256 = obj["mediaSha256"].asStringOrNull(),
         sizeBytes = obj["sizeBytes"].asLongOrNull(),
       )

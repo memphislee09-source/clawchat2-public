@@ -53,6 +53,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.viewinterop.AndroidView
+import ai.openclaw.app.SecurePrefs
 import ai.openclaw.app.ui.mobileAccent
 import ai.openclaw.app.ui.mobileAccentSoft
 import ai.openclaw.app.ui.mobileBorder
@@ -572,6 +573,8 @@ private fun ChatFileImage(file: File, mimeType: String?) {
           fileName = file.name,
           base64 = null,
           mediaUrl = null,
+          mediaPath = null,
+          mediaPort = null,
           mediaSha256 = null,
           sizeBytes = file.length(),
         ),
@@ -642,9 +645,12 @@ internal fun rememberResolvedMediaFileState(
   descriptor: ChatAttachmentDescriptor,
 ): ResolvedMediaFileState {
   val context = LocalContext.current
+  val prefs = remember(context.applicationContext) { SecurePrefs(context.applicationContext) }
   var state by remember(
     descriptor.base64,
     descriptor.mediaUrl,
+    descriptor.mediaPath,
+    descriptor.mediaPort,
     descriptor.mediaSha256,
     descriptor.mimeType,
     descriptor.fileName,
@@ -656,6 +662,8 @@ internal fun rememberResolvedMediaFileState(
   LaunchedEffect(
     descriptor.base64,
     descriptor.mediaUrl,
+    descriptor.mediaPath,
+    descriptor.mediaPort,
     descriptor.mediaSha256,
     descriptor.mimeType,
     descriptor.fileName,
@@ -665,7 +673,13 @@ internal fun rememberResolvedMediaFileState(
     val resolved =
       withContext(Dispatchers.IO) {
         runCatching {
-          resolveAttachmentFile(context.cacheDir, descriptor)
+          resolveAttachmentFile(
+            cacheDir = context.cacheDir,
+            descriptor = descriptor,
+            gatewayRemoteAddress = prefs.lastGatewayRemoteAddress.value,
+            manualHost = prefs.manualHost.value,
+            tailscaleHost = prefs.tailscaleHost.value,
+          )
         }
       }
     state =
@@ -678,7 +692,11 @@ internal fun rememberResolvedMediaFileState(
             file = null,
             loading = false,
             failed = true,
-            errorText = err.message ?: "Attachment fetch failed",
+            errorText =
+              formatAttachmentFetchErrorMessage(
+                mediaUrl = descriptor.mediaUrl,
+                fallbackMessage = err.message,
+              ),
           )
         },
       )
@@ -745,7 +763,13 @@ private suspend fun prepareAudioPlayer(
   }
 }
 
-private fun resolveAttachmentFile(cacheDir: File, descriptor: ChatAttachmentDescriptor): File {
+private fun resolveAttachmentFile(
+  cacheDir: File,
+  descriptor: ChatAttachmentDescriptor,
+  gatewayRemoteAddress: String,
+  manualHost: String,
+  tailscaleHost: String,
+): File {
   val mediaDir = File(cacheDir, "chat-media").apply { mkdirs() }
   val extension =
     resolveAttachmentExtension(
@@ -765,35 +789,53 @@ private fun resolveAttachmentFile(cacheDir: File, descriptor: ChatAttachmentDesc
     return file
   }
 
-  val mediaUrl = descriptor.mediaUrl ?: error("missing attachment source")
+  val mediaUrl = descriptor.mediaUrl ?: descriptor.mediaPath ?: error("missing attachment source")
   val remoteKey = descriptor.mediaSha256 ?: sha256Hex(mediaUrl.toByteArray())
   val file = File(mediaDir, "$remoteKey.$extension")
   if (file.exists() && file.length() > 0L) return file
 
-  val request =
-    Request.Builder()
-      .get()
-      .url(mediaUrl)
-      .build()
+  val candidateUrls =
+    resolveAttachmentFetchUrls(
+      mediaUrl = mediaUrl,
+      mediaPath = descriptor.mediaPath,
+      mediaPort = descriptor.mediaPort,
+      gatewayRemoteAddress = gatewayRemoteAddress,
+      manualHost = manualHost,
+      tailscaleHost = tailscaleHost,
+    )
+  var lastError: Throwable? = null
 
-  mediaHttpClient.newCall(request).execute().use { response ->
-    require(response.isSuccessful) { "HTTP ${response.code}" }
-    val body = response.body ?: error("empty response body")
-    val bytes = body.bytes()
-    require(bytes.isNotEmpty()) { "empty attachment" }
-    descriptor.mediaSha256?.let { expected ->
-      val actual = sha256Hex(bytes)
-      require(actual.equals(expected, ignoreCase = true)) { "attachment checksum mismatch" }
-    }
-    val tempFile = File(mediaDir, "$remoteKey.$extension.part")
-    tempFile.writeBytes(bytes)
-    if (!tempFile.renameTo(file)) {
-      tempFile.copyTo(file, overwrite = true)
-      tempFile.delete()
+  for (candidateUrl in candidateUrls) {
+    val request =
+      Request.Builder()
+        .get()
+        .url(candidateUrl)
+        .build()
+
+    try {
+      mediaHttpClient.newCall(request).execute().use { response ->
+        require(response.isSuccessful) { "HTTP ${response.code}" }
+        val body = response.body ?: error("empty response body")
+        val bytes = body.bytes()
+        require(bytes.isNotEmpty()) { "empty attachment" }
+        descriptor.mediaSha256?.let { expected ->
+          val actual = sha256Hex(bytes)
+          require(actual.equals(expected, ignoreCase = true)) { "attachment checksum mismatch" }
+        }
+        val tempFile = File(mediaDir, "$remoteKey.$extension.part")
+        tempFile.writeBytes(bytes)
+        if (!tempFile.renameTo(file)) {
+          tempFile.copyTo(file, overwrite = true)
+          tempFile.delete()
+        }
+      }
+      return file
+    } catch (err: Throwable) {
+      lastError = err
     }
   }
 
-  return file
+  throw (lastError ?: error("Attachment fetch failed"))
 }
 
 private fun resolveAttachmentExtension(kind: ChatAttachmentKind, mimeType: String?, fileName: String?): String {

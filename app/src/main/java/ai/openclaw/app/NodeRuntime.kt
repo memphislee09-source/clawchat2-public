@@ -243,6 +243,7 @@ class NodeRuntime(context: Context) {
         operatorStatusText = "Connected"
         _serverName.value = name
         _remoteAddress.value = remote
+        prefs.setLastGatewayRemoteAddress(remote)
         _seamColorArgb.value = DEFAULT_SEAM_COLOR_ARGB
         applyMainSessionKey(mainSessionKey)
         updateStatus()
@@ -259,6 +260,7 @@ class NodeRuntime(context: Context) {
         operatorConnected = false
         _serverName.value = null
         _remoteAddress.value = null
+        prefs.setLastGatewayRemoteAddress(null)
         _seamColorArgb.value = DEFAULT_SEAM_COLOR_ARGB
         if (!isCanonicalMainSessionKey(_mainSessionKey.value)) {
           _mainSessionKey.value = "main"

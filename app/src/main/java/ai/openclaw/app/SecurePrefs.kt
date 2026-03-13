@@ -133,6 +133,10 @@ class SecurePrefs(context: Context) {
     MutableStateFlow(plainPrefs.getString("ui.lastChatSessionKey", "") ?: "")
   val lastChatSessionKey: StateFlow<String> = _lastChatSessionKey
 
+  private val _lastGatewayRemoteAddress =
+    MutableStateFlow(plainPrefs.getString("gateway.lastRemoteAddress", "") ?: "")
+  val lastGatewayRemoteAddress: StateFlow<String> = _lastGatewayRemoteAddress
+
   private val _chatLastReadAtMs = MutableStateFlow(loadChatLastReadAtMs())
   val chatLastReadAtMs: StateFlow<Map<String, Long>> = _chatLastReadAtMs
 
@@ -348,6 +352,12 @@ class SecurePrefs(context: Context) {
     val normalized = value.trim()
     plainPrefs.edit { putString("ui.lastChatSessionKey", normalized) }
     _lastChatSessionKey.value = normalized
+  }
+
+  fun setLastGatewayRemoteAddress(value: String?) {
+    val normalized = value?.trim().orEmpty()
+    plainPrefs.edit { putString("gateway.lastRemoteAddress", normalized) }
+    _lastGatewayRemoteAddress.value = normalized
   }
 
   fun markChatSessionRead(sessionKey: String, atMs: Long = System.currentTimeMillis()) {

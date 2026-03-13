@@ -53,6 +53,11 @@ async function main(parsedArgs) {
   const publicHost = parsedArgs['public-host'] ?? '10.0.2.2';
   const bindHost = parsedArgs['bind-host'] ?? '0.0.0.0';
   const port = parsePort(parsedArgs.port ?? '39393');
+  if (!parsedArgs['public-host'] && publicHost === '10.0.2.2') {
+    process.stderr.write(
+      '[warn] legacy mediaUrl host defaults to emulator-only 10.0.2.2. Updated ClawChat2 builds prefer mediaPath/mediaPort via the current gateway host; use --public-host only for legacy clients or non-gateway media hosts.\n',
+    );
+  }
 
   const mediaBytes = fs.readFileSync(resolvedFilePath);
   if (mediaBytes.length === 0) fail(`File is empty: ${resolvedFilePath}`);
@@ -127,6 +132,7 @@ async function main(parsedArgs) {
   const transcriptPath = entry.sessionFile;
   const lastMessageId = findLastRecordId(transcriptPath);
   const messageId = randomId();
+  const mediaPath = `/media/${encodeURIComponent(token)}`;
   const mediaUrl = `http://${publicHost}:${port}/media/${encodeURIComponent(token)}`;
   const content = [];
 
@@ -142,6 +148,8 @@ async function main(parsedArgs) {
     mimeType: detectedMime,
     fileName,
     mediaUrl,
+    mediaPath,
+    mediaPort: port,
     mediaSha256: sha256,
     sizeBytes: mediaBytes.length,
   });
@@ -209,6 +217,8 @@ async function main(parsedArgs) {
       fileName,
       sizeBytes: mediaBytes.length,
       sha256,
+      mediaPath,
+      mediaPort: port,
       mediaUrl,
     },
     mediaServer: {

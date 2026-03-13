@@ -3,6 +3,7 @@ package ai.openclaw.app.ui.chat
 import ai.openclaw.app.chat.ChatMessageContent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ChatAttachmentSupportTest {
@@ -34,14 +35,104 @@ class ChatAttachmentSupportTest {
         mimeType = "image/png",
         fileName = "photo.png",
         mediaUrl = "http://10.0.2.2:39393/media/photo.png",
+        mediaPath = "/media/photo.png",
+        mediaPort = 39393,
         mediaSha256 = "abc123",
         sizeBytes = 42L,
       ).toAttachmentDescriptor()
 
     assertEquals(ChatAttachmentKind.Image, descriptor.kind)
     assertEquals("http://10.0.2.2:39393/media/photo.png", descriptor.mediaUrl)
+    assertEquals("/media/photo.png", descriptor.mediaPath)
+    assertEquals(39393, descriptor.mediaPort)
     assertEquals("abc123", descriptor.mediaSha256)
     assertEquals(42L, descriptor.sizeBytes)
     assertNull(descriptor.base64)
+  }
+
+  @Test
+  fun `fetch error explains emulator only host`() {
+    val message =
+      formatAttachmentFetchErrorMessage(
+        mediaUrl = "http://10.0.2.2:39393/media/photo.png",
+        fallbackMessage = "failed to connect",
+      )
+
+    assertTrue(message.contains("emulator-only host 10.0.2.2"))
+    assertTrue(message.contains("--public-host"))
+  }
+
+  @Test
+  fun `fetch error falls back to original message for normal host`() {
+    val message =
+      formatAttachmentFetchErrorMessage(
+        mediaUrl = "http://192.168.0.10:39393/media/photo.png",
+        fallbackMessage = "failed to connect",
+      )
+
+    assertEquals("failed to connect", message)
+  }
+
+  @Test
+  fun `attachment fetch urls include current lan and tailscale hosts`() {
+    val urls =
+      resolveAttachmentFetchUrls(
+        mediaUrl = "http://10.0.2.2:39393/media/photo.png",
+        mediaPath = "/media/photo.png",
+        mediaPort = 39393,
+        gatewayRemoteAddress = "192.168.0.247:18789",
+        manualHost = "192.168.0.247",
+        tailscaleHost = "100.116.69.82",
+      )
+
+    assertEquals(
+      listOf(
+        "http://192.168.0.247:39393/media/photo.png",
+        "http://100.116.69.82:39393/media/photo.png",
+        "http://10.0.2.2:39393/media/photo.png",
+      ),
+      urls,
+    )
+  }
+
+  @Test
+  fun `attachment fetch urls dedupe repeated hosts`() {
+    val urls =
+      resolveAttachmentFetchUrls(
+        mediaUrl = "http://100.116.69.82:39393/media/photo.png",
+        mediaPath = "/media/photo.png",
+        mediaPort = 39393,
+        gatewayRemoteAddress = "100.116.69.82:18789",
+        manualHost = "100.116.69.82",
+        tailscaleHost = "100.116.69.82",
+      )
+
+    assertEquals(
+      listOf(
+        "http://100.116.69.82:39393/media/photo.png",
+      ),
+      urls,
+    )
+  }
+
+  @Test
+  fun `attachment fetch urls can resolve from gateway path without media url`() {
+    val urls =
+      resolveAttachmentFetchUrls(
+        mediaUrl = null,
+        mediaPath = "/media/photo.png",
+        mediaPort = 39393,
+        gatewayRemoteAddress = "100.116.69.82:18789",
+        manualHost = "192.168.0.247",
+        tailscaleHost = "100.116.69.82",
+      )
+
+    assertEquals(
+      listOf(
+        "http://100.116.69.82:39393/media/photo.png",
+        "http://192.168.0.247:39393/media/photo.png",
+      ),
+      urls,
+    )
   }
 }

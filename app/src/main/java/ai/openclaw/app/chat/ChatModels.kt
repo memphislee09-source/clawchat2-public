@@ -14,6 +14,8 @@ data class ChatMessageContent(
   val fileName: String? = null,
   val base64: String? = null,
   val mediaUrl: String? = null,
+  val mediaPath: String? = null,
+  val mediaPort: Int? = null,
   val mediaSha256: String? = null,
   val sizeBytes: Long? = null,
 )

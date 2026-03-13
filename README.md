@@ -7,6 +7,7 @@ This repository is the active development mainline for the ClawChat2 variant and
 
 - Baseline version: `0.2.1`
 - App package / namespace: `ai.openclaw.app`
+- Android compatibility baseline: `minSdk 30` (Android 11+)
 - UI direction: contacts-first, chat-centered shell
 - Stage: internal testing, not release-hardened yet
 
@@ -42,6 +43,8 @@ Preferred local contract for agents:
     "type": "image|audio|video",
     "mimeType": "real MIME type",
     "fileName": "original file name",
+    "mediaPath": "/media/<token>",
+    "mediaPort": 39393,
     "mediaUrl": "http://10.0.2.2:39393/media/<token>",
     "mediaSha256": "<sha256>",
     "sizeBytes": 123456
@@ -52,10 +55,14 @@ Preferred local contract for agents:
 Rules:
 
 - target session key: `agent:<agentId>:clawchat2`
+- prefer gateway-relative media references:
+  - `mediaPath` + `mediaPort` are the stable fields for current ClawChat2 builds
+  - `mediaUrl` is kept as a compatibility hint for older builds
+- preferred agent behavior: call `scripts/send-clawchat-media.mjs` instead of hand-writing media payloads
 - do not send URL-only media
 - do not send markdown image syntax
 - do not send `data:` URIs
-- for local testing, prefer `mediaUrl` reference delivery instead of inline base64
+- for local testing, prefer structured media references from the sender script instead of inline base64
 - `mimeType` must be the real file MIME type
 
 Recommended first-pass formats:
@@ -70,7 +77,13 @@ Notes:
   - stores the file in a local media store
   - auto-starts a tiny HTTP server
   - writes a structured assistant media message into the target transcript
-- Emulator default `mediaUrl` host is `10.0.2.2`; use `--public-host` for real devices.
+  - includes `mediaPath`/`mediaPort` so the Android client can resolve media from the current gateway host
+- Emulator default `mediaUrl` host is `10.0.2.2` as a legacy fallback; updated ClawChat2 builds no longer require `--public-host` when the media server runs on the same host as the gateway.
+- For agent instructions, prefer `AGENT_MEDIA_SEND.md` as the operational source of truth.
+- Current validation status:
+  - emulator image/audio/video receive: passed
+  - Android 11 real-device install + launch: passed
+  - user-confirmed real-device image/audio/video behavior: passed
 - The Android chat composer in this repo still only exposes image picking for user-originated sends; audio/video support added here is focused on agent -> ClawChat2 receive and render.
 - Usage guide: `AGENT_MEDIA_SEND.md`
 
