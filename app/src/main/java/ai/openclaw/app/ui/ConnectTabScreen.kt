@@ -164,6 +164,53 @@ fun ConnectTabScreen(viewModel: MainViewModel) {
       }
     }
 
+    Surface(
+      modifier = Modifier.fillMaxWidth(),
+      shape = RoundedCornerShape(14.dp),
+      color = mobileSurface,
+      border = BorderStroke(1.dp, mobileBorder),
+    ) {
+      Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+      ) {
+        Text(
+          tr("Connection method", "连接方式"),
+          style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold),
+          color = mobileTextSecondary,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          MethodChip(
+            label = tr("Setup Code", "配置码"),
+            active = inputMode == ConnectGatewayInputMode.SetupCode,
+            onClick = { inputMode = ConnectGatewayInputMode.SetupCode },
+          )
+          MethodChip(
+            label = tr("Manual", "手动"),
+            active = inputMode == ConnectGatewayInputMode.Manual,
+            onClick = { inputMode = ConnectGatewayInputMode.Manual },
+          )
+          MethodChip(
+            label = tr("Tailscale", "Tailscale"),
+            active = inputMode == ConnectGatewayInputMode.Tailscale,
+            onClick = { inputMode = ConnectGatewayInputMode.Tailscale },
+          )
+        }
+        Text(
+          when (inputMode) {
+            ConnectGatewayInputMode.SetupCode ->
+              tr("Best when you have a setup code or QR from the gateway host.", "适合已拿到网关配置码或二维码时使用。")
+            ConnectGatewayInputMode.Manual ->
+              tr("Use a direct host and port for LAN or emulator testing.", "适合局域网或模拟器直连主机与端口。")
+            ConnectGatewayInputMode.Tailscale ->
+              tr("Use your Tailnet host for direct remote access.", "适合通过 Tailnet 主机名做远程直连。")
+          },
+          style = mobileCallout,
+          color = mobileTextSecondary,
+        )
+      }
+    }
+
     Button(
       onClick = {
         if (isConnected) {
@@ -205,11 +252,10 @@ fun ConnectTabScreen(viewModel: MainViewModel) {
         viewModel.setManualHost(config.host)
         viewModel.setManualPort(config.port)
         viewModel.setManualTls(config.tls)
+        viewModel.setGatewayBootstrapToken(config.bootstrapToken)
         viewModel.setTailscaleHost(tailscaleHostInput)
         viewModel.setTailscalePort(tailscalePortInput.toIntOrNull() ?: 18789)
-        if (config.token.isNotBlank()) {
-          viewModel.setGatewayToken(config.token)
-        }
+        viewModel.setGatewayToken(config.token)
         viewModel.setGatewayPassword(config.password)
         viewModel.connectManual()
       },
@@ -238,7 +284,7 @@ fun ConnectTabScreen(viewModel: MainViewModel) {
       ) {
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
           Text(tr("Advanced controls", "高级控制"), style = mobileHeadline, color = mobileText)
-          Text("Setup code, endpoint, TLS, token, password, onboarding.", style = mobileCaption1, color = mobileTextSecondary)
+          Text("Endpoint details, TLS, token, password, onboarding.", style = mobileCaption1, color = mobileTextSecondary)
         }
         Icon(
           imageVector = if (advancedOpen) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
@@ -259,25 +305,6 @@ fun ConnectTabScreen(viewModel: MainViewModel) {
           modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 14.dp),
           verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-          Text(tr("Connection method", "连接方式"), style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold), color = mobileTextSecondary)
-          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MethodChip(
-              label = tr("Setup Code", "配置码"),
-              active = inputMode == ConnectGatewayInputMode.SetupCode,
-              onClick = { inputMode = ConnectGatewayInputMode.SetupCode },
-            )
-            MethodChip(
-              label = tr("Manual", "手动"),
-              active = inputMode == ConnectGatewayInputMode.Manual,
-              onClick = { inputMode = ConnectGatewayInputMode.Manual },
-            )
-            MethodChip(
-              label = tr("Tailscale", "Tailscale"),
-              active = inputMode == ConnectGatewayInputMode.Tailscale,
-              onClick = { inputMode = ConnectGatewayInputMode.Tailscale },
-            )
-          }
-
           Text("Run these on the gateway host:", style = mobileCallout, color = mobileTextSecondary)
           CommandBlock("openclaw qr --setup-code-only")
           CommandBlock("openclaw qr --json")
@@ -444,6 +471,14 @@ fun ConnectTabScreen(viewModel: MainViewModel) {
             textStyle = mobileBody.copy(color = mobileText),
             shape = RoundedCornerShape(14.dp),
             colors = outlinedColors(),
+          )
+          Text(
+            tr(
+              "For manual or Tailscale setup, fill in the token if you want this device to appear in `openclaw devices list` for approval.",
+              "如果使用手动或 Tailscale 设置，并希望该设备出现在 `openclaw devices list` 中等待批准，请填写 token。",
+            ),
+            style = mobileCallout,
+            color = mobileTextSecondary,
           )
 
           Text(tr("Password (optional)", "密码（可选）"), style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold), color = mobileTextSecondary)

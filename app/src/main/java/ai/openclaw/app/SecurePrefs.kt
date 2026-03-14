@@ -81,6 +81,9 @@ class SecurePrefs(context: Context) {
   private val _gatewayToken = MutableStateFlow("")
   val gatewayToken: StateFlow<String> = _gatewayToken
 
+  private val _gatewayBootstrapToken = MutableStateFlow("")
+  val gatewayBootstrapToken: StateFlow<String> = _gatewayBootstrapToken
+
   private val _tailscaleHost =
     MutableStateFlow(plainPrefs.getString("gateway.tailscale.host", defaultTailscaleHost) ?: defaultTailscaleHost)
   val tailscaleHost: StateFlow<String> = _tailscaleHost
@@ -201,6 +204,10 @@ class SecurePrefs(context: Context) {
     saveGatewayPassword(value)
   }
 
+  fun setGatewayBootstrapToken(value: String) {
+    saveGatewayBootstrapToken(value)
+  }
+
   fun setTailscaleHost(value: String) {
     val trimmed = value.trim()
     plainPrefs.edit { putString("gateway.tailscale.host", trimmed) }
@@ -248,6 +255,26 @@ class SecurePrefs(context: Context) {
   fun saveGatewayToken(token: String) {
     val key = "gateway.token.${_instanceId.value}"
     securePrefs.edit { putString(key, token.trim()) }
+  }
+
+  fun loadGatewayBootstrapToken(): String? {
+    val key = "gateway.bootstrapToken.${_instanceId.value}"
+    val stored =
+      _gatewayBootstrapToken.value.trim().ifEmpty {
+        val resolved = securePrefs.getString(key, null)?.trim().orEmpty()
+        if (resolved.isNotEmpty()) {
+          _gatewayBootstrapToken.value = resolved
+        }
+        resolved
+      }
+    return stored.takeIf { it.isNotEmpty() }
+  }
+
+  fun saveGatewayBootstrapToken(token: String) {
+    val key = "gateway.bootstrapToken.${_instanceId.value}"
+    val trimmed = token.trim()
+    securePrefs.edit { putString(key, trimmed) }
+    _gatewayBootstrapToken.value = trimmed
   }
 
   fun loadGatewayPassword(): String? {

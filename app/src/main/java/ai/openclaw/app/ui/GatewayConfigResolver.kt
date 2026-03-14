@@ -18,6 +18,7 @@ internal data class GatewayEndpointConfig(
 
 internal data class GatewaySetupCode(
   val url: String,
+  val bootstrapToken: String?,
   val token: String?,
   val password: String?,
 )
@@ -26,6 +27,7 @@ internal data class GatewayConnectConfig(
   val host: String,
   val port: Int,
   val tls: Boolean,
+  val bootstrapToken: String,
   val token: String,
   val password: String,
 )
@@ -52,12 +54,26 @@ internal fun resolveGatewayConnectConfig(
   if (inputMode == ConnectGatewayInputMode.SetupCode) {
     val setup = decodeGatewaySetupCode(setupCode) ?: return null
     val parsed = parseGatewayEndpoint(setup.url) ?: return null
+    val setupBootstrapToken = setup.bootstrapToken?.trim().orEmpty()
+    val sharedToken =
+      when {
+        !setup.token.isNullOrBlank() -> setup.token.trim()
+        setupBootstrapToken.isNotEmpty() -> ""
+        else -> fallbackToken.trim()
+      }
+    val sharedPassword =
+      when {
+        !setup.password.isNullOrBlank() -> setup.password.trim()
+        setupBootstrapToken.isNotEmpty() -> ""
+        else -> fallbackPassword.trim()
+      }
     return GatewayConnectConfig(
       host = parsed.host,
       port = parsed.port,
       tls = parsed.tls,
-      token = setup.token ?: fallbackToken.trim(),
-      password = setup.password ?: fallbackPassword.trim(),
+      bootstrapToken = setupBootstrapToken,
+      token = sharedToken,
+      password = sharedPassword,
     )
   }
 
@@ -68,6 +84,7 @@ internal fun resolveGatewayConnectConfig(
       host = parsed.host,
       port = parsed.port,
       tls = false,
+      bootstrapToken = "",
       token = fallbackToken.trim(),
       password = fallbackPassword.trim(),
     )
@@ -79,6 +96,7 @@ internal fun resolveGatewayConnectConfig(
     host = parsed.host,
     port = parsed.port,
     tls = parsed.tls,
+    bootstrapToken = "",
     token = fallbackToken.trim(),
     password = fallbackPassword.trim(),
   )
@@ -124,9 +142,10 @@ internal fun decodeGatewaySetupCode(rawInput: String): GatewaySetupCode? {
     val obj = parseJsonObject(decoded) ?: return null
     val url = jsonField(obj, "url").orEmpty()
     if (url.isEmpty()) return null
+    val bootstrapToken = jsonField(obj, "bootstrapToken")
     val token = jsonField(obj, "token")
     val password = jsonField(obj, "password")
-    GatewaySetupCode(url = url, token = token, password = password)
+    GatewaySetupCode(url = url, bootstrapToken = bootstrapToken, token = token, password = password)
   } catch (_: IllegalArgumentException) {
     null
   }

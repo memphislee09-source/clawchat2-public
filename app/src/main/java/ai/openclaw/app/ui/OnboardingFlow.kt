@@ -119,6 +119,9 @@ private enum class SpecialAccessToggle {
   NotificationListener,
 }
 
+private const val openClawAgentSetupGuideUrl =
+  "https://github.com/memphislee09-source/clawchat2-public/blob/main/OPENCLAW_AGENT_SETUP.md"
+
 private val onboardingBackgroundGradient =
   listOf(
     Color(0xFFFFFFFF),
@@ -521,7 +524,7 @@ fun OnboardingFlow(viewModel: MainViewModel, modifier: Modifier = Modifier) {
             color = onboardingAccent,
           )
           Text(
-            "OpenClaw\nMobile Setup",
+            "ClawChat2\nSetup",
             style = onboardingDisplayStyle.copy(lineHeight = 38.sp),
             color = onboardingText,
           )
@@ -551,7 +554,7 @@ fun OnboardingFlow(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                 qrScanLauncher.launch(
                   ScanOptions().apply {
                     setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-                    setPrompt("Scan OpenClaw onboarding QR")
+                    setPrompt("Scan ClawChat2 / OpenClaw onboarding QR")
                     setBeepEnabled(false)
                     setOrientationLocked(false)
                   },
@@ -772,8 +775,14 @@ fun OnboardingFlow(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                     return@Button
                   }
                   gatewayUrl = parsedSetup.url
-                  parsedSetup.token?.let { viewModel.setGatewayToken(it) }
-                  gatewayPassword = parsedSetup.password.orEmpty()
+                  viewModel.setGatewayBootstrapToken(parsedSetup.bootstrapToken.orEmpty())
+                  viewModel.setGatewayToken(parsedSetup.token.orEmpty())
+                  gatewayPassword =
+                    if (parsedSetup.bootstrapToken.isNullOrBlank()) {
+                      parsedSetup.password.orEmpty()
+                    } else {
+                      ""
+                    }
                 } else {
                   val manualUrl = composeGatewayManualUrl(manualHost, manualPort, manualTls)
                   val parsedGateway = manualUrl?.let(::parseGatewayEndpoint)
@@ -782,6 +791,7 @@ fun OnboardingFlow(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                     return@Button
                   }
                   gatewayUrl = parsedGateway.displayUrl
+                  viewModel.setGatewayBootstrapToken("")
                 }
                 step = OnboardingStep.Permissions
               },
@@ -844,15 +854,20 @@ fun OnboardingFlow(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                     return@Button
                   }
                   val token = persistedGatewayToken.trim()
+                  val bootstrapToken =
+                    if (gatewayInputMode == GatewayInputMode.SetupCode) {
+                      decodeGatewaySetupCode(setupCode)?.bootstrapToken?.trim().orEmpty()
+                    } else {
+                      ""
+                    }
                   val password = gatewayPassword.trim()
                   attemptedConnect = true
                   viewModel.setManualEnabled(true)
                   viewModel.setManualHost(parsed.host)
                   viewModel.setManualPort(parsed.port)
                   viewModel.setManualTls(parsed.tls)
-                  if (token.isNotEmpty()) {
-                    viewModel.setGatewayToken(token)
-                  }
+                  viewModel.setGatewayBootstrapToken(bootstrapToken)
+                  viewModel.setGatewayToken(token)
                   viewModel.setGatewayPassword(password)
                   viewModel.connectManual()
                 },
@@ -926,11 +941,39 @@ private fun StepRail(current: OnboardingStep) {
 
 @Composable
 private fun WelcomeStep() {
+  val context = androidx.compose.ui.platform.LocalContext.current
+
   StepShell(title = "What You Get") {
     Bullet("Control the gateway and operator chat from one mobile surface.")
     Bullet("Connect with setup code and recover pairing with CLI commands.")
     Bullet("Enable only the permissions and capabilities you want.")
     Bullet("Finish with a real connection check before entering the app.")
+
+    GuideBlock(title = "OpenClaw-side setup") {
+      Text(
+        "Before continuing, send the guide below to your OpenClaw agent or operator. It explains the required OpenClaw-side install and setup steps for ClawChat2.",
+        style = onboardingCalloutStyle,
+        color = onboardingTextSecondary,
+      )
+      CommandBlock(openClawAgentSetupGuideUrl)
+      Button(
+        onClick = { openExternalUrl(context, openClawAgentSetupGuideUrl) },
+        modifier = Modifier.fillMaxWidth().height(48.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors =
+          ButtonDefaults.buttonColors(
+            containerColor = onboardingAccent,
+            contentColor = Color.White,
+          ),
+      ) {
+        Text("Open OpenClaw setup guide", style = onboardingHeadlineStyle.copy(fontWeight = FontWeight.Bold))
+      }
+      Text(
+        "If the user chooses manual or Tailscale setup later, they should also fill in the gateway token so the device can appear in `openclaw devices list`.",
+        style = onboardingCalloutStyle,
+        color = onboardingTextSecondary,
+      )
+    }
   }
 }
 
@@ -1150,6 +1193,11 @@ private fun GatewayStep(
                 unfocusedTextColor = onboardingText,
                 cursorColor = onboardingAccent,
               ),
+          )
+          Text(
+            "If you use manual or Tailscale setup and want this device to appear in `openclaw devices list`, fill in the token here.",
+            style = onboardingCalloutStyle.copy(lineHeight = 18.sp),
+            color = onboardingTextSecondary,
           )
 
           Text("PASSWORD (OPTIONAL)", style = onboardingCaption1Style.copy(letterSpacing = 0.9.sp), color = onboardingTextSecondary)
@@ -1614,6 +1662,13 @@ private fun openAppSettings(context: Context) {
       Uri.fromParts("package", context.packageName, null),
     ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
   context.startActivity(intent)
+}
+
+private fun openExternalUrl(context: Context, url: String) {
+  val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+  runCatching {
+    context.startActivity(intent)
+  }
 }
 
 private fun hasMotionCapabilities(context: Context): Boolean {

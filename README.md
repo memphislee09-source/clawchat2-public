@@ -38,10 +38,31 @@ This repository explores a narrower Android UX for users who mainly want to open
 Related docs:
 
 - [CONTRIBUTING.md](CONTRIBUTING.md)
+- [OPENCLAW_AGENT_SETUP.md](OPENCLAW_AGENT_SETUP.md)
 - [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md)
 - [RELEASING.md](RELEASING.md)
 - [RELEASE_NOTES_v0.2.1.md](RELEASE_NOTES_v0.2.1.md)
 - [WHY_THIS_FORK.md](WHY_THIS_FORK.md)
+
+### Screenshots
+
+Chat list:
+
+![ClawChat2 chat list](docs/images/chat-list.png)
+
+Chat view with media:
+
+![ClawChat2 chat view](docs/images/chat-view-media.png)
+
+### OpenClaw-Side Setup
+
+If you want an OpenClaw-side agent or operator to prepare a gateway specifically for ClawChat2, start with [OPENCLAW_AGENT_SETUP.md](OPENCLAW_AGENT_SETUP.md).
+
+Important:
+
+- setup code is the preferred path
+- for manual or Tailscale setup, the user should also fill in the gateway token
+- without that token, the device may not appear in `openclaw devices list` when approval is required
 
 ### Media Support
 
@@ -149,10 +170,31 @@ ClawChat2 是一个基于官方 OpenClaw Android 客户端 `openclaw/openclaw ->
 相关文档：
 
 - [CONTRIBUTING.md](CONTRIBUTING.md)
+- [OPENCLAW_AGENT_SETUP.md](OPENCLAW_AGENT_SETUP.md)
 - [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md)
 - [RELEASING.md](RELEASING.md)
 - [RELEASE_NOTES_v0.2.1.md](RELEASE_NOTES_v0.2.1.md)
 - [WHY_THIS_FORK.md](WHY_THIS_FORK.md)
+
+### 截图
+
+聊天列表：
+
+![ClawChat2 聊天列表](docs/images/chat-list.png)
+
+聊天页与媒体展示：
+
+![ClawChat2 聊天页](docs/images/chat-view-media.png)
+
+### OpenClaw 侧准备
+
+如果你希望让 OpenClaw 侧的 agent 或操作者为 ClawChat2 准备 gateway，请从 [OPENCLAW_AGENT_SETUP.md](OPENCLAW_AGENT_SETUP.md) 开始。
+
+重要说明：
+
+- 首选方式仍然是 setup code
+- 如果用户选择手动设置或 Tailscale 设置，也应填写 gateway token
+- 没有这个 token 时，设备在需要批准时可能不会出现在 `openclaw devices list` 中
 
 ### 媒体支持
 
