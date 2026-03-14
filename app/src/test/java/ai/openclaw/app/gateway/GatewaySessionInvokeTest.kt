@@ -211,6 +211,7 @@ class GatewaySessionInvokeTest {
           tlsEnabled = false,
         ),
       token = "test-token",
+      bootstrapToken = null,
       password = null,
       options =
         GatewayConnectOptions(
