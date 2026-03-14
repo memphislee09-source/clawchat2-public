@@ -1,14 +1,16 @@
 # Upstream Outreach Draft
 
+## English
+
 This draft is for proposing selected ClawChat2 improvements to the official OpenClaw project without implying that the full fork should be merged as-is.
 
-## Recommended Position
+### Recommended Position
 
 Do not ask maintainers to adopt the entire fork.
 
 Ask instead whether they are open to reviewing a small set of isolated Android improvements that were developed while building a chat-focused fork intended to make direct agent conversation feel simpler and less procedurally heavy on Android.
 
-## Short Intro Draft
+### Short Intro Draft
 
 Hi OpenClaw team,
 
@@ -23,59 +25,27 @@ The main areas I think may be relevant are:
 - fullscreen image/video stability improvements
 - selected gateway connection compatibility fixes, including practical Tailscale-friendly usage
 
-If that sounds aligned, I can prepare narrow PRs with screenshots, validation notes, and clear scope boundaries.
+## 中文
 
-## What To Avoid Saying
+这份草稿用于和 OpenClaw 官方沟通时，说明 ClawChat2 中哪些改进值得单独讨论，而不是把整个分叉作为一个整体去请求官方接收。
 
-Avoid language like:
+### 建议立场
 
-- "Please adopt this fork"
-- "Please replace the current Android app with this version"
-- "This is the better OpenClaw Android app"
+不要用“请接收整个 fork”的方式沟通。
 
-That framing makes review much harder and creates unnecessary product tension.
+更合适的方式是询问维护者：是否愿意评估一小组可以独立拆分的 Android 改进。这些改进是在构建一个聊天优先分叉时验证出来的，目标是让 Android 上与 agent 的直接对话更简单、更少流程负担。
 
-## Better Framing
+### 简短沟通草稿
 
-Prefer language like:
+Hi OpenClaw team,
 
-- "This fork helped validate a few Android-specific fixes"
-- "I can split these into smaller upstream candidates"
-- "I am only proposing the generally useful parts"
+I have been developing an unofficial Android fork based on `openclaw/openclaw -> apps/android` to explore a simpler, chat-first Android experience for users who mostly want direct conversations with OpenClaw agents, without extra setup, registration, or shell complexity beyond what is needed to connect to their own gateway.
 
-## Suggested First Upstream Candidates
+While doing that work, I ended up with a few Android-specific fixes and improvements that may have value outside the fork as well. I am not proposing that the full fork be merged as-is. Instead, I would like to split out a small number of focused Android changes and submit them individually if they match your direction.
 
-Start with the smallest, least controversial Android fixes:
+The main areas I think may be relevant are:
 
-1. fullscreen video playback stability and backdrop correctness
-2. media rendering correctness or fallback handling
-3. gateway connection compatibility fixes that align with upstream protocol changes
-
-Do not lead with:
-
-- branding
-- navigation/product direction rewrites
-- fork-specific session naming
-- local media-server operational tooling
-
-## Evidence To Prepare Before Contact
-
-Before opening a Discussion or PR, prepare:
-
-- before/after screenshots
-- exact device and Android version used for validation
-- minimal reproduction steps
-- scope boundary stating what did not change
-- note explaining why the change is not tied to ClawChat2 branding
-
-## Best Contact Path
-
-Use the official contribution guidance in the upstream project:
-
-- GitHub Discussions for larger features or architecture questions
-- focused PRs for isolated fixes
-- Discord for early signal if you want to test interest before preparing a PR
-
-## One-Paragraph Public Description
-
-ClawChat2 is an unofficial Android fork of the OpenClaw Android client focused on direct, chat-first interaction with OpenClaw agents. It explores a narrower Android UX and stronger media receive/render behavior, while keeping potential upstream fixes separable from fork-specific branding and product choices.
+- simpler direct-chat-oriented Android UX
+- Android media rendering and playback hardening
+- fullscreen image/video stability improvements
+- selected gateway connection compatibility fixes, including practical Tailscale-friendly usage
