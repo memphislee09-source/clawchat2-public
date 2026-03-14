@@ -39,6 +39,8 @@ Related docs:
 
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 - [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md)
+- [RELEASING.md](RELEASING.md)
+- [RELEASE_NOTES_v0.2.1.md](RELEASE_NOTES_v0.2.1.md)
 - [WHY_THIS_FORK.md](WHY_THIS_FORK.md)
 
 ### Media Support
@@ -93,6 +95,15 @@ Install and launch:
 adb shell am start -n ai.openclaw.app/.MainActivity
 ```
 
+### Releases
+
+- Public end users should install APKs from GitHub Releases instead of building from source.
+- Early public builds should be marked as `Pre-release`.
+- Public APKs should be signed with the fork maintainer's own release key.
+- Release notes should clearly state that this is an unofficial OpenClaw fork.
+
+Current release guidance is documented in [RELEASING.md](RELEASING.md) and [RELEASE_NOTES_v0.2.1.md](RELEASE_NOTES_v0.2.1.md).
+
 ### Development Notes
 
 - Treat this repository as an early-stage fork, not a drop-in upstream replacement.
@@ -139,6 +150,8 @@ ClawChat2 是一个基于官方 OpenClaw Android 客户端 `openclaw/openclaw ->
 
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 - [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md)
+- [RELEASING.md](RELEASING.md)
+- [RELEASE_NOTES_v0.2.1.md](RELEASE_NOTES_v0.2.1.md)
 - [WHY_THIS_FORK.md](WHY_THIS_FORK.md)
 
 ### 媒体支持
@@ -192,6 +205,15 @@ ClawChat2 当前支持 agent 发送的结构化媒体消息：
 ./gradlew :app:installDebug
 adb shell am start -n ai.openclaw.app/.MainActivity
 ```
+
+### 发行版本
+
+- 面向公开用户时，应优先通过 GitHub Releases 分发 APK，而不是要求用户自行编译源码。
+- 首批公开版本建议标记为 `Pre-release`。
+- 对外发布的 APK 应使用分叉维护者自己的 release key 签名。
+- Release 说明中应明确写明这是非官方 OpenClaw 分叉。
+
+当前发行流程与首版说明见 [RELEASING.md](RELEASING.md) 和 [RELEASE_NOTES_v0.2.1.md](RELEASE_NOTES_v0.2.1.md)。
 
 ### 开发说明
 
