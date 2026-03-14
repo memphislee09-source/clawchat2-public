@@ -8,7 +8,6 @@ Before contributing, read:
 
 - [README.md](README.md)
 - [FORK_NOTES.md](FORK_NOTES.md)
-- [UPSTREAM_BOUNDARY.md](UPSTREAM_BOUNDARY.md)
 - [LICENSE](LICENSE)
 
 ### Project Expectations
@@ -34,7 +33,11 @@ Before starting a larger change, decide whether it is:
 - maybe-upstream
 - upstream-targeted
 
-Use [UPSTREAM_BOUNDARY.md](UPSTREAM_BOUNDARY.md) as the decision guide.
+Use this repository's public positioning as the decision guide:
+
+- keep chat-first product behavior in this fork
+- keep private environment assumptions out of committed code
+- separate any future upstream candidates into smaller, reusable changes
 
 ### Recommended Verification
 
@@ -70,7 +73,6 @@ ClawChat2 是一个早期阶段的非官方 Android 分叉项目，源自 OpenCl
 
 - [README.md](README.md)
 - [FORK_NOTES.md](FORK_NOTES.md)
-- [UPSTREAM_BOUNDARY.md](UPSTREAM_BOUNDARY.md)
 - [LICENSE](LICENSE)
 
 ### 项目要求
@@ -96,7 +98,11 @@ ClawChat2 是一个早期阶段的非官方 Android 分叉项目，源自 OpenCl
 - maybe-upstream
 - upstream-targeted
 
-判断标准见 [UPSTREAM_BOUNDARY.md](UPSTREAM_BOUNDARY.md)。
+判断标准以本仓库当前公开定位为准：
+
+- 聊天优先的产品行为保留在本分叉中
+- 不要把私有环境假设写入已提交代码
+- 如果未来考虑 upstream，应先拆成更小、更可复用的改动
 
 ### 建议验证项
 

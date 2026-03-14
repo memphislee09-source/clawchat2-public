@@ -38,9 +38,7 @@ This repository explores a narrower Android UX for users who mainly want to open
 Related docs:
 
 - [CONTRIBUTING.md](CONTRIBUTING.md)
-- [UPSTREAM_BOUNDARY.md](UPSTREAM_BOUNDARY.md)
 - [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md)
-- [UPSTREAM_OUTREACH_DRAFT.md](UPSTREAM_OUTREACH_DRAFT.md)
 - [WHY_THIS_FORK.md](WHY_THIS_FORK.md)
 
 ### Media Support
@@ -140,9 +138,7 @@ ClawChat2 是一个基于官方 OpenClaw Android 客户端 `openclaw/openclaw ->
 相关文档：
 
 - [CONTRIBUTING.md](CONTRIBUTING.md)
-- [UPSTREAM_BOUNDARY.md](UPSTREAM_BOUNDARY.md)
 - [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md)
-- [UPSTREAM_OUTREACH_DRAFT.md](UPSTREAM_OUTREACH_DRAFT.md)
 - [WHY_THIS_FORK.md](WHY_THIS_FORK.md)
 
 ### 媒体支持
