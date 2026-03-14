@@ -33,8 +33,17 @@ Use this checklist before making the ClawChat2 fork repository public or tagging
 - [ ] `./gradlew :app:compileDebugKotlin`
 - [ ] `./gradlew :app:assembleDebug`
 - [ ] `./gradlew :app:testDebugUnitTest`
+- [ ] `./gradlew :app:assembleRelease`
 - [ ] emulator install + launch
 - [ ] real-device install + launch when relevant
+
+### Public APK Release
+
+- [ ] a signed `release` APK is produced
+- [ ] SHA256 is recorded for the uploaded APK
+- [ ] GitHub Release notes are prepared in English and Chinese
+- [ ] the release is marked `Pre-release` while the fork is still early
+- [ ] the release notes clearly state this is an unofficial OpenClaw fork
 
 ## 中文
 
@@ -69,5 +78,14 @@ Use this checklist before making the ClawChat2 fork repository public or tagging
 - [ ] `./gradlew :app:compileDebugKotlin`
 - [ ] `./gradlew :app:assembleDebug`
 - [ ] `./gradlew :app:testDebugUnitTest`
+- [ ] `./gradlew :app:assembleRelease`
 - [ ] 模拟器安装和启动验证
 - [ ] 相关场景下完成真机安装和启动验证
+
+### 公开 APK 发布
+
+- [ ] 已产出已签名的 `release` APK
+- [ ] 已记录上传 APK 的 SHA256
+- [ ] GitHub Release 说明已准备好中英文版本
+- [ ] 项目仍处于早期时，发布条目已标记为 `Pre-release`
+- [ ] Release 说明已明确写明这是非官方 OpenClaw 分叉

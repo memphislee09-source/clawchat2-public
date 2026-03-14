@@ -1,0 +1,77 @@
+{
+  "selectionCases": [
+    {
+      "id": "resolved-provider-payload",
+      "defaultProvider": "elevenlabs",
+      "payloadValid": true,
+      "expectedSelection": {
+        "provider": "elevenlabs",
+        "normalizedPayload": true,
+        "voiceId": "voice-resolved",
+        "apiKey": "resolved-key"
+      },
+      "talk": {
+        "resolved": {
+          "provider": "elevenlabs",
+          "config": {
+            "voiceId": "voice-resolved",
+            "apiKey": "resolved-key"
+          }
+        }
+      }
+    },
+    {
+      "id": "legacy-provider-payload",
+      "defaultProvider": "elevenlabs",
+      "payloadValid": true,
+      "expectedSelection": {
+        "provider": "elevenlabs",
+        "normalizedPayload": false,
+        "voiceId": "voice-legacy",
+        "apiKey": "legacy-key"
+      },
+      "talk": {
+        "voiceId": "voice-legacy",
+        "apiKey": "legacy-key"
+      }
+    },
+    {
+      "id": "normalized-provider-payload-without-resolved-config",
+      "defaultProvider": "elevenlabs",
+      "payloadValid": false,
+      "expectedSelection": null,
+      "talk": {
+        "provider": "elevenlabs",
+        "providers": {
+          "elevenlabs": {
+            "voiceId": "voice-normalized"
+          }
+        }
+      }
+    }
+  ],
+  "timeoutCases": [
+    {
+      "id": "timeout-explicit",
+      "fallback": 700,
+      "expectedTimeoutMs": 1500,
+      "talk": {
+        "silenceTimeoutMs": 1500
+      }
+    },
+    {
+      "id": "timeout-default-when-missing",
+      "fallback": 700,
+      "expectedTimeoutMs": 700,
+      "talk": {}
+    },
+    {
+      "id": "timeout-default-when-invalid",
+      "fallback": 700,
+      "expectedTimeoutMs": 700,
+      "talk": {
+        "silenceTimeoutMs": "1500"
+      }
+    }
+  ]
+}
