@@ -66,7 +66,7 @@ class ChatAttachmentSupportTest {
   fun `fetch error falls back to original message for normal host`() {
     val message =
       formatAttachmentFetchErrorMessage(
-        mediaUrl = "http://192.168.0.10:39393/media/photo.png",
+        mediaUrl = "http://192.0.2.10:39393/media/photo.png",
         fallbackMessage = "failed to connect",
       )
 
@@ -80,15 +80,15 @@ class ChatAttachmentSupportTest {
         mediaUrl = "http://10.0.2.2:39393/media/photo.png",
         mediaPath = "/media/photo.png",
         mediaPort = 39393,
-        gatewayRemoteAddress = "192.168.0.247:18789",
-        manualHost = "192.168.0.247",
-        tailscaleHost = "100.116.69.82",
+        gatewayRemoteAddress = "192.0.2.10:18789",
+        manualHost = "192.0.2.10",
+        tailscaleHost = "tailnet.example.ts.net",
       )
 
     assertEquals(
       listOf(
-        "http://192.168.0.247:39393/media/photo.png",
-        "http://100.116.69.82:39393/media/photo.png",
+        "http://192.0.2.10:39393/media/photo.png",
+        "http://tailnet.example.ts.net:39393/media/photo.png",
         "http://10.0.2.2:39393/media/photo.png",
       ),
       urls,
@@ -99,17 +99,17 @@ class ChatAttachmentSupportTest {
   fun `attachment fetch urls dedupe repeated hosts`() {
     val urls =
       resolveAttachmentFetchUrls(
-        mediaUrl = "http://100.116.69.82:39393/media/photo.png",
+        mediaUrl = "http://tailnet.example.ts.net:39393/media/photo.png",
         mediaPath = "/media/photo.png",
         mediaPort = 39393,
-        gatewayRemoteAddress = "100.116.69.82:18789",
-        manualHost = "100.116.69.82",
-        tailscaleHost = "100.116.69.82",
+        gatewayRemoteAddress = "tailnet.example.ts.net:18789",
+        manualHost = "tailnet.example.ts.net",
+        tailscaleHost = "tailnet.example.ts.net",
       )
 
     assertEquals(
       listOf(
-        "http://100.116.69.82:39393/media/photo.png",
+        "http://tailnet.example.ts.net:39393/media/photo.png",
       ),
       urls,
     )
@@ -122,15 +122,15 @@ class ChatAttachmentSupportTest {
         mediaUrl = null,
         mediaPath = "/media/photo.png",
         mediaPort = 39393,
-        gatewayRemoteAddress = "100.116.69.82:18789",
-        manualHost = "192.168.0.247",
-        tailscaleHost = "100.116.69.82",
+        gatewayRemoteAddress = "tailnet.example.ts.net:18789",
+        manualHost = "192.0.2.10",
+        tailscaleHost = "tailnet.example.ts.net",
       )
 
     assertEquals(
       listOf(
-        "http://100.116.69.82:39393/media/photo.png",
-        "http://192.168.0.247:39393/media/photo.png",
+        "http://tailnet.example.ts.net:39393/media/photo.png",
+        "http://192.0.2.10:39393/media/photo.png",
       ),
       urls,
     )

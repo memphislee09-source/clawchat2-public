@@ -10,7 +10,7 @@ Use this document as the operational source of truth for starting the server on 
 - health URL: `http://127.0.0.1:39393/health`
 - plist path: `~/Library/LaunchAgents/ai.openclaw.clawchat-media-server.plist`
 - log path: `~/.openclaw/clawchat-media-store/server.log`
-- server script: `/Users/memphis/.openclaw/workspace-mira/clawchat2/scripts/clawchat-media-server.mjs`
+- server script: `./scripts/clawchat-media-server.mjs`
 
 ## Fast Path
 
@@ -43,7 +43,7 @@ curl -sf http://127.0.0.1:39393/health
 Expected healthy response shape:
 
 ```json
-{"ok":true,"host":"0.0.0.0","port":39393,"storeDir":"/Users/memphis/.openclaw/clawchat-media-store"}
+{"ok":true,"host":"0.0.0.0","port":39393,"storeDir":"<media-store-dir>"}
 ```
 
 ## If The Plist Is Missing
@@ -51,7 +51,7 @@ Expected healthy response shape:
 The LaunchAgent is normally created and refreshed by the media sender script:
 
 ```bash
-/Users/memphis/.openclaw/workspace-mira/clawchat2/scripts/send-clawchat-media.mjs \
+./scripts/send-clawchat-media.mjs \
   --agent main \
   --file /absolute/path/to/file
 ```

@@ -77,7 +77,7 @@ fun ConnectTabScreen(viewModel: MainViewModel) {
   var manualHostInput by rememberSaveable { mutableStateOf(manualHost.ifBlank { "10.0.2.2" }) }
   var manualPortInput by rememberSaveable { mutableStateOf(manualPort.toString()) }
   var manualTlsInput by rememberSaveable { mutableStateOf(manualTls) }
-  var tailscaleHostInput by rememberSaveable { mutableStateOf(tailscaleHost.ifBlank { "100.103.47.113" }) }
+  var tailscaleHostInput by rememberSaveable { mutableStateOf(tailscaleHost.ifBlank { "example.tailnet.ts.net" }) }
   var tailscalePortInput by rememberSaveable { mutableStateOf(tailscalePort.toString()) }
   var passwordInput by rememberSaveable { mutableStateOf("") }
   var validationText by rememberSaveable { mutableStateOf<String?>(null) }

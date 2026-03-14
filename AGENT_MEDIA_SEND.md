@@ -6,13 +6,13 @@ Do not hand-build `mediaUrl` unless you have no other option.
 Script:
 
 ```bash
-/Users/memphis/.openclaw/workspace-mira/clawchat2/scripts/send-clawchat-media.mjs
+./scripts/send-clawchat-media.mjs
 ```
 
 Default usage:
 
 ```bash
-/Users/memphis/.openclaw/workspace-mira/clawchat2/scripts/send-clawchat-media.mjs \
+./scripts/send-clawchat-media.mjs \
   --agent main \
   --file /absolute/path/to/file \
   --message "Optional caption"
@@ -48,21 +48,21 @@ Hard requirements:
 Examples:
 
 ```bash
-/Users/memphis/.openclaw/workspace-mira/clawchat2/scripts/send-clawchat-media.mjs \
+./scripts/send-clawchat-media.mjs \
   --agent main \
   --file /tmp/photo.jpg \
   --message "Please see the image."
 ```
 
 ```bash
-/Users/memphis/.openclaw/workspace-mira/clawchat2/scripts/send-clawchat-media.mjs \
+./scripts/send-clawchat-media.mjs \
   --agent main \
   --file /tmp/voice.mp3 \
   --message "Please play this audio."
 ```
 
 ```bash
-/Users/memphis/.openclaw/workspace-mira/clawchat2/scripts/send-clawchat-media.mjs \
+./scripts/send-clawchat-media.mjs \
   --agent main \
   --file /tmp/clip.mp4 \
   --message "Please see this video."

@@ -1,0 +1,57 @@
+name: Feature request
+description: Propose a fork feature or a potential upstream candidate
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for feature requests in the ClawChat2 fork.
+
+        If you think a change should eventually go upstream, explain why it is broadly useful and not tied to fork-only branding or local tooling.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What user problem are you trying to solve?
+      placeholder: Describe the real user problem first.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      placeholder: Describe the proposed behavior.
+    validations:
+      required: true
+  - type: dropdown
+    id: classification
+    attributes:
+      label: Change classification
+      options:
+        - Fork-only
+        - Maybe upstream later
+        - Unsure
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope boundary
+      description: What should explicitly stay out of scope?
+      placeholder: List what should not change.
+  - type: textarea
+    id: verification
+    attributes:
+      label: Suggested verification
+      placeholder: How should this be tested or demonstrated?
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Acknowledgements
+      options:
+        - label: I understand this repository is an unofficial fork and not the official OpenClaw project.
+          required: true
+        - label: I removed private infrastructure details and secrets from this request.
+          required: true

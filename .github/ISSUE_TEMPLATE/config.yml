@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Official OpenClaw repository
+    url: https://github.com/openclaw/openclaw
+    about: Use the official repository for issues that belong to upstream OpenClaw rather than this fork.
