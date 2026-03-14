@@ -32,11 +32,14 @@ In the fork, a few concrete changes have worked well:
 - stronger media receive/render support
 - more stable fullscreen image/video behavior
 - Tailscale-friendly connection UX
-- restored compatibility with official setup-code pairing flows by supporting `bootstrapToken`
 
 These changes have been validated on emulator and real Android hardware.
 
-The main thing I want to understand is whether this direction is interesting upstream at all. If yes, I would be happy to reduce the conversation to one or two smaller proposals instead of discussing the fork as a whole.
+Public project link:
+
+- https://github.com/memphislee09-source/clawchat2-public
+
+The main thing I want to understand is whether this direction is interesting upstream at all, and whether maintainers would be open to referring to this public project as a concrete reference point for discussion. If yes, I would be happy to reduce the conversation to one or two smaller proposals instead of discussing the fork as a whole.
 
 If the answer is no, that is also useful and clear. In that case I would still be interested in whether smaller Android bug fixes or compatibility fixes would be welcome as focused PRs.
 
@@ -56,9 +59,12 @@ The fork has mainly been useful for:
 - simpler direct agent chat
 - stronger Android media handling
 - Tailscale-friendly connection UX
-- restored setup-code pairing compatibility via `bootstrapToken`
 
-If this direction is interesting, I can follow up with a much smaller proposal and screenshots.
+Public project:
+
+- https://github.com/memphislee09-source/clawchat2-public
+
+If this direction is interesting, I can follow up with a much smaller proposal and screenshots. If helpful, maintainers are also welcome to refer to the public project above as context for the discussion.
 
 ## 中文说明
 
