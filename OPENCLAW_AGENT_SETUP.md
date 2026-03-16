@@ -67,6 +67,12 @@ openclaw qr --json
 
 Then give the resulting setup code or QR payload to the user so they can paste or scan it in ClawChat2.
 
+Important for Tailscale Serve:
+
+- if OpenClaw is using `gateway.tailscale.mode=serve`, `openclaw qr --json` will usually advertise `wss://<magicdns>` on port `443`
+- that is the correct route for ClawChat2; do not replace it with a LAN IP manually
+- after scanning in ClawChat2, the user still needs to tap `Connect`
+
 ### 4. If using manual setup, provide the user with host, port, and token
 
 The user needs:
@@ -90,6 +96,14 @@ Recommended OpenClaw-side preparation:
 - join the same tailnet as the Android device
 - confirm the host has a stable tailnet DNS name such as `openclaw.example.ts.net`
 - provide that host and port to the user
+- if using Tailscale Serve, prefer the MagicDNS hostname and port `443`
+- do not tell the user to enter a private LAN IP when the intended route is tailnet access
+
+Important Android-side reality:
+
+- the Android device must have the Tailscale app actively connected
+- "installed" or "logged in" is not sufficient if the VPN/tunnel is currently off
+- if Tailscale is off, ClawChat2 can fail early with errors such as `can't read TLS fingerprint`
 
 ### 6. Approve the device if pairing is requested
 
@@ -224,6 +238,12 @@ openclaw qr --json
 
 然后把生成的 setup code 或 QR 载荷交给用户，让其在 ClawChat2 中粘贴或扫码。
 
+针对 Tailscale Serve 的重要说明：
+
+- 如果 OpenClaw 使用的是 `gateway.tailscale.mode=serve`，那么 `openclaw qr --json` 通常会给出 `wss://<magicdns>`，端口通常是 `443`
+- 这就是 ClawChat2 应该使用的正确入口，不要再手动改成局域网 IP
+- 用户在 ClawChat2 中扫码后，仍然需要手动点击一次 `Connect`
+
 ### 4. 如果使用手动设置，把 host、port、token 提供给用户
 
 用户需要知道：
@@ -247,6 +267,14 @@ openclaw qr --json
 - 让主机加入与 Android 设备相同的 tailnet
 - 确认主机拥有稳定的 tailnet DNS 名，例如 `openclaw.example.ts.net`
 - 把该主机名和端口提供给用户
+- 如果使用的是 Tailscale Serve，优先提供 MagicDNS 主机名和端口 `443`
+- 如果目标是 tailnet 接入，不要让用户手动填局域网私网地址
+
+Android 侧一个非常实际的前提：
+
+- Android 设备上的 Tailscale app 必须处于真实“已连接”状态
+- 仅仅“安装了并登录了账号”并不够，如果 VPN / tunnel 当前是关闭的，ClawChat2 仍然无法通过 tailnet 连接
+- 在这种情况下，ClawChat2 可能会先报出 `can't read TLS fingerprint` 这一类早期连接错误
 
 ### 6. 如果出现配对请求，批准设备
 

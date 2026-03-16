@@ -267,7 +267,8 @@ private fun roleLabel(role: String, assistantLabel: String): String {
 
 @Composable
 internal fun ChatBase64Image(base64: String, mimeType: String?, onClick: (() -> Unit)? = null) {
-  val imageState = rememberBase64ImageState(base64)
+  val decodeRequest = rememberViewportImageDecodeRequest(preferLowMemory = true)
+  val imageState = rememberBase64ImageState(base64, decodeRequest = decodeRequest)
   val image = imageState.image
 
   if (image != null) {

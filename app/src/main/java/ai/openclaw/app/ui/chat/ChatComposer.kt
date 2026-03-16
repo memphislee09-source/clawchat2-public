@@ -61,7 +61,10 @@ import ai.openclaw.app.ui.mobileTextTertiary
 fun ChatComposer(
   healthOk: Boolean,
   thinkingLevel: String,
+  thinkingSupported: Boolean,
   pendingRunCount: Int,
+  abortSupported: Boolean,
+  voiceSupported: Boolean,
   attachments: List<PendingImageAttachment>,
   onPickImages: () -> Unit,
   onRemoveAttachment: (id: String) -> Unit,
@@ -97,9 +100,9 @@ fun ChatComposer(
       colors = chatTextFieldColors(),
     )
 
-    if (!healthOk) {
+  if (!healthOk) {
       Text(
-        text = "Gateway offline. Open Connect first.",
+        text = "Chat service unavailable. Pull to refresh.",
         style = mobileCallout,
         color = ai.openclaw.app.ui.mobileWarning,
       )
@@ -155,14 +158,14 @@ fun ChatComposer(
           text = "T",
           modifier =
             Modifier
-              .clickable { showThinkingMenu = !showThinkingMenu }
+              .clickable(enabled = thinkingSupported) { showThinkingMenu = !showThinkingMenu }
               .padding(horizontal = 8.dp, vertical = 10.dp),
           style = mobileHeadline.copy(fontWeight = FontWeight.Bold),
-          color = mobileAccent,
+          color = if (thinkingSupported) mobileAccent else mobileTextTertiary,
           textAlign = TextAlign.Center,
         )
         DropdownMenu(
-          expanded = showThinkingMenu,
+          expanded = thinkingSupported && showThinkingMenu,
           onDismissRequest = { showThinkingMenu = false },
           modifier = Modifier.width(148.dp),
           shape = RoundedCornerShape(6.dp),
@@ -181,7 +184,7 @@ fun ChatComposer(
         modifier = Modifier.weight(1f),
         icon = Icons.Default.Mic,
         contentDescription = "Open voice conversation",
-        enabled = healthOk,
+        enabled = healthOk && voiceSupported,
         tint = mobileAccent,
         onClick = onOpenVoice,
       )
@@ -189,8 +192,8 @@ fun ChatComposer(
         modifier = Modifier.weight(1f),
         icon = Icons.Default.Stop,
         contentDescription = "Abort response",
-        enabled = pendingRunCount > 0,
-        tint = if (pendingRunCount > 0) mobileAccent else mobileTextTertiary,
+        enabled = abortSupported && pendingRunCount > 0,
+        tint = if (abortSupported && pendingRunCount > 0) mobileAccent else mobileTextTertiary,
         onClick = onAbort,
       )
     }

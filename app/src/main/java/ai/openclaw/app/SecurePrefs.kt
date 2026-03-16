@@ -27,7 +27,7 @@ class SecurePrefs(context: Context) {
     private const val defaultGatewayHost = ""
     private const val defaultGatewayPort = 18789
     private const val defaultTailscaleHost = ""
-    private const val defaultTailscalePort = 18789
+    private const val defaultTailscalePort = 443
   }
 
   private val appContext = context.applicationContext

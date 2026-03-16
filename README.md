@@ -21,9 +21,11 @@ Compared with the upstream Android client, this fork currently emphasizes:
 
 - chat as the primary surface
 - direct agent conversations
+- `openclaw-webchat` as the source of truth for contacts and chat history
 - simplified chat-first navigation
 - enhanced agent-to-client media handling
 - practical Android playback stability improvements for fullscreen image/video viewing
+- streamed fullscreen video playback for large remote files
 - practical gateway access patterns including Tailscale-friendly usage
 
 This repository explores a narrower Android UX for users who mainly want to open the app and chat with their OpenClaw agents directly, without extra shell complexity, unnecessary setup, or registration overhead beyond what is required to connect to their own OpenClaw gateway.
@@ -63,6 +65,8 @@ Important:
 - setup code is the preferred path
 - for manual or Tailscale setup, the user should also fill in the gateway token
 - without that token, the device may not appear in `openclaw devices list` when approval is required
+- if OpenClaw uses `gateway.tailscale.mode=serve`, setup-code/QR routes are typically `wss://<magicdns>` on port `443`
+- on Android, the Tailscale app must be actually connected; "installed and logged in" is not enough
 
 ### Media Support
 
@@ -71,6 +75,7 @@ ClawChat2 currently supports structured agent-sent media attachments:
 - image receive and fullscreen viewing
 - audio receive and playback
 - video receive, preview, and fullscreen playback
+- streamed remote video playback without requiring a full pre-download
 
 Current local media contract in this fork prefers gateway-relative fields:
 
@@ -95,6 +100,7 @@ Notes:
 - `mediaPath` + `mediaPort` are the preferred fields in this fork
 - `mediaUrl` is retained as a compatibility fallback
 - the current user-originated picker flow is still image-only; audio/video support in this fork is focused on agent-to-client delivery
+- fullscreen video playback now prefers streamed playback via Android Media3/ExoPlayer, with local-file fallback only when needed
 
 Operational guides:
 

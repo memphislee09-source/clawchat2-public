@@ -23,10 +23,17 @@ data class AgentContactEntry(
   val directSessionUpdatedAtMs: Long? = null,
   val hasDirectSession: Boolean = false,
   val previewText: String? = null,
+  val avatarUrl: String? = null,
+  val presence: String = "idle",
+  val lastMessageAtMs: Long? = null,
 )
 
 fun clawChat2SessionKey(agentId: String): String {
   return "agent:${agentId.trim()}:$CLAWCHAT2_SESSION_SUFFIX"
+}
+
+fun webChatSessionKey(agentId: String): String {
+  return "openclaw-webchat:${agentId.trim()}"
 }
 
 fun formatAgentContactTitle(displayName: String, emoji: String?): String {

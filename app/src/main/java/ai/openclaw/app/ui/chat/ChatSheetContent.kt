@@ -55,6 +55,9 @@ fun ChatSheetContent(viewModel: MainViewModel, onOpenVoice: () -> Unit) {
   val streamingAssistantText by viewModel.chatStreamingAssistantText.collectAsState()
   val pendingToolCalls by viewModel.chatPendingToolCalls.collectAsState()
   val agentContacts by viewModel.agentContacts.collectAsState()
+  val voiceSupported by viewModel.chatVoiceSupported.collectAsState()
+  val abortSupported by viewModel.chatAbortSupported.collectAsState()
+  val thinkingSupported by viewModel.chatThinkingSupported.collectAsState()
 
   LaunchedEffect(chatSessionKey) {
     viewModel.loadChat(chatSessionKey)
@@ -124,7 +127,10 @@ fun ChatSheetContent(viewModel: MainViewModel, onOpenVoice: () -> Unit) {
       ChatComposer(
         healthOk = healthOk,
         thinkingLevel = thinkingLevel,
+        thinkingSupported = thinkingSupported,
         pendingRunCount = pendingRunCount,
+        abortSupported = abortSupported,
+        voiceSupported = voiceSupported,
         attachments = attachments,
         onPickImages = { pickImages.launch("image/*") },
         onRemoveAttachment = { id -> attachments.removeAll { it.id == id } },

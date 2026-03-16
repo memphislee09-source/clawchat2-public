@@ -82,6 +82,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   val agentContactsError: StateFlow<String?> = runtime.agentContactsError
   val chatLastReadAtMs: StateFlow<Map<String, Long>> = runtime.chatLastReadAtMs
   val pendingRunCount: StateFlow<Int> = runtime.pendingRunCount
+  val chatVoiceSupported: StateFlow<Boolean> = runtime.chatVoiceSupported
+  val chatAbortSupported: StateFlow<Boolean> = runtime.chatAbortSupported
+  val chatThinkingSupported: StateFlow<Boolean> = runtime.chatThinkingSupported
 
   fun setForeground(value: Boolean) {
     runtime.setForeground(value)

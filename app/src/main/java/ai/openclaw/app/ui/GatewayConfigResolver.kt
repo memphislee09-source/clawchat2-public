@@ -78,12 +78,12 @@ internal fun resolveGatewayConnectConfig(
   }
 
   if (inputMode == ConnectGatewayInputMode.Tailscale) {
-    val tailscaleUrl = composeGatewayManualUrl(tailscaleHost, tailscalePort, tls = false) ?: return null
+    val tailscaleUrl = composeGatewayManualUrl(tailscaleHost, tailscalePort, tls = true) ?: return null
     val parsed = parseGatewayEndpoint(tailscaleUrl) ?: return null
     return GatewayConnectConfig(
       host = parsed.host,
       port = parsed.port,
-      tls = false,
+      tls = parsed.tls,
       bootstrapToken = "",
       token = fallbackToken.trim(),
       password = fallbackPassword.trim(),
@@ -118,7 +118,8 @@ internal fun parseGatewayEndpoint(rawInput: String): GatewayEndpointConfig? {
       "wss", "https" -> true
       else -> true
     }
-  val port = uri.port.takeIf { it in 1..65535 } ?: 18789
+  val port =
+    uri.port.takeIf { it in 1..65535 } ?: if (tls) 443 else 18789
   val displayUrl = "${if (tls) "https" else "http"}://$host:$port"
 
   return GatewayEndpointConfig(host = host, port = port, tls = tls, displayUrl = displayUrl)

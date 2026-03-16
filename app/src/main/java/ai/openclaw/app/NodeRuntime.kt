@@ -7,16 +7,12 @@ import android.os.SystemClock
 import android.util.Log
 import androidx.core.content.ContextCompat
 import ai.openclaw.app.chat.AgentContactEntry
-import ai.openclaw.app.chat.ChatController
 import ai.openclaw.app.chat.ChatMessage
 import ai.openclaw.app.chat.ChatPendingToolCall
 import ai.openclaw.app.chat.ChatSessionEntry
-import ai.openclaw.app.chat.ConfiguredAgentEntry
 import ai.openclaw.app.chat.OutgoingAttachment
-import ai.openclaw.app.chat.clawChat2SessionKey
-import ai.openclaw.app.chat.extractLatestPreviewText
-import ai.openclaw.app.chat.parseConfiguredAgents
-import ai.openclaw.app.chat.resolveAgentContacts
+import ai.openclaw.app.chat.WebChatController
+import ai.openclaw.app.chat.webChatSessionKey
 import ai.openclaw.app.gateway.DeviceAuthStore
 import ai.openclaw.app.gateway.DeviceIdentityStore
 import ai.openclaw.app.gateway.GatewayDiscovery
@@ -215,14 +211,6 @@ class NodeRuntime(context: Context) {
 
   private val _isForeground = MutableStateFlow(true)
   val isForeground: StateFlow<Boolean> = _isForeground.asStateFlow()
-  private val _configuredAgents = MutableStateFlow<List<ConfiguredAgentEntry>>(emptyList())
-  private val _agentContactPreviews = MutableStateFlow<Map<String, String>>(emptyMap())
-  private val _agentContacts = MutableStateFlow<List<AgentContactEntry>>(emptyList())
-  val agentContacts: StateFlow<List<AgentContactEntry>> = _agentContacts.asStateFlow()
-  private val _agentContactsRefreshing = MutableStateFlow(false)
-  val agentContactsRefreshing: StateFlow<Boolean> = _agentContactsRefreshing.asStateFlow()
-  private val _agentContactsError = MutableStateFlow<String?>(null)
-  val agentContactsError: StateFlow<String?> = _agentContactsError.asStateFlow()
 
   private var lastAutoA2uiUrl: String? = null
   private var didAutoRequestCanvasRehydrate = false
@@ -250,7 +238,6 @@ class NodeRuntime(context: Context) {
         micCapture.onGatewayConnectionChanged(true)
         scope.launch {
           refreshBrandingFromGateway()
-          refreshAgentContactsInternal()
           if (voiceReplySpeakerLazy.isInitialized()) {
             voiceReplySpeaker.refreshConfig()
           }
@@ -265,8 +252,6 @@ class NodeRuntime(context: Context) {
         if (!isCanonicalMainSessionKey(_mainSessionKey.value)) {
           _mainSessionKey.value = "main"
         }
-        _agentContactPreviews.value = emptyMap()
-        _agentContactsRefreshing.value = false
         chat.applyMainSessionKey(resolveMainSessionKey())
         chat.onDisconnected(message)
         micCapture.onGatewayConnectionChanged(false)
@@ -334,13 +319,12 @@ class NodeRuntime(context: Context) {
     }
   }
 
-  private val chat: ChatController =
-    ChatController(
+  private val chat: WebChatController =
+    WebChatController(
       scope = scope,
-      session = operatorSession,
+      prefs = prefs,
       json = json,
-      supportsChatSubscribe = false,
-      initialSessionKey = prefs.lastChatSessionKey.value.trim().ifEmpty { "main" },
+      initialSessionKey = prefs.lastChatSessionKey.value.trim(),
     )
   private val voiceReplySpeakerLazy: Lazy<TalkModeManager> = lazy {
     // Reuse the existing TalkMode speech engine (ElevenLabs + deterministic system-TTS fallback)
@@ -461,7 +445,7 @@ class NodeRuntime(context: Context) {
 
   private fun resolveActiveChatSessionKey(): String {
     val trimmed = chat.sessionKey.value.trim()
-    return if (trimmed.isEmpty()) resolveMainSessionKey() else trimmed
+    return if (trimmed.startsWith("openclaw-webchat:")) resolveMainSessionKey() else trimmed.ifEmpty { resolveMainSessionKey() }
   }
 
   private fun maybeNavigateToA2uiOnConnect() {
@@ -575,6 +559,12 @@ class NodeRuntime(context: Context) {
   val chatPendingToolCalls: StateFlow<List<ChatPendingToolCall>> = chat.pendingToolCalls
   val chatSessions: StateFlow<List<ChatSessionEntry>> = chat.sessions
   val pendingRunCount: StateFlow<Int> = chat.pendingRunCount
+  val agentContacts: StateFlow<List<AgentContactEntry>> = chat.agentContacts
+  val agentContactsRefreshing: StateFlow<Boolean> = chat.agentContactsRefreshing
+  val agentContactsError: StateFlow<String?> = chat.agentContactsError
+  val chatVoiceSupported: StateFlow<Boolean> = chat.voiceSupported
+  val chatAbortSupported: StateFlow<Boolean> = chat.abortSupported
+  val chatThinkingSupported: StateFlow<Boolean> = chat.thinkingSupported
 
   init {
     if (prefs.voiceWakeMode.value != VoiceWakeMode.Off) {
@@ -583,14 +573,6 @@ class NodeRuntime(context: Context) {
 
     scope.launch {
       prefs.loadGatewayToken()
-    }
-
-    scope.launch {
-      combine(_configuredAgents, chat.sessions, _agentContactPreviews) { agents, sessions, previews ->
-        resolveAgentContacts(agents = agents, sessions = sessions, previewsBySessionKey = previews)
-      }.collect { contacts ->
-        _agentContacts.value = contacts
-      }
     }
 
     scope.launch {
@@ -840,12 +822,6 @@ class NodeRuntime(context: Context) {
   }
 
   fun connectManual() {
-    val lanEndpoint = gateways.value.firstOrNull()
-    if (lanEndpoint != null) {
-      connect(lanEndpoint)
-      return
-    }
-
     val host = manualHost.value.trim()
     val port = manualPort.value
     if (host.isNotEmpty() && port in 1..65535) {
@@ -857,6 +833,12 @@ class NodeRuntime(context: Context) {
     val tsPort = tailscalePort.value
     if (tsHost.isNotEmpty() && tsPort in 1..65535) {
       connect(GatewayEndpoint.manual(host = tsHost, port = tsPort), fromTailscaleFallback = true)
+      return
+    }
+
+    val lanEndpoint = gateways.value.firstOrNull()
+    if (lanEndpoint != null) {
+      connect(lanEndpoint)
       return
     }
 
@@ -957,9 +939,7 @@ class NodeRuntime(context: Context) {
   }
 
   fun refreshAgentContacts() {
-    scope.launch {
-      refreshAgentContactsInternal()
-    }
+    chat.refreshAgentContacts()
   }
 
   fun setChatThinkingLevel(level: String) {
@@ -969,21 +949,15 @@ class NodeRuntime(context: Context) {
   fun openAgentChat(agentId: String) {
     val normalized = agentId.trim()
     if (normalized.isEmpty()) return
-    val sessionKey = clawChat2SessionKey(normalized)
+    val sessionKey = webChatSessionKey(normalized)
     prefs.setLastChatSessionKey(sessionKey)
-    if (chat.sessionKey.value == sessionKey) {
-      chat.refresh()
-    } else {
-      chat.switchSession(sessionKey)
-    }
-    talkMode.setMainSessionKey(resolveActiveChatSessionKey())
+    chat.openAgentChat(normalized)
   }
 
   fun switchChatSession(sessionKey: String) {
     val key = sessionKey.trim()
     prefs.setLastChatSessionKey(key)
     chat.switchSession(key)
-    talkMode.setMainSessionKey(resolveActiveChatSessionKey())
   }
 
   fun abortChat() {
@@ -1026,51 +1000,6 @@ class NodeRuntime(context: Context) {
     } catch (_: Throwable) {
       // ignore
     }
-  }
-
-  private suspend fun refreshAgentContactsInternal() {
-    if (!_isConnected.value) {
-      _agentContactsError.value = "Gateway not connected"
-      _agentContactsRefreshing.value = false
-      return
-    }
-
-    _agentContactsRefreshing.value = true
-    try {
-      val sessions = chat.refreshSessionsSnapshot(limit = 200)
-      val res = operatorSession.request("config.get", "{}")
-      val agents = parseConfiguredAgents(configJson = res, json = json)
-      _configuredAgents.value = agents
-      _agentContactPreviews.value = loadAgentContactPreviews(agents = agents, sessions = sessions)
-      _agentContactsError.value = null
-    } catch (err: Throwable) {
-      _agentContactsError.value = err.message ?: "Failed to refresh contacts"
-    } finally {
-      _agentContactsRefreshing.value = false
-    }
-  }
-
-  private suspend fun loadAgentContactPreviews(
-    agents: List<ConfiguredAgentEntry>,
-    sessions: List<ChatSessionEntry>,
-  ): Map<String, String> {
-    val existingKeys = sessions.map { it.key.trim() }.toSet()
-    val previews = linkedMapOf<String, String>()
-    for (agent in agents) {
-      val sessionKey = clawChat2SessionKey(agent.agentId)
-      if (!existingKeys.contains(sessionKey)) continue
-      val preview =
-        try {
-          val historyJson = operatorSession.request("chat.history", """{"sessionKey":"$sessionKey"}""")
-          extractLatestPreviewText(historyJson = historyJson, json = json)
-        } catch (_: Throwable) {
-          null
-        }
-      if (!preview.isNullOrBlank()) {
-        previews[sessionKey] = preview
-      }
-    }
-    return previews
   }
 
   private fun triggerCameraFlash() {

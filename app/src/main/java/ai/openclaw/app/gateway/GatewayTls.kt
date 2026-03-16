@@ -3,6 +3,8 @@ package ai.openclaw.app.gateway
 import android.annotation.SuppressLint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.net.Inet4Address
+import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -104,34 +106,47 @@ suspend fun probeGatewayTlsFingerprint(
     val context = SSLContext.getInstance("TLS")
     context.init(null, arrayOf(trustAll), SecureRandom())
 
-    val socket = (context.socketFactory.createSocket() as SSLSocket)
-    try {
-      socket.soTimeout = timeoutMs
-      socket.connect(InetSocketAddress(trimmedHost, port), timeoutMs)
+    val addresses =
+      runCatching {
+        InetAddress.getAllByName(trimmedHost)
+          .sortedWith(compareBy<InetAddress>({ if (it is Inet4Address) 0 else 1 }, { it.hostAddress ?: "" }))
+      }.getOrElse { emptyList() }
+    if (addresses.isEmpty()) {
+      return@withContext null
+    }
 
-      // Best-effort SNI for hostnames (avoid crashing on IP literals).
+    for (address in addresses) {
+      val socket = (context.socketFactory.createSocket() as SSLSocket)
       try {
-        if (trimmedHost.any { it.isLetter() }) {
-          val params = SSLParameters()
-          params.serverNames = listOf(SNIHostName(trimmedHost))
-          socket.sslParameters = params
+        socket.soTimeout = timeoutMs
+        socket.connect(InetSocketAddress(address, port), timeoutMs)
+
+        // Keep SNI on the original hostname even when dialing a resolved IP.
+        try {
+          if (trimmedHost.any { it.isLetter() }) {
+            val params = SSLParameters()
+            params.serverNames = listOf(SNIHostName(trimmedHost))
+            socket.sslParameters = params
+          }
+        } catch (_: Throwable) {
+          // ignore
         }
-      } catch (_: Throwable) {
-        // ignore
-      }
 
-      socket.startHandshake()
-      val cert = socket.session.peerCertificates.firstOrNull() as? X509Certificate ?: return@withContext null
-      sha256Hex(cert.encoded)
-    } catch (_: Throwable) {
-      null
-    } finally {
-      try {
-        socket.close()
+        socket.startHandshake()
+        val cert = socket.session.peerCertificates.firstOrNull() as? X509Certificate ?: continue
+        return@withContext sha256Hex(cert.encoded)
       } catch (_: Throwable) {
-        // ignore
+        // Try the next resolved address.
+      } finally {
+        try {
+          socket.close()
+        } catch (_: Throwable) {
+          // ignore
+        }
       }
     }
+
+    null
   }
 }
 

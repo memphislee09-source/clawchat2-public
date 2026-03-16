@@ -8,12 +8,11 @@ import android.content.pm.ActivityInfo
 import android.media.AudioAttributes
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
+import android.net.Uri
 import android.util.Base64
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
-import android.widget.MediaController
-import android.widget.VideoView
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -70,6 +69,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import ai.openclaw.app.SecurePrefs
 import ai.openclaw.app.ui.mobileAccent
 import ai.openclaw.app.ui.mobileAccentSoft
@@ -83,6 +88,7 @@ import ai.openclaw.app.ui.mobileSurface
 import ai.openclaw.app.ui.mobileText
 import ai.openclaw.app.ui.mobileTextSecondary
 import java.io.File
+import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -91,6 +97,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import kotlin.math.max
+import org.json.JSONObject
 
 internal data class ResolvedMediaFileState(
   val file: File?,
@@ -131,13 +139,8 @@ internal fun ChatMediaAttachment(descriptor: ChatAttachmentDescriptor) {
 
 @Composable
 private fun ChatImageAttachment(descriptor: ChatAttachmentDescriptor) {
-  var showViewer by remember(
-    descriptor.base64,
-    descriptor.mediaUrl,
-    descriptor.mediaPath,
-    descriptor.mediaPort,
-    descriptor.fileName,
-  ) {
+  val attachmentStateKey = stableAttachmentStateKey(descriptor)
+  var showViewer by remember(attachmentStateKey) {
     mutableStateOf(false)
   }
 
@@ -375,6 +378,7 @@ private fun ChatVideoAttachment(descriptor: ChatAttachmentDescriptor) {
     return
   }
 
+  val attachmentStateKey = stableAttachmentStateKey(descriptor)
   val context = LocalContext.current
   val prefs = remember(context.applicationContext) { SecurePrefs(context.applicationContext) }
   val streamUrl =
@@ -395,12 +399,45 @@ private fun ChatVideoAttachment(descriptor: ChatAttachmentDescriptor) {
         tailscaleHost = prefs.tailscaleHost.value,
       ).firstOrNull()
     }
-  val fileState = rememberResolvedMediaFileState(descriptor = descriptor)
-  val file = fileState.file
-  val previewState = file?.let { rememberMediaPreviewState(file = it, includeFrame = true) }
-  val playbackSource = file?.absolutePath ?: streamUrl
-  var showPlayer by remember(file?.absolutePath, streamUrl) { mutableStateOf(false) }
-  val openFullscreenVideo = remember(playbackSource) { { if (playbackSource != null) showPlayer = true } }
+  val fallbackFileState =
+    if (streamUrl == null) {
+      rememberResolvedMediaFileState(descriptor = descriptor)
+    } else {
+      null
+    }
+  val fallbackFile = fallbackFileState?.file
+  val previewState = fallbackFile?.let { rememberMediaPreviewState(file = it, includeFrame = true) }
+  val playbackSource = streamUrl ?: fallbackFile?.absolutePath
+  val preferredOrientation = preferredVideoFullscreenOrientation(previewState)
+  val displayAspectRatio = previewState?.let(::mediaDisplayAspectRatio)
+  var showPlayer by
+    remember(attachmentStateKey) {
+      mutableStateOf(false)
+    }
+  var activePlaybackSource by
+    remember(attachmentStateKey) {
+      mutableStateOf<String?>(null)
+    }
+  var activePreferredOrientation by
+    remember(attachmentStateKey) {
+      mutableStateOf<Int?>(null)
+    }
+  var activeDisplayAspectRatio by
+    remember(attachmentStateKey) {
+      mutableStateOf<Float?>(null)
+    }
+
+  val openFullscreenVideo =
+    remember(playbackSource, preferredOrientation, displayAspectRatio) {
+      {
+        if (playbackSource != null) {
+          activePlaybackSource = playbackSource
+          activePreferredOrientation = preferredOrientation
+          activeDisplayAspectRatio = displayAspectRatio
+          showPlayer = true
+        }
+      }
+    }
 
   ChatAttachmentCard(
     descriptor = descriptor,
@@ -409,8 +446,12 @@ private fun ChatVideoAttachment(descriptor: ChatAttachmentDescriptor) {
       listOfNotNull(
         descriptor.mimeType,
         previewState?.durationMs?.takeIf { it > 0L }?.let(::formatMediaDuration),
-        if (fileState.loading && streamUrl != null) "Tap to stream" else null,
-      ).joinToString(" · ").ifBlank { "Tap to play" },
+        when {
+          streamUrl != null -> "Tap to stream"
+          fallbackFileState?.loading == true -> "Preparing video"
+          else -> null
+        },
+      ).joinToString(" · ").ifBlank { if (playbackSource != null) "Tap to play" else "Video unavailable" },
     leadingIcon = {
       Icon(
         imageVector = Icons.Default.Videocam,
@@ -435,18 +476,18 @@ private fun ChatVideoAttachment(descriptor: ChatAttachmentDescriptor) {
           mimeType = descriptor.mimeType,
           onClick = openFullscreenVideo,
         )
-      } else if (fileState.loading && streamUrl != null) {
+      } else if (streamUrl != null) {
         VideoPlaceholderTile(
           message = "Tap to stream full screen",
           onClick = openFullscreenVideo,
         )
       } else if (previewState?.failed == true) {
         Text("Preview unavailable", style = mobileCaption1, color = mobileTextSecondary)
-      } else if (fileState.loading) {
+      } else if (fallbackFileState?.loading == true) {
         Text("Preparing preview", style = mobileCaption1, color = mobileTextSecondary)
       } else {
         Text(
-          fileState.errorText ?: "Could not decode video attachment",
+          fallbackFileState?.errorText ?: "Could not prepare video attachment",
           style = mobileCaption1,
           color = mobileTextSecondary,
         )
@@ -456,10 +497,24 @@ private fun ChatVideoAttachment(descriptor: ChatAttachmentDescriptor) {
 
   if (showPlayer) {
     FullscreenVideoDialog(
-      playbackSource = playbackSource,
-      preferredOrientation = preferredVideoFullscreenOrientation(previewState),
-      displayAspectRatio = previewState?.let(::mediaDisplayAspectRatio),
-      onDismiss = { showPlayer = false },
+      playbackSource = activePlaybackSource,
+      preferredOrientation = activePreferredOrientation,
+      displayAspectRatio = activeDisplayAspectRatio,
+      isPreparing = activePlaybackSource == null && fallbackFileState?.loading == true,
+      statusText =
+        when {
+          activePlaybackSource == null && fallbackFileState?.loading == true -> "Preparing video..."
+          activePlaybackSource == null && fallbackFileState?.failed == true ->
+            fallbackFileState.errorText ?: "Could not prepare video attachment"
+          activePlaybackSource == null -> "Video unavailable"
+          else -> null
+        },
+      onDismiss = {
+        showPlayer = false
+        activePlaybackSource = null
+        activePreferredOrientation = null
+        activeDisplayAspectRatio = null
+      },
     )
   }
 }
@@ -527,7 +582,8 @@ private fun ChatAttachmentCard(
 
 @Composable
 private fun ChatFileImage(file: File, mimeType: String?, onClick: () -> Unit) {
-  val imageState = rememberImageFileState(file)
+  val decodeRequest = rememberViewportImageDecodeRequest(preferLowMemory = true)
+  val imageState = rememberImageFileState(file, decodeRequest = decodeRequest)
   val image = imageState.image
 
   if (image != null) {
@@ -558,7 +614,7 @@ private fun ChatFileImage(file: File, mimeType: String?, onClick: () -> Unit) {
           mediaPath = null,
           mediaPort = null,
           mediaSha256 = null,
-          sizeBytes = file.length(),
+          sizeBytes = null,
         ),
       title = "Loading image",
       detail = mimeType ?: "Decoding image",
@@ -652,14 +708,22 @@ private fun FullscreenImageDialog(
   base64: String?,
   onDismiss: () -> Unit,
 ) {
-  val fileImageState = if (file != null) rememberImageFileState(file) else null
-  val base64ImageState = if (base64 != null) rememberBase64ImageState(base64) else null
+  val decodeRequest = rememberViewportImageDecodeRequest(preferLowMemory = false)
+  val fileImageState =
+    if (file != null) rememberImageFileState(file, decodeRequest = decodeRequest) else null
+  val base64ImageState =
+    if (base64 != null) rememberBase64ImageState(base64, decodeRequest = decodeRequest) else null
   val image = fileImageState?.image ?: base64ImageState?.image
   val failed = fileImageState?.failed == true || base64ImageState?.failed == true
 
   Dialog(
     onDismissRequest = onDismiss,
-    properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+    properties =
+      DialogProperties(
+        usePlatformDefaultWidth = false,
+        decorFitsSystemWindows = false,
+        dismissOnClickOutside = false,
+      ),
   ) {
     PrepareFullscreenDialogWindow()
     Surface(
@@ -723,9 +787,57 @@ private fun FullscreenVideoDialog(
   playbackSource: String?,
   preferredOrientation: Int?,
   displayAspectRatio: Float?,
+  isPreparing: Boolean,
+  statusText: String?,
   onDismiss: () -> Unit,
 ) {
   ApplyRequestedOrientation(preferredOrientation = preferredOrientation)
+  val context = LocalContext.current
+  var playerStatusText by remember(playbackSource) { mutableStateOf<String?>(null) }
+  var playerReady by remember(playbackSource) { mutableStateOf(false) }
+  var playerBuffering by remember(playbackSource) { mutableStateOf(false) }
+  val player =
+    remember(playbackSource, context.applicationContext) {
+      playbackSource?.let { source ->
+        ExoPlayer.Builder(context.applicationContext)
+          .build()
+          .apply {
+            setMediaItem(MediaItem.fromUri(resolvePlaybackUri(source)))
+            playWhenReady = true
+            prepare()
+          }
+      }
+    }
+
+  DisposableEffect(player) {
+    if (player == null) {
+      onDispose {}
+    } else {
+      val listener =
+        object : Player.Listener {
+          override fun onPlaybackStateChanged(playbackState: Int) {
+            playerBuffering = playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_IDLE
+            if (playbackState == Player.STATE_READY) {
+              playerReady = true
+              playerStatusText = null
+            } else if (playbackState == Player.STATE_ENDED) {
+              playerBuffering = false
+              playerStatusText = null
+            }
+          }
+
+          override fun onPlayerError(error: PlaybackException) {
+            playerBuffering = false
+            playerStatusText = error.localizedMessage ?: "Playback error"
+          }
+        }
+      player.addListener(listener)
+      onDispose {
+        player.removeListener(listener)
+        player.release()
+      }
+    }
+  }
 
   Dialog(
     onDismissRequest = onDismiss,
@@ -744,7 +856,7 @@ private fun FullscreenVideoDialog(
               .background(Color.Black),
         )
 
-        if (playbackSource != null) {
+        if (player != null) {
           BoxWithConstraints(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center,
@@ -778,22 +890,68 @@ private fun FullscreenVideoDialog(
             AndroidView(
               modifier = playerModifier,
               factory = { context ->
-                VideoView(context).apply {
-                  setMediaController(MediaController(context).also { controller -> controller.setAnchorView(this) })
-                  setOnPreparedListener { mediaPlayer ->
-                    mediaPlayer.isLooping = false
-                    start()
-                  }
+                PlayerView(context).apply {
+                  useController = true
+                  controllerAutoShow = true
+                  controllerHideOnTouch = true
+                  resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                  setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
+                  setBackgroundColor(android.graphics.Color.BLACK)
                 }
               },
-              update = { videoView ->
-                if (videoView.tag != playbackSource) {
-                  videoView.tag = playbackSource
-                  videoView.stopPlayback()
-                  videoView.setVideoPath(playbackSource)
+              update = { playerView ->
+                if (playerView.player !== player) {
+                  playerView.player = player
                 }
               },
             )
+          }
+        } else {
+          val showInlineProgress = isPreparing
+          Column(
+            modifier =
+              Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+          ) {
+            if (showInlineProgress) {
+              CircularProgressIndicator(color = Color.White, strokeWidth = 3.dp)
+            }
+            val resolvedStatusText = playerStatusText ?: statusText
+            resolvedStatusText?.let { message ->
+              Text(
+                text = message,
+                color = Color.White,
+                style = mobileCallout,
+                modifier =
+                  Modifier.padding(
+                    top = if (showInlineProgress) 16.dp else 0.dp,
+                  ),
+              )
+            }
+          }
+        }
+
+        if (player != null && playerBuffering && !playerReady && playerStatusText == null) {
+          Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+          ) {
+            CircularProgressIndicator(color = Color.White, strokeWidth = 3.dp)
+          }
+        }
+
+        playerStatusText?.let { message ->
+          Box(
+            modifier =
+              Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp),
+            contentAlignment = Alignment.Center,
+          ) {
+            Text(text = message, color = Color.White, style = mobileCallout)
           }
         }
 
@@ -907,28 +1065,15 @@ internal fun rememberResolvedMediaFileState(
 ): ResolvedMediaFileState {
   val context = LocalContext.current
   val prefs = remember(context.applicationContext) { SecurePrefs(context.applicationContext) }
+  val attachmentStateKey = stableAttachmentStateKey(descriptor)
   var state by remember(
-    descriptor.base64,
-    descriptor.mediaUrl,
-    descriptor.mediaPath,
-    descriptor.mediaPort,
-    descriptor.mediaSha256,
-    descriptor.mimeType,
-    descriptor.fileName,
-    descriptor.kind,
+    attachmentStateKey,
   ) {
     mutableStateOf(ResolvedMediaFileState(file = null, loading = true, failed = false))
   }
 
   LaunchedEffect(
-    descriptor.base64,
-    descriptor.mediaUrl,
-    descriptor.mediaPath,
-    descriptor.mediaPort,
-    descriptor.mediaSha256,
-    descriptor.mimeType,
-    descriptor.fileName,
-    descriptor.kind,
+    attachmentStateKey,
   ) {
     state = ResolvedMediaFileState(file = null, loading = true, failed = false)
     val resolved =
@@ -1060,7 +1205,7 @@ private fun resolveAttachmentFile(
   }
 
   val mediaUrl = descriptor.mediaUrl ?: descriptor.mediaPath ?: error("missing attachment source")
-  val remoteKey = descriptor.mediaSha256 ?: sha256Hex(mediaUrl.toByteArray())
+  val remoteKey = descriptor.mediaSha256 ?: sha256Hex(stableAttachmentStateKey(descriptor).toByteArray())
   val file = File(mediaDir, "$remoteKey.$extension")
   if (file.exists() && file.length() > 0L) return file
 
@@ -1086,14 +1231,13 @@ private fun resolveAttachmentFile(
       mediaHttpClient.newCall(request).execute().use { response ->
         require(response.isSuccessful) { "HTTP ${response.code}" }
         val body = response.body ?: error("empty response body")
-        val bytes = body.bytes()
-        require(bytes.isNotEmpty()) { "empty attachment" }
+        val tempFile = File(mediaDir, "$remoteKey.$extension.part")
+        streamResponseBodyToFile(body = body, destination = tempFile)
+        require(tempFile.length() > 0L) { "empty attachment" }
         descriptor.mediaSha256?.let { expected ->
-          val actual = sha256Hex(bytes)
+          val actual = sha256Hex(tempFile)
           require(actual.equals(expected, ignoreCase = true)) { "attachment checksum mismatch" }
         }
-        val tempFile = File(mediaDir, "$remoteKey.$extension.part")
-        tempFile.writeBytes(bytes)
         if (!tempFile.renameTo(file)) {
           tempFile.copyTo(file, overwrite = true)
           tempFile.delete()
@@ -1136,6 +1280,35 @@ private fun sha256Hex(bytes: ByteArray): String {
     .joinToString(separator = "") { each -> "%02x".format(each) }
 }
 
+private fun sha256Hex(file: File): String {
+  val digest = MessageDigest.getInstance("SHA-256")
+  file.inputStream().buffered().use { input ->
+    val buffer = ByteArray(DEFAULT_MEDIA_BUFFER_SIZE)
+    while (true) {
+      val read = input.read(buffer)
+      if (read <= 0) break
+      digest.update(buffer, 0, read)
+    }
+  }
+  return digest.digest().joinToString(separator = "") { each -> "%02x".format(each) }
+}
+
+private fun streamResponseBodyToFile(body: okhttp3.ResponseBody, destination: File) {
+  destination.parentFile?.mkdirs()
+  body.byteStream().use { input ->
+    FileOutputStream(destination).use { output ->
+      val buffer = ByteArray(DEFAULT_MEDIA_BUFFER_SIZE)
+      while (true) {
+        val read = input.read(buffer)
+        if (read < 0) break
+        if (read == 0) continue
+        output.write(buffer, 0, read)
+      }
+      output.flush()
+    }
+  }
+}
+
 private fun loadMediaPreviewState(source: String, includeFrame: Boolean): MediaPreviewState {
   return runCatching {
     val retriever = MediaMetadataRetriever()
@@ -1155,7 +1328,12 @@ private fun loadMediaPreviewState(source: String, includeFrame: Boolean): MediaP
         retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull()
       val preview =
         if (includeFrame) {
-          retriever.getFrameAtTime(0L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)?.asImageBitmap()
+          loadScaledVideoPreviewFrame(
+            retriever = retriever,
+            videoWidth = videoWidth,
+            videoHeight = videoHeight,
+            rotationDegrees = rotationDegrees,
+          )?.asImageBitmap()
         } else {
           null
         }
@@ -1179,6 +1357,97 @@ private fun loadMediaPreviewState(source: String, includeFrame: Boolean): MediaP
       rotationDegrees = null,
       failed = true,
     )
+  }
+}
+
+private fun loadScaledVideoPreviewFrame(
+  retriever: MediaMetadataRetriever,
+  videoWidth: Int?,
+  videoHeight: Int?,
+  rotationDegrees: Int?,
+): android.graphics.Bitmap? {
+  val sourceWidth = videoWidth?.takeIf { it > 0 } ?: return retriever.getFrameAtTime(0L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+  val sourceHeight = videoHeight?.takeIf { it > 0 } ?: return retriever.getFrameAtTime(0L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+  val rotation = ((rotationDegrees ?: 0) % 360 + 360) % 360
+  val displayWidth = if (rotation == 90 || rotation == 270) sourceHeight else sourceWidth
+  val displayHeight = if (rotation == 90 || rotation == 270) sourceWidth else sourceHeight
+  val maxEdge = 960
+  val scale =
+    max(
+      1f,
+      max(
+        displayWidth / maxEdge.toFloat(),
+        displayHeight / maxEdge.toFloat(),
+      ),
+    )
+  val targetDisplayWidth = (displayWidth / scale).toInt().coerceAtLeast(1)
+  val targetDisplayHeight = (displayHeight / scale).toInt().coerceAtLeast(1)
+  val targetWidth = if (rotation == 90 || rotation == 270) targetDisplayHeight else targetDisplayWidth
+  val targetHeight = if (rotation == 90 || rotation == 270) targetDisplayWidth else targetDisplayHeight
+
+  return runCatching {
+    retriever.getScaledFrameAtTime(
+      0L,
+      MediaMetadataRetriever.OPTION_CLOSEST_SYNC,
+      targetWidth,
+      targetHeight,
+    )
+  }.getOrElse {
+    retriever.getFrameAtTime(0L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+  }
+}
+
+private const val DEFAULT_MEDIA_BUFFER_SIZE = 64 * 1024
+
+private fun stableAttachmentStateKey(descriptor: ChatAttachmentDescriptor): String {
+  descriptor.mediaSha256?.trim()?.takeIf { it.isNotEmpty() }?.let { return "sha256:$it" }
+  descriptor.base64?.trim()?.takeIf { it.isNotEmpty() }?.let { return "base64:${sha256Hex(it.toByteArray())}" }
+  descriptor.mediaPath?.trim()?.takeIf { it.isNotEmpty() }?.let { return "path:$it" }
+  descriptor.mediaUrl?.trim()?.takeIf { it.isNotEmpty() }?.let { mediaUrl ->
+    decodeWebChatMediaTokenPath(mediaUrl)?.let { resolvedPath ->
+      return "webchat:$resolvedPath"
+    }
+    return "url:$mediaUrl"
+  }
+  return buildString {
+    append(descriptor.kind.name)
+    append('|')
+    append(descriptor.fileName.orEmpty())
+    append('|')
+    append(descriptor.mimeType.orEmpty())
+    append('|')
+    append(descriptor.sizeBytes ?: -1L)
+  }
+}
+
+private fun decodeWebChatMediaTokenPath(mediaUrl: String): String? {
+  val token =
+    runCatching { Uri.parse(mediaUrl).getQueryParameter("token") }.getOrNull()
+      ?.trim()
+      ?.takeIf { it.isNotEmpty() }
+      ?: return null
+  return runCatching {
+    val decoded =
+      String(
+        Base64.decode(token, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING),
+        Charsets.UTF_8,
+      )
+    JSONObject(decoded)
+      .optJSONObject("payload")
+      ?.optString("path")
+      ?.trim()
+      ?.takeIf { it.isNotEmpty() }
+  }.getOrNull()
+}
+
+private fun resolvePlaybackUri(playbackSource: String): Uri {
+  return when {
+    playbackSource.startsWith("http://") ||
+      playbackSource.startsWith("https://") ||
+      playbackSource.startsWith("content://") ||
+      playbackSource.startsWith("file://") -> Uri.parse(playbackSource)
+
+    else -> Uri.fromFile(File(playbackSource))
   }
 }
 

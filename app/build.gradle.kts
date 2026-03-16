@@ -180,6 +180,8 @@ dependencies {
 
     implementation("androidx.security:security-crypto:1.1.0")
     implementation("androidx.exifinterface:exifinterface:1.4.2")
+    implementation("androidx.media3:media3-exoplayer:1.8.0")
+    implementation("androidx.media3:media3-ui:1.8.0")
     implementation("com.squareup.okhttp3:okhttp:5.3.2")
     implementation("org.bouncycastle:bcprov-jdk18on:1.83")
     implementation("org.commonmark:commonmark:0.27.1")
