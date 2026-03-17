@@ -49,6 +49,12 @@ For Android changes, verify as many of these as apply:
 - emulator install + launch
 - real-device verification for media, playback, permissions, or lifecycle changes
 
+Local machine note for this workspace:
+
+- emulator binary on this machine: `/opt/homebrew/share/android-commandlinetools/emulator/emulator`
+- confirmed AVD on this machine: `clawchat2_api35`
+- quick check: ``/opt/homebrew/share/android-commandlinetools/emulator/emulator -list-avds``
+
 ### Pull Requests
 
 Include:
@@ -113,6 +119,12 @@ ClawChat2 是一个早期阶段的非官方 Android 分叉项目，源自 OpenCl
 - 有针对性的单元测试
 - 模拟器安装与启动
 - 对媒体、播放、权限、生命周期相关改动做真机验证
+
+当前这台开发机器的本地说明：
+
+- 模拟器可执行文件路径：`/opt/homebrew/share/android-commandlinetools/emulator/emulator`
+- 当前已确认可用的 AVD：`clawchat2_api35`
+- 快速检查命令：``/opt/homebrew/share/android-commandlinetools/emulator/emulator -list-avds``
 
 ### Pull Request 要包含
 

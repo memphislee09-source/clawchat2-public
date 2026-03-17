@@ -236,6 +236,7 @@ class NodeRuntime(context: Context) {
         applyMainSessionKey(mainSessionKey)
         updateStatus()
         micCapture.onGatewayConnectionChanged(true)
+        chat.ensureInitialAgentContactsLoaded()
         scope.launch {
           refreshBrandingFromGateway()
           if (voiceReplySpeakerLazy.isInitialized()) {
@@ -574,6 +575,8 @@ class NodeRuntime(context: Context) {
     scope.launch {
       prefs.loadGatewayToken()
     }
+
+    chat.ensureInitialAgentContactsLoaded()
 
     scope.launch {
       prefs.talkEnabled.collect { enabled ->

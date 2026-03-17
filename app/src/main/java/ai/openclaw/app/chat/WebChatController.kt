@@ -93,6 +93,8 @@ class WebChatController(
 
   private var activeAgentId: String? = parseAgentIdFromSessionKey(initialSessionKey)
   private var preferredBaseUrl: String? = null
+  private var startupContactsLoaded = false
+  private var startupContactsRefreshInFlight = false
 
   init {
     scope.launch {
@@ -100,7 +102,6 @@ class WebChatController(
         delay(WEBCHAT_POLL_INTERVAL_MS)
         val pendingBefore = _pendingRunCount.value > 0
         runCatching {
-          refreshAgentsInternal(silent = true)
           if (activeAgentId != null && (!pendingBefore || _pendingRunCount.value == 0)) {
             refreshActiveConversationInternal(silent = true)
           }
@@ -128,31 +129,37 @@ class WebChatController(
 
   fun refresh() {
     scope.launch {
-      val refreshed = refreshAgentsInternal(silent = false)
       if (activeAgentId != null) {
         refreshActiveConversationInternal(silent = false)
-      } else if (refreshed.isNotEmpty()) {
-        openAgentInternal(refreshed.first().agentId, reportErrors = false)
       }
     }
   }
 
   @Suppress("UNUSED_PARAMETER")
   fun refreshSessions(limit: Int? = null) {
-    scope.launch {
-      refreshAgentsInternal(silent = false)
-    }
+    // Contacts are refreshed only at startup and by explicit pull-to-refresh in the contacts tab.
   }
 
   @Suppress("UNUSED_PARAMETER")
   suspend fun refreshSessionsSnapshot(limit: Int? = null): List<ChatSessionEntry> {
-    refreshAgentsInternal(silent = true)
     return _sessions.value
   }
 
   fun refreshAgentContacts() {
     scope.launch {
       refreshAgentsInternal(silent = false)
+    }
+  }
+
+  fun ensureInitialAgentContactsLoaded() {
+    if (startupContactsLoaded || startupContactsRefreshInFlight) return
+    startupContactsRefreshInFlight = true
+    scope.launch {
+      try {
+        refreshAgentsInternal(silent = true)
+      } finally {
+        startupContactsRefreshInFlight = false
+      }
     }
   }
 
@@ -238,11 +245,10 @@ class WebChatController(
           )
         val assistantMessage = parsePresentedHistoryEntry(response["message"]) ?: return@launch
         _messages.value = _messages.value + assistantMessage
-        refreshAgentsInternal(silent = true)
       } catch (err: Throwable) {
         _errorText.value = err.message ?: "Send failed"
       } finally {
-        publishPendingStateFromContacts()
+        _pendingRunCount.value = 0
       }
     }
   }
@@ -296,11 +302,10 @@ class WebChatController(
       parsePresentedHistoryEntry(response["message"])?.let { message ->
         _messages.value = _messages.value + message
       }
-      refreshAgentsInternal(silent = true)
     } catch (err: Throwable) {
       _errorText.value = err.message ?: "Command failed"
     } finally {
-      publishPendingStateFromContacts()
+      _pendingRunCount.value = 0
     }
   }
 
@@ -336,9 +341,8 @@ class WebChatController(
       _messages.value = parsePresentedHistory(response["history"].asObjectOrNull()?.get("messages"))
       _errorText.value = null
       _healthOk.value = true
-      refreshAgentsInternal(silent = true)
       refreshActiveConversationInternal(silent = true)
-      publishPendingStateFromContacts()
+      _pendingRunCount.value = 0
     } catch (err: Throwable) {
       if (reportErrors) {
         _errorText.value = err.message ?: "Failed to open conversation"
@@ -364,6 +368,7 @@ class WebChatController(
         }
       _agentContacts.value = agents.map { it.toContactEntry() }
       _sessions.value = sessions
+      startupContactsLoaded = true
       _agentContactsError.value = null
       _errorText.value = _errorText.value?.takeIf { it.startsWith("Send failed") || it.startsWith("Command failed") }
       _healthOk.value = true

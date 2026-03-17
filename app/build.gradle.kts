@@ -63,8 +63,8 @@ android {
         applicationId = "ai.openclaw.app"
         minSdk = 30
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.2.1"
+        versionCode = 4
+        versionName = "0.2.2"
         ndk {
             // Support all major ABIs — native libs are tiny (~47 KB per ABI)
             abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
@@ -183,6 +183,7 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.8.0")
     implementation("androidx.media3:media3-ui:1.8.0")
     implementation("com.squareup.okhttp3:okhttp:5.3.2")
+    implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("org.bouncycastle:bcprov-jdk18on:1.83")
     implementation("org.commonmark:commonmark:0.27.1")
     implementation("org.commonmark:commonmark-ext-autolink:0.27.1")

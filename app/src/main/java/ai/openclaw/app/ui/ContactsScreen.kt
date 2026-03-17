@@ -1,9 +1,11 @@
 package ai.openclaw.app.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -20,17 +22,20 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ai.openclaw.app.MainViewModel
 import ai.openclaw.app.chat.AgentContactEntry
 import ai.openclaw.app.chat.formatAgentContactTitle
+import coil.compose.SubcomposeAsyncImage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,10 +48,6 @@ fun ContactsScreen(
   val isRefreshing by viewModel.agentContactsRefreshing.collectAsState()
   val errorText by viewModel.agentContactsError.collectAsState()
   val chatLastReadAtMs by viewModel.chatLastReadAtMs.collectAsState()
-
-  LaunchedEffect(Unit) {
-    viewModel.refreshAgentContacts()
-  }
 
   val pullToRefreshState = rememberPullToRefreshState()
 
@@ -141,12 +142,12 @@ private fun ContactRow(
     border = BorderStroke(1.dp, if (active) mobileAccent.copy(alpha = 0.24f) else mobileBorder.copy(alpha = 0.75f)),
     shadowElevation = 0.dp,
   ) {
-    androidx.compose.foundation.layout.Row(
+    Row(
       modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 11.dp),
       horizontalArrangement = Arrangement.spacedBy(10.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      ContactLeadingIcon(active = active)
+      ContactLeadingAvatar(entry = entry, active = active)
       Column(
         modifier = Modifier.weight(1f),
         verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -182,17 +183,81 @@ private fun ContactRow(
 }
 
 @Composable
-private fun ContactLeadingIcon(active: Boolean) {
-  Icon(
-    imageVector = Icons.Default.SmartToy,
-    contentDescription = null,
-    modifier = Modifier.size(19.dp),
-    tint = if (active) mobileAccent else mobileTextSecondary,
-  )
+private fun ContactLeadingAvatar(entry: AgentContactEntry, active: Boolean) {
+  val avatarShape = RoundedCornerShape(12.dp)
+  val borderColor =
+    if (active) {
+      mobileAccent.copy(alpha = 0.4f)
+    } else {
+      mobileBorder.copy(alpha = 0.9f)
+    }
+  Surface(
+    modifier = Modifier.size(40.dp),
+    shape = avatarShape,
+    color = mobileSurfaceStrong,
+    border = BorderStroke(1.dp, borderColor),
+  ) {
+    val avatarUrl = entry.avatarUrl?.trim().takeUnless { it.isNullOrEmpty() }
+    if (avatarUrl != null) {
+      SubcomposeAsyncImage(
+        model = avatarUrl,
+        contentDescription = null,
+        modifier = Modifier.fillMaxSize().clip(avatarShape),
+        contentScale = ContentScale.Crop,
+        loading = { ContactAvatarFallback(entry = entry, active = active) },
+        error = { ContactAvatarFallback(entry = entry, active = active) },
+      )
+    } else {
+      ContactAvatarFallback(entry = entry, active = active)
+    }
+  }
+}
+
+@Composable
+private fun ContactAvatarFallback(entry: AgentContactEntry, active: Boolean) {
+  val avatarShape = RoundedCornerShape(12.dp)
+  val label = contactFallbackLabel(entry)
+  Box(
+    modifier =
+      Modifier
+        .fillMaxSize()
+        .clip(avatarShape)
+        .background(if (active) mobileAccentSoft else mobileSurface),
+    contentAlignment = Alignment.Center,
+  ) {
+    if (label != null) {
+      Text(
+        text = label,
+        style = mobileCallout.copy(fontWeight = FontWeight.Bold),
+        color = if (active) mobileAccent else mobileText,
+        textAlign = TextAlign.Center,
+        maxLines = 1,
+      )
+    } else {
+      Icon(
+        imageVector = Icons.Default.SmartToy,
+        contentDescription = null,
+        modifier = Modifier.size(19.dp),
+        tint = if (active) mobileAccent else mobileTextSecondary,
+      )
+    }
+  }
 }
 
 private fun isContactUnread(entry: AgentContactEntry, lastReadAtMs: Long?): Boolean {
   val updatedAt = entry.directSessionUpdatedAtMs ?: return false
   val lastRead = lastReadAtMs ?: return true
   return updatedAt > lastRead
+}
+
+private fun contactFallbackLabel(entry: AgentContactEntry): String? {
+  entry.emoji?.trim()?.takeIf { it.isNotEmpty() }?.let { return it }
+  val first =
+    entry.displayName
+      .trim()
+      .split(Regex("\\s+"))
+      .firstOrNull()
+      ?.firstOrNull()
+      ?.uppercaseChar()
+  return first?.toString()
 }
