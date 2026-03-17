@@ -64,6 +64,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   val onboardingCompleted: StateFlow<Boolean> = runtime.onboardingCompleted
   val canvasDebugStatusEnabled: StateFlow<Boolean> = runtime.canvasDebugStatusEnabled
   val preferredLanguage: StateFlow<String> = runtime.preferredLanguage
+  val appThemeMode: StateFlow<AppThemeMode> = runtime.appThemeMode
   val lastShellScreen: StateFlow<String> = runtime.lastShellScreen
   val lastVoiceDialogOpen: StateFlow<Boolean> = runtime.lastVoiceDialogOpen
   val lastChatSessionKey: StateFlow<String> = runtime.lastChatSessionKey
@@ -172,6 +173,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
   fun setPreferredLanguage(value: String) {
     runtime.setPreferredLanguage(value)
+  }
+
+  fun setAppThemeMode(value: AppThemeMode) {
+    runtime.setAppThemeMode(value)
   }
 
   fun setVoiceScreenActive(active: Boolean) {

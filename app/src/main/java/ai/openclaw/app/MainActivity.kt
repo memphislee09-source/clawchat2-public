@@ -5,12 +5,14 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.runtime.getValue
 import androidx.core.view.WindowCompat
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ai.openclaw.app.ui.RootScreen
 import ai.openclaw.app.ui.OpenClawTheme
 import kotlinx.coroutines.launch
@@ -45,7 +47,11 @@ class MainActivity : ComponentActivity() {
     }
 
     setContent {
-      OpenClawTheme {
+      val appThemeMode by viewModel.appThemeMode.collectAsStateWithLifecycle()
+      OpenClawTheme(
+        appThemeMode = appThemeMode,
+        activity = this,
+      ) {
         Surface(modifier = Modifier) {
           RootScreen(viewModel = viewModel)
         }

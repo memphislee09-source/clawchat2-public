@@ -45,7 +45,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -66,6 +68,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import ai.openclaw.app.AppThemeMode
 import ai.openclaw.app.BuildConfig
 import ai.openclaw.app.LocationMode
 import ai.openclaw.app.MainViewModel
@@ -83,6 +86,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
   val preventSleep by viewModel.preventSleep.collectAsState()
   val canvasDebugStatusEnabled by viewModel.canvasDebugStatusEnabled.collectAsState()
   val preferredLanguage by viewModel.preferredLanguage.collectAsState()
+  val appThemeMode by viewModel.appThemeMode.collectAsState()
 
   val listState = rememberLazyListState()
   val deviceModel =
@@ -376,6 +380,28 @@ fun SettingsSheet(viewModel: MainViewModel) {
           ListItem(
             modifier = Modifier.fillMaxWidth(),
             colors = listItemColors,
+            headlineContent = { Text(tr("Theme", "主题"), style = mobileHeadline) },
+            supportingContent = { Text(tr("Switch app appearance immediately.", "立即切换应用外观。"), style = mobileCallout) },
+          )
+          themeOptions.forEachIndexed { index, option ->
+            HorizontalDivider(color = mobileBorder)
+            ListItem(
+              modifier = Modifier.fillMaxWidth(),
+              colors = listItemColors,
+              headlineContent = { Text(option.label, style = mobileHeadline) },
+              trailingContent = {
+                RadioButton(
+                  selected = appThemeMode == option.mode,
+                  onClick = { viewModel.setAppThemeMode(option.mode) },
+                  colors = settingsRadioButtonColors(),
+                )
+              },
+            )
+          }
+          HorizontalDivider(color = mobileBorder)
+          ListItem(
+            modifier = Modifier.fillMaxWidth(),
+            colors = listItemColors,
             headlineContent = { Text(tr("Language", "语言"), style = mobileHeadline) },
             supportingContent = { Text("Change app display language (restart current screen).", style = mobileCallout) },
           )
@@ -392,6 +418,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
                     viewModel.setPreferredLanguage(option.code)
                     (context as? Activity)?.recreate()
                   },
+                  colors = settingsRadioButtonColors(),
                 )
               },
             )
@@ -492,7 +519,13 @@ fun SettingsSheet(viewModel: MainViewModel) {
         colors = listItemColors,
         headlineContent = { Text("Allow Camera", style = mobileHeadline) },
         supportingContent = { Text("Allows the gateway to request photos or short video clips (foreground only).", style = mobileCallout) },
-        trailingContent = { Switch(checked = cameraEnabled, onCheckedChange = ::setCameraEnabledChecked) },
+        trailingContent = {
+          Switch(
+            checked = cameraEnabled,
+            onCheckedChange = ::setCameraEnabledChecked,
+            colors = settingsSwitchColors(),
+          )
+        },
       )
     }
     item {
@@ -788,6 +821,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
               RadioButton(
                 selected = locationMode == LocationMode.Off,
                 onClick = { viewModel.setLocationMode(LocationMode.Off) },
+                colors = settingsRadioButtonColors(),
               )
             },
           )
@@ -801,6 +835,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
               RadioButton(
                 selected = locationMode == LocationMode.WhileUsing,
                 onClick = { requestLocationPermissions() },
+                colors = settingsRadioButtonColors(),
               )
             },
           )
@@ -815,6 +850,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
                 checked = locationPreciseEnabled,
                 onCheckedChange = ::setPreciseLocationChecked,
                 enabled = locationMode != LocationMode.Off,
+                colors = settingsSwitchColors(),
               )
             },
           )
@@ -836,7 +872,13 @@ fun SettingsSheet(viewModel: MainViewModel) {
         colors = listItemColors,
         headlineContent = { Text("Prevent Sleep", style = mobileHeadline) },
         supportingContent = { Text("Keeps the screen awake while OpenClaw is open.", style = mobileCallout) },
-        trailingContent = { Switch(checked = preventSleep, onCheckedChange = viewModel::setPreventSleep) },
+        trailingContent = {
+          Switch(
+            checked = preventSleep,
+            onCheckedChange = viewModel::setPreventSleep,
+            colors = settingsSwitchColors(),
+          )
+        },
       )
     }
 
@@ -860,6 +902,7 @@ fun SettingsSheet(viewModel: MainViewModel) {
           Switch(
             checked = canvasDebugStatusEnabled,
             onCheckedChange = viewModel::setCanvasDebugStatusEnabled,
+            colors = settingsSwitchColors(),
           )
         },
       )
@@ -886,7 +929,7 @@ private fun Modifier.settingsRowModifier() =
   this
     .fillMaxWidth()
     .border(width = 1.dp, color = mobileBorder, shape = RoundedCornerShape(14.dp))
-    .background(Color.White, RoundedCornerShape(14.dp))
+    .background(mobileSurface, RoundedCornerShape(14.dp))
 
 @Composable
 private fun settingsPrimaryButtonColors() =
@@ -904,6 +947,27 @@ private fun settingsDangerButtonColors() =
     contentColor = Color.White,
     disabledContainerColor = mobileDanger.copy(alpha = 0.45f),
     disabledContentColor = Color.White.copy(alpha = 0.9f),
+  )
+
+@Composable
+private fun settingsRadioButtonColors() =
+  RadioButtonDefaults.colors(
+    selectedColor = mobileAccent,
+    unselectedColor = mobileTextTertiary,
+    disabledSelectedColor = mobileAccent.copy(alpha = 0.45f),
+    disabledUnselectedColor = mobileTextTertiary.copy(alpha = 0.45f),
+  )
+
+@Composable
+private fun settingsSwitchColors() =
+  SwitchDefaults.colors(
+    checkedThumbColor = Color.White,
+    checkedTrackColor = mobileAccent,
+    uncheckedThumbColor = mobileSurface,
+    uncheckedTrackColor = mobileBorderStrong,
+    uncheckedBorderColor = mobileBorderStrong,
+    disabledCheckedTrackColor = mobileAccent.copy(alpha = 0.45f),
+    disabledUncheckedTrackColor = mobileBorderStrong.copy(alpha = 0.45f),
   )
 
 private fun openAppSettings(context: Context) {
@@ -935,12 +999,20 @@ private fun isNotificationListenerEnabled(context: Context): Boolean {
 }
 
 private data class LanguageOption(val code: String, val label: String)
+private data class ThemeOption(val mode: AppThemeMode, val label: String)
 
 private val languageOptions =
   listOf(
     LanguageOption(code = "system", label = "System Default"),
     LanguageOption(code = "en", label = "English"),
     LanguageOption(code = "zh", label = "中文"),
+  )
+
+private val themeOptions =
+  listOf(
+    ThemeOption(mode = AppThemeMode.System, label = "System Default"),
+    ThemeOption(mode = AppThemeMode.Light, label = "Light"),
+    ThemeOption(mode = AppThemeMode.Dark, label = "Dark"),
   )
 
 private fun hasMotionCapabilities(context: Context): Boolean {

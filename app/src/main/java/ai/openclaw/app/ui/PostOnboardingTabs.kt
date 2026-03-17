@@ -30,11 +30,13 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
@@ -54,6 +56,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ai.openclaw.app.MainViewModel
 import ai.openclaw.app.R
+import ai.openclaw.app.BuildConfig
 import ai.openclaw.app.chat.formatAgentContactTitle
 import ai.openclaw.app.ui.chat.friendlySessionName
 import ai.openclaw.app.ui.chat.resolveSessionChoices
@@ -82,6 +85,7 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
   val currentChatSessionKey by viewModel.chatSessionKey.collectAsState()
   var activeTab by rememberSaveable(savedShellScreen) { mutableStateOf(savedShellScreen.toHomeTab()) }
   var voiceDialogOpen by rememberSaveable(savedVoiceDialogOpen) { mutableStateOf(savedVoiceDialogOpen) }
+  var aboutDialogOpen by rememberSaveable { mutableStateOf(false) }
 
   LaunchedEffect(voiceDialogOpen) {
     viewModel.setLastVoiceDialogOpen(voiceDialogOpen)
@@ -151,7 +155,7 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
             else -> activeTab = HomeTab.Chat
           }
         },
-        onOpenAppInfo = { openAppInfo(context) },
+        onOpenAppInfo = { aboutDialogOpen = true },
       )
     },
   ) { innerPadding ->
@@ -205,6 +209,17 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
         VoiceDialog(
           viewModel = viewModel,
           onDismissRequest = { voiceDialogOpen = false },
+        )
+      }
+
+      if (aboutDialogOpen) {
+        AboutDialog(
+          appName = appName,
+          onDismissRequest = { aboutDialogOpen = false },
+          onOpenSystemInfo = {
+            aboutDialogOpen = false
+            openAppInfo(context)
+          },
         )
       }
     }
@@ -351,6 +366,64 @@ private fun TopStatusBar(
       }
     }
   }
+}
+
+@Composable
+private fun AboutDialog(
+  appName: String,
+  onDismissRequest: () -> Unit,
+  onOpenSystemInfo: () -> Unit,
+) {
+  AlertDialog(
+    onDismissRequest = onDismissRequest,
+    confirmButton = {
+      TextButton(onClick = onOpenSystemInfo) {
+        Text(tr("System info", "系统信息"), color = mobileAccent, style = mobileCallout.copy(fontWeight = FontWeight.SemiBold))
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismissRequest) {
+        Text(tr("Close", "关闭"), color = mobileTextSecondary, style = mobileCallout)
+      }
+    },
+    containerColor = mobileSurface,
+    titleContentColor = mobileText,
+    textContentColor = mobileTextSecondary,
+    title = {
+      Text(
+        text = tr("About ClawChat2", "关于 ClawChat2"),
+        style = mobileTitle2,
+        color = mobileText,
+      )
+    },
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+          text = "$appName ${BuildConfig.VERSION_NAME}",
+          style = mobileHeadline.copy(fontWeight = FontWeight.Bold),
+          color = mobileText,
+        )
+        Text(
+          text =
+            tr(
+              "An unofficial OpenClaw Android fork focused on direct, chat-first agent conversations.",
+              "这是一个非官方 OpenClaw Android 分叉，重点是更直接、聊天优先的 agent 对话体验。",
+            ),
+          style = mobileCallout,
+          color = mobileTextSecondary,
+        )
+        Text(
+          text =
+            tr(
+              "Use System info to open Android app details.",
+              "如需查看 Android 应用详情，可点“系统信息”。",
+            ),
+          style = mobileCaption1,
+          color = mobileTextTertiary,
+        )
+      }
+    },
+  )
 }
 
 private fun openAppInfo(context: android.content.Context) {

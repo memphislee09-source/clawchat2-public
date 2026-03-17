@@ -110,6 +110,10 @@ class SecurePrefs(context: Context) {
     MutableStateFlow(plainPrefs.getString("app.language", "system") ?: "system")
   val preferredLanguage: StateFlow<String> = _preferredLanguage
 
+  private val _appThemeMode =
+    MutableStateFlow(AppThemeMode.fromRawValue(plainPrefs.getString("app.themeMode", AppThemeMode.System.rawValue)))
+  val appThemeMode: StateFlow<AppThemeMode> = _appThemeMode
+
   private val _wakeWords = MutableStateFlow(loadWakeWords())
   val wakeWords: StateFlow<List<String>> = _wakeWords
 
@@ -233,6 +237,11 @@ class SecurePrefs(context: Context) {
     val normalized = value.trim().ifEmpty { "system" }
     plainPrefs.edit { putString("app.language", normalized) }
     _preferredLanguage.value = normalized
+  }
+
+  fun setAppThemeMode(value: AppThemeMode) {
+    plainPrefs.edit { putString("app.themeMode", value.rawValue) }
+    _appThemeMode.value = value
   }
 
   fun loadGatewayToken(): String? {

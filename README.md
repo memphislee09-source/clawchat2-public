@@ -23,6 +23,7 @@ Compared with the upstream Android client, this fork currently emphasizes:
 - direct agent conversations
 - `openclaw-webchat` as the source of truth for contacts and chat history
 - simplified chat-first navigation
+- selectable app theme mode with dark-mode support
 - enhanced agent-to-client media handling
 - practical Android playback stability improvements for fullscreen image/video viewing
 - streamed fullscreen video playback for large remote files
@@ -160,6 +161,7 @@ ClawChat2 是一个基于官方 OpenClaw Android 客户端 `openclaw/openclaw ->
 - 聊天是主界面与主入口
 - 与 agent 的直接对话
 - 更简化、聊天优先的导航方式
+- 支持可切换的应用主题模式与深色模式
 - 更强的 agent 到客户端媒体处理能力
 - 更稳定的 Android 图片/视频全屏播放体验
 - 更贴近实际使用的网关接入方式，包括对 Tailscale 场景的友好支持

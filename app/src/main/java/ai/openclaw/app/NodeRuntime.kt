@@ -541,6 +541,7 @@ class NodeRuntime(context: Context) {
   val lastDiscoveredStableId: StateFlow<String> = prefs.lastDiscoveredStableId
   val canvasDebugStatusEnabled: StateFlow<Boolean> = prefs.canvasDebugStatusEnabled
   val preferredLanguage: StateFlow<String> = prefs.preferredLanguage
+  val appThemeMode: StateFlow<AppThemeMode> = prefs.appThemeMode
   val lastShellScreen: StateFlow<String> = prefs.lastShellScreen
   val lastVoiceDialogOpen: StateFlow<Boolean> = prefs.lastVoiceDialogOpen
   val lastChatSessionKey: StateFlow<String> = prefs.lastChatSessionKey
@@ -709,6 +710,10 @@ class NodeRuntime(context: Context) {
 
   fun setPreferredLanguage(value: String) {
     prefs.setPreferredLanguage(value)
+  }
+
+  fun setAppThemeMode(value: AppThemeMode) {
+    prefs.setAppThemeMode(value)
   }
 
   fun setVoiceScreenActive(active: Boolean) {
