@@ -26,10 +26,10 @@ For now, public binaries should follow these rules:
 4. Generate checksum material.
    - `sha256sum app/build/outputs/apk/release/openclaw-<version>-release.apk`
 5. Create a GitHub Release.
-   - Title example: `ClawChat2 v0.2.2`
+   - Title example: `ClawChat2 v0.2.3`
    - Mark as `Pre-release` while the fork is still early.
    - Attach the APK.
-   - Paste bilingual notes from [RELEASE_NOTES_v0.2.2.md](RELEASE_NOTES_v0.2.2.md).
+   - Paste bilingual notes from [RELEASE_NOTES_v0.2.3.md](RELEASE_NOTES_v0.2.3.md).
 6. Smoke test the final signed APK.
    - install on emulator
    - install on at least one real Android 11+ device when practical
@@ -70,10 +70,10 @@ For now, public binaries should follow these rules:
 4. 生成校验信息。
    - `sha256sum app/build/outputs/apk/release/openclaw-<version>-release.apk`
 5. 创建 GitHub Release。
-   - 标题示例：`ClawChat2 v0.2.2`
+   - 标题示例：`ClawChat2 v0.2.3`
    - 项目仍处于早期时请勾选 `Pre-release`
    - 上传 APK
-   - 使用 [RELEASE_NOTES_v0.2.2.md](RELEASE_NOTES_v0.2.2.md) 中的双语说明
+   - 使用 [RELEASE_NOTES_v0.2.3.md](RELEASE_NOTES_v0.2.3.md) 中的双语说明
 6. 对最终签名 APK 做冒烟验证。
    - 在模拟器安装
    - 条件允许时，在至少一台 Android 11+ 真机安装

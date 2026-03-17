@@ -1,11 +1,13 @@
 package ai.openclaw.app.ui.chat
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
@@ -22,12 +24,33 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import ai.openclaw.app.chat.ChatMessage
 import ai.openclaw.app.chat.ChatPendingToolCall
+import ai.openclaw.app.ui.mobileBackground
 import ai.openclaw.app.ui.mobileBorder
 import ai.openclaw.app.ui.mobileCallout
 import ai.openclaw.app.ui.mobileHeadline
 import ai.openclaw.app.ui.mobileSurface
 import ai.openclaw.app.ui.mobileText
 import ai.openclaw.app.ui.mobileTextSecondary
+
+private sealed interface ChatTimelineEntry {
+  val key: String
+
+  data class Message(val message: ChatMessage) : ChatTimelineEntry {
+    override val key: String = "message:${message.id}"
+  }
+
+  data class Streaming(val text: String) : ChatTimelineEntry {
+    override val key: String = "stream"
+  }
+
+  data class PendingTools(val toolCalls: List<ChatPendingToolCall>) : ChatTimelineEntry {
+    override val key: String = "tools"
+  }
+
+  data object Typing : ChatTimelineEntry {
+    override val key: String = "typing"
+  }
+}
 
 @Composable
 fun ChatMessageListCard(
@@ -37,6 +60,7 @@ fun ChatMessageListCard(
   streamingAssistantText: String?,
   healthOk: Boolean,
   assistantLabel: String = "assistant",
+  userLabel: String = "我",
   onPullDown: () -> Unit = {},
   modifier: Modifier = Modifier,
 ) {
@@ -53,43 +77,44 @@ fun ChatMessageListCard(
       }
     }
 
-  // With reverseLayout the newest item is at index 0 (bottom of screen).
-  LaunchedEffect(messages.size, pendingRunCount, pendingToolCalls.size, streamingAssistantText) {
-    listState.animateScrollToItem(index = 0)
+  val timelineEntries =
+    remember(messages, pendingRunCount, pendingToolCalls, streamingAssistantText) {
+      buildList {
+        messages.forEach { add(ChatTimelineEntry.Message(it)) }
+        if (pendingRunCount > 0) add(ChatTimelineEntry.Typing)
+        if (pendingToolCalls.isNotEmpty()) add(ChatTimelineEntry.PendingTools(pendingToolCalls))
+        streamingAssistantText?.trim()?.takeIf { it.isNotEmpty() }?.let { add(ChatTimelineEntry.Streaming(it)) }
+      }
+    }
+
+  LaunchedEffect(messages.size, pendingRunCount, pendingToolCalls, streamingAssistantText) {
+    if (timelineEntries.isNotEmpty()) {
+      listState.animateScrollToItem(index = timelineEntries.lastIndex)
+    }
   }
 
   Box(modifier = modifier.fillMaxWidth()) {
     LazyColumn(
-      modifier = Modifier.fillMaxSize().nestedScroll(dismissImeOnPullDown),
+      modifier =
+        Modifier
+          .fillMaxSize()
+          .background(mobileBackground)
+          .nestedScroll(dismissImeOnPullDown),
       state = listState,
-      reverseLayout = true,
       verticalArrangement = Arrangement.spacedBy(10.dp),
       contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 8.dp),
     ) {
-      // With reverseLayout = true, index 0 renders at the BOTTOM.
-      // So we emit newest items first: streaming → tools → typing → messages (newest→oldest).
-
-      val stream = streamingAssistantText?.trim()
-      if (!stream.isNullOrEmpty()) {
-        item(key = "stream") {
-          ChatStreamingAssistantBubble(text = stream, assistantLabel = assistantLabel)
+      itemsIndexed(items = timelineEntries, key = { _, entry -> entry.key }) { index, entry ->
+        when (entry) {
+          is ChatTimelineEntry.Message ->
+            ChatMessageBubble(message = entry.message, assistantLabel = assistantLabel, userLabel = userLabel)
+          is ChatTimelineEntry.PendingTools ->
+            ChatPendingToolsBubble(toolCalls = entry.toolCalls, assistantLabel = assistantLabel)
+          is ChatTimelineEntry.Streaming ->
+            ChatStreamingAssistantBubble(text = entry.text, assistantLabel = assistantLabel)
+          ChatTimelineEntry.Typing ->
+            ChatTypingIndicatorBubble(assistantLabel = assistantLabel)
         }
-      }
-
-      if (pendingToolCalls.isNotEmpty()) {
-        item(key = "tools") {
-          ChatPendingToolsBubble(toolCalls = pendingToolCalls, assistantLabel = assistantLabel)
-        }
-      }
-
-      if (pendingRunCount > 0) {
-        item(key = "typing") {
-          ChatTypingIndicatorBubble(assistantLabel = assistantLabel)
-        }
-      }
-
-      items(count = messages.size, key = { idx -> messages[messages.size - 1 - idx].id }) { idx ->
-        ChatMessageBubble(message = messages[messages.size - 1 - idx], assistantLabel = assistantLabel)
       }
     }
 

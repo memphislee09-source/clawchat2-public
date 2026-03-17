@@ -564,6 +564,7 @@ class NodeRuntime(context: Context) {
   val agentContacts: StateFlow<List<AgentContactEntry>> = chat.agentContacts
   val agentContactsRefreshing: StateFlow<Boolean> = chat.agentContactsRefreshing
   val agentContactsError: StateFlow<String?> = chat.agentContactsError
+  val chatUserDisplayName: StateFlow<String> = chat.userDisplayName
   val chatVoiceSupported: StateFlow<Boolean> = chat.voiceSupported
   val chatAbortSupported: StateFlow<Boolean> = chat.abortSupported
   val chatThinkingSupported: StateFlow<Boolean> = chat.thinkingSupported

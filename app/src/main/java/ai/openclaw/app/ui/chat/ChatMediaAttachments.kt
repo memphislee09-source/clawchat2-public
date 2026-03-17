@@ -589,8 +589,7 @@ private fun ChatFileImage(file: File, mimeType: String?, onClick: () -> Unit) {
   if (image != null) {
     Surface(
       shape = RoundedCornerShape(5.dp),
-      border = BorderStroke(1.dp, mobileBorder),
-      color = mobileSurface,
+      color = Color.Transparent,
       modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
     ) {
       Image(

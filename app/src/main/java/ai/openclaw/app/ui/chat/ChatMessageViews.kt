@@ -36,7 +36,6 @@ import ai.openclaw.app.chat.formatAgentContactTitle
 import ai.openclaw.app.tools.ToolDisplayRegistry
 import ai.openclaw.app.ui.mobileAccent
 import ai.openclaw.app.ui.mobileAccentSoft
-import ai.openclaw.app.ui.mobileBorder
 import ai.openclaw.app.ui.mobileBorderStrong
 import ai.openclaw.app.ui.mobileCallout
 import ai.openclaw.app.ui.mobileCaption1
@@ -55,15 +54,12 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private data class ChatBubbleStyle(
-  val alignEnd: Boolean,
   val containerColor: Color,
-  val borderColor: Color,
   val roleColor: Color,
-  val roleTextAlign: TextAlign,
 )
 
 @Composable
-fun ChatMessageBubble(message: ChatMessage, assistantLabel: String = "assistant") {
+fun ChatMessageBubble(message: ChatMessage, assistantLabel: String = "assistant", userLabel: String = "我") {
   val role = message.role.trim().lowercase(Locale.US)
   val style = bubbleStyle(role)
 
@@ -84,7 +80,7 @@ fun ChatMessageBubble(message: ChatMessage, assistantLabel: String = "assistant"
 
   ChatBubbleContainer(
     style = style,
-    roleLabel = roleLabel(role, assistantLabel),
+    roleLabel = roleLabel(role = role, assistantLabel = assistantLabel, userLabel = userLabel),
     timestampLabel = formatBubbleTimestamp(message.timestampMs),
   ) {
     ChatMessageBody(content = displayableContent, textColor = mobileText)
@@ -101,18 +97,18 @@ private fun ChatBubbleContainer(
 ) {
   Row(
     modifier = modifier.fillMaxWidth(),
-    horizontalArrangement = if (style.alignEnd) Arrangement.End else Arrangement.Start,
+    horizontalArrangement = Arrangement.End,
   ) {
     Surface(
       shape = RoundedCornerShape(6.dp),
-      border = BorderStroke(1.dp, style.borderColor),
       color = style.containerColor,
       tonalElevation = 0.dp,
       shadowElevation = 0.dp,
-      modifier = Modifier.fillMaxWidth(0.99f),
+      modifier = Modifier.fillMaxWidth(),
     ) {
       Column(
         modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.spacedBy(6.dp),
       ) {
         Text(
@@ -125,7 +121,7 @@ private fun ChatBubbleContainer(
           modifier = Modifier.fillMaxWidth(),
           style = mobileCaption2.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp),
           color = style.roleColor,
-          textAlign = style.roleTextAlign,
+          textAlign = TextAlign.Start,
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
         )
@@ -139,18 +135,23 @@ private fun ChatBubbleContainer(
 private fun ChatMessageBody(content: List<ChatMessageContent>, textColor: Color) {
   Column(
     modifier = Modifier.fillMaxWidth(),
+    horizontalAlignment = Alignment.Start,
     verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
     for (part in content) {
       when (part.type) {
         "text" -> {
           val text = part.text ?: continue
-          SelectionContainer(modifier = Modifier.fillMaxWidth()) {
-            ChatMarkdown(text = text, textColor = textColor)
+          Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+            SelectionContainer {
+              ChatMarkdown(text = text, textColor = textColor)
+            }
           }
         }
         else -> {
-          ChatMediaAttachment(descriptor = part.toAttachmentDescriptor())
+          Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+            ChatMediaAttachment(descriptor = part.toAttachmentDescriptor())
+          }
         }
       }
     }
@@ -161,7 +162,7 @@ private fun ChatMessageBody(content: List<ChatMessageContent>, textColor: Color)
 fun ChatTypingIndicatorBubble(assistantLabel: String = "assistant") {
   ChatBubbleContainer(
     style = bubbleStyle("assistant"),
-    roleLabel = roleLabel("assistant", assistantLabel),
+    roleLabel = roleLabel(role = "assistant", assistantLabel = assistantLabel, userLabel = "我"),
   ) {
     Row(
       verticalAlignment = Alignment.CenterVertically,
@@ -219,7 +220,7 @@ fun ChatPendingToolsBubble(toolCalls: List<ChatPendingToolCall>, assistantLabel:
 @Composable
 fun ChatStreamingAssistantBubble(text: String, assistantLabel: String = "assistant") {
   ChatBubbleContainer(
-    style = bubbleStyle("assistant").copy(borderColor = mobileAccent.copy(alpha = 0.4f)),
+    style = bubbleStyle("assistant"),
     roleLabel = "$assistantLabel · live",
   ) {
     ChatMarkdown(text = text, textColor = mobileText)
@@ -230,36 +231,27 @@ private fun bubbleStyle(role: String): ChatBubbleStyle {
   return when (role) {
     "user" ->
       ChatBubbleStyle(
-        alignEnd = true,
         containerColor = mobileAccentSoft,
-        borderColor = mobileAccent.copy(alpha = 0.32f),
         roleColor = mobileAccent,
-        roleTextAlign = TextAlign.End,
       )
 
     "system" ->
       ChatBubbleStyle(
-        alignEnd = false,
         containerColor = mobileWarningSoft,
-        borderColor = mobileWarning.copy(alpha = 0.45f),
         roleColor = mobileWarning,
-        roleTextAlign = TextAlign.Start,
       )
 
     else ->
       ChatBubbleStyle(
-        alignEnd = false,
         containerColor = mobileSurface,
-        borderColor = mobileBorderStrong,
         roleColor = mobileTextSecondary,
-        roleTextAlign = TextAlign.Start,
       )
   }
 }
 
-private fun roleLabel(role: String, assistantLabel: String): String {
+private fun roleLabel(role: String, assistantLabel: String, userLabel: String): String {
   return when (role) {
-    "user" -> "user"
+    "user" -> userLabel.trim().ifEmpty { "我" }
     "system" -> "system"
     else -> formatAgentContactTitle(displayName = assistantLabel, emoji = null)
   }
@@ -274,8 +266,7 @@ internal fun ChatBase64Image(base64: String, mimeType: String?, onClick: (() -> 
   if (image != null) {
     Surface(
       shape = RoundedCornerShape(5.dp),
-      border = BorderStroke(1.dp, mobileBorder),
-      color = mobileSurface,
+      color = Color.Transparent,
       modifier = if (onClick != null) Modifier.fillMaxWidth().clickable(onClick = onClick) else Modifier.fillMaxWidth(),
     ) {
       Image(

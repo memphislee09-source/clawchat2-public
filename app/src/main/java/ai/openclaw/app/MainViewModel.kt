@@ -81,6 +81,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   val agentContacts: StateFlow<List<AgentContactEntry>> = runtime.agentContacts
   val agentContactsRefreshing: StateFlow<Boolean> = runtime.agentContactsRefreshing
   val agentContactsError: StateFlow<String?> = runtime.agentContactsError
+  val chatUserDisplayName: StateFlow<String> = runtime.chatUserDisplayName
   val chatLastReadAtMs: StateFlow<Map<String, Long>> = runtime.chatLastReadAtMs
   val pendingRunCount: StateFlow<Int> = runtime.pendingRunCount
   val chatVoiceSupported: StateFlow<Boolean> = runtime.chatVoiceSupported

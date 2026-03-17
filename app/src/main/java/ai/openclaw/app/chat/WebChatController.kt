@@ -76,6 +76,9 @@ class WebChatController(
   private val _agentContacts = MutableStateFlow<List<AgentContactEntry>>(emptyList())
   val agentContacts: StateFlow<List<AgentContactEntry>> = _agentContacts.asStateFlow()
 
+  private val _userDisplayName = MutableStateFlow("我")
+  val userDisplayName: StateFlow<String> = _userDisplayName.asStateFlow()
+
   private val _agentContactsRefreshing = MutableStateFlow(false)
   val agentContactsRefreshing: StateFlow<Boolean> = _agentContactsRefreshing.asStateFlow()
 
@@ -358,6 +361,15 @@ class WebChatController(
     return try {
       val payload = apiGet("/api/openclaw-webchat/agents")
       val agents = parseAgents(payload["agents"])
+      runCatching { apiGet("/api/openclaw-webchat/settings") }
+        .getOrNull()
+        ?.get("userProfile")
+        .asObjectOrNull()
+        ?.get("displayName")
+        .stringOrNull()
+        ?.trim()
+        .takeUnless { it.isNullOrEmpty() }
+        ?.let { _userDisplayName.value = it }
       val sessions =
         agents.map { agent ->
           ChatSessionEntry(

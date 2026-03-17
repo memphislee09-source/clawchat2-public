@@ -10,7 +10,7 @@ The short rationale for the fork is documented in [WHY_THIS_FORK.md](WHY_THIS_FO
 
 ### Project Status
 
-- Baseline version: `0.2.2`
+- Baseline version: `0.2.3`
 - Android compatibility baseline: `minSdk 30` (Android 11+)
 - Stage: early, experimental, not release-hardened
 - Scope: independent community fork, not an official OpenClaw distribution
@@ -25,6 +25,7 @@ Compared with the upstream Android client, this fork currently emphasizes:
 - simplified chat-first navigation
 - selectable app theme mode with dark-mode support
 - WeChat-style continuous contacts list with larger avatars and lighter separators
+- continuous chat-message presentation with simplified spacing-first styling and synced user display name
 - enhanced agent-to-client media handling
 - practical Android playback stability improvements for fullscreen image/video viewing
 - streamed fullscreen video playback for large remote files
@@ -45,7 +46,7 @@ Related docs:
 - [OPENCLAW_AGENT_SETUP.md](OPENCLAW_AGENT_SETUP.md)
 - [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md)
 - [RELEASING.md](RELEASING.md)
-- [RELEASE_NOTES_v0.2.2.md](RELEASE_NOTES_v0.2.2.md)
+- [RELEASE_NOTES_v0.2.3.md](RELEASE_NOTES_v0.2.3.md)
 - [WHY_THIS_FORK.md](WHY_THIS_FORK.md)
 
 ### Screenshots
@@ -131,7 +132,7 @@ adb shell am start -n ai.openclaw.app/.MainActivity
 - Public APKs should be signed with the fork maintainer's own release key.
 - Release notes should clearly state that this is an unofficial OpenClaw fork.
 
-Current release guidance is documented in [RELEASING.md](RELEASING.md) and [RELEASE_NOTES_v0.2.2.md](RELEASE_NOTES_v0.2.2.md).
+Current release guidance is documented in [RELEASING.md](RELEASING.md) and [RELEASE_NOTES_v0.2.3.md](RELEASE_NOTES_v0.2.3.md).
 
 ### Development Notes
 
@@ -150,7 +151,7 @@ ClawChat2 是一个基于官方 OpenClaw Android 客户端 `openclaw/openclaw ->
 
 ### 项目状态
 
-- 当前基线版本：`0.2.2`
+- 当前基线版本：`0.2.3`
 - Android 兼容基线：`minSdk 30`（Android 11+）
 - 当前阶段：早期、实验性、尚未达到发布级稳定
 - 项目定位：独立社区分叉，不是官方 OpenClaw 发布版本
@@ -182,7 +183,7 @@ ClawChat2 是一个基于官方 OpenClaw Android 客户端 `openclaw/openclaw ->
 - [OPENCLAW_AGENT_SETUP.md](OPENCLAW_AGENT_SETUP.md)
 - [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md)
 - [RELEASING.md](RELEASING.md)
-- [RELEASE_NOTES_v0.2.2.md](RELEASE_NOTES_v0.2.2.md)
+- [RELEASE_NOTES_v0.2.3.md](RELEASE_NOTES_v0.2.3.md)
 - [WHY_THIS_FORK.md](WHY_THIS_FORK.md)
 
 ### 截图
@@ -264,7 +265,7 @@ adb shell am start -n ai.openclaw.app/.MainActivity
 - 对外发布的 APK 应使用分叉维护者自己的 release key 签名。
 - Release 说明中应明确写明这是非官方 OpenClaw 分叉。
 
-当前发行流程与首版说明见 [RELEASING.md](RELEASING.md) 和 [RELEASE_NOTES_v0.2.2.md](RELEASE_NOTES_v0.2.2.md)。
+当前发行流程与首版说明见 [RELEASING.md](RELEASING.md) 和 [RELEASE_NOTES_v0.2.3.md](RELEASE_NOTES_v0.2.3.md)。
 
 ### 开发说明
 

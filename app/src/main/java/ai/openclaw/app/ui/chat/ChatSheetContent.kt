@@ -55,6 +55,7 @@ fun ChatSheetContent(viewModel: MainViewModel, onOpenVoice: () -> Unit) {
   val streamingAssistantText by viewModel.chatStreamingAssistantText.collectAsState()
   val pendingToolCalls by viewModel.chatPendingToolCalls.collectAsState()
   val agentContacts by viewModel.agentContacts.collectAsState()
+  val userLabel by viewModel.chatUserDisplayName.collectAsState()
   val voiceSupported by viewModel.chatVoiceSupported.collectAsState()
   val abortSupported by viewModel.chatAbortSupported.collectAsState()
   val thinkingSupported by viewModel.chatThinkingSupported.collectAsState()
@@ -116,6 +117,7 @@ fun ChatSheetContent(viewModel: MainViewModel, onOpenVoice: () -> Unit) {
       streamingAssistantText = streamingAssistantText,
       healthOk = healthOk,
       assistantLabel = assistantLabel,
+      userLabel = userLabel,
       onPullDown = {
         focusManager.clearFocus(force = true)
         keyboardController?.hide()
