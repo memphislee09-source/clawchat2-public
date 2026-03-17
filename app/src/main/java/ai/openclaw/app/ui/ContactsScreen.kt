@@ -2,6 +2,7 @@ package ai.openclaw.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,11 +12,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -25,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
@@ -58,8 +61,11 @@ fun ContactsScreen(
     modifier = Modifier.fillMaxSize(),
   ) {
     LazyColumn(
-      modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 6.dp),
-      verticalArrangement = Arrangement.spacedBy(8.dp),
+      modifier =
+        Modifier
+          .fillMaxSize()
+          .background(mobileSurface)
+          .padding(vertical = 6.dp),
     ) {
       if (!errorText.isNullOrBlank()) {
         item {
@@ -114,11 +120,12 @@ fun ContactsScreen(
           }
         }
       } else {
-        items(items = agentContacts, key = { it.agentId }) { entry ->
-          ContactRow(
+        itemsIndexed(items = agentContacts, key = { _, it -> it.agentId }) { index, entry ->
+          ContactListItem(
             entry = entry,
             active = entry.directSessionKey == chatSessionKey,
             unread = isContactUnread(entry = entry, lastReadAtMs = chatLastReadAtMs[entry.directSessionKey]),
+            showDivider = index < agentContacts.lastIndex,
             onClick = { onOpenChat(entry.agentId) },
           )
         }
@@ -128,22 +135,21 @@ fun ContactsScreen(
 }
 
 @Composable
-private fun ContactRow(
+private fun ContactListItem(
   entry: AgentContactEntry,
   active: Boolean,
   unread: Boolean,
+  showDivider: Boolean,
   onClick: () -> Unit,
 ) {
-  Surface(
-    onClick = onClick,
-    modifier = Modifier.fillMaxWidth(),
-    shape = RoundedCornerShape(6.dp),
-    color = mobileSurface,
-    border = BorderStroke(1.dp, if (active) mobileAccent.copy(alpha = 0.24f) else mobileBorder.copy(alpha = 0.75f)),
-    shadowElevation = 0.dp,
-  ) {
+  Column(modifier = Modifier.fillMaxWidth()) {
     Row(
-      modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 11.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .background(if (active) mobileAccentSoft.copy(alpha = 0.55f) else Color.Transparent)
+          .clickable(onClick = onClick)
+          .padding(horizontal = 14.dp, vertical = 11.dp),
       horizontalArrangement = Arrangement.spacedBy(10.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -179,6 +185,12 @@ private fun ContactRow(
         }
       }
     }
+    if (showDivider) {
+      HorizontalDivider(
+        modifier = Modifier.padding(start = 74.dp),
+        color = mobileBorder.copy(alpha = 0.28f),
+      )
+    }
   }
 }
 
@@ -192,7 +204,7 @@ private fun ContactLeadingAvatar(entry: AgentContactEntry, active: Boolean) {
       mobileBorder.copy(alpha = 0.9f)
     }
   Surface(
-    modifier = Modifier.size(40.dp),
+    modifier = Modifier.size(46.dp),
     shape = avatarShape,
     color = mobileSurfaceStrong,
     border = BorderStroke(1.dp, borderColor),

@@ -24,6 +24,7 @@ Compared with the upstream Android client, this fork currently emphasizes:
 - `openclaw-webchat` as the source of truth for contacts and chat history
 - simplified chat-first navigation
 - selectable app theme mode with dark-mode support
+- WeChat-style continuous contacts list with larger avatars and lighter separators
 - enhanced agent-to-client media handling
 - practical Android playback stability improvements for fullscreen image/video viewing
 - streamed fullscreen video playback for large remote files
