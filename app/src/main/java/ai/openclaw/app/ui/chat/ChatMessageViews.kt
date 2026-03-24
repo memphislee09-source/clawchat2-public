@@ -1,5 +1,11 @@
 package ai.openclaw.app.ui.chat
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -19,8 +25,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -169,7 +175,7 @@ fun ChatTypingIndicatorBubble(assistantLabel: String = "assistant") {
       horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       DotPulse(color = mobileTextSecondary)
-      Text("Thinking...", style = mobileCallout, color = mobileTextSecondary)
+      Text("处理中...", style = mobileCallout, color = mobileTextSecondary)
     }
   }
 }
@@ -284,16 +290,46 @@ internal fun ChatBase64Image(base64: String, mimeType: String?, onClick: (() -> 
 @Composable
 private fun DotPulse(color: Color) {
   Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
-    PulseDot(alpha = 0.38f, color = color)
-    PulseDot(alpha = 0.62f, color = color)
-    PulseDot(alpha = 0.90f, color = color)
+    PulseDot(index = 0, color = color)
+    PulseDot(index = 1, color = color)
+    PulseDot(index = 2, color = color)
   }
 }
 
 @Composable
-private fun PulseDot(alpha: Float, color: Color) {
+private fun PulseDot(index: Int, color: Color) {
+  val transition = rememberInfiniteTransition(label = "processing-dots")
+  val animatedAlpha =
+    transition.animateFloat(
+      initialValue = 0.28f,
+      targetValue = 1f,
+      animationSpec =
+        infiniteRepeatable(
+          animation = tween(durationMillis = 520, delayMillis = index * 140, easing = FastOutSlowInEasing),
+          repeatMode = RepeatMode.Reverse,
+        ),
+      label = "dot-alpha-$index",
+    )
+  val animatedScale =
+    transition.animateFloat(
+      initialValue = 0.82f,
+      targetValue = 1f,
+      animationSpec =
+        infiniteRepeatable(
+          animation = tween(durationMillis = 520, delayMillis = index * 140, easing = FastOutSlowInEasing),
+          repeatMode = RepeatMode.Reverse,
+        ),
+      label = "dot-scale-$index",
+    )
   Surface(
-    modifier = Modifier.size(6.dp).alpha(alpha),
+    modifier =
+      Modifier
+        .size(6.dp)
+        .graphicsLayer {
+          alpha = animatedAlpha.value
+          scaleX = animatedScale.value
+          scaleY = animatedScale.value
+        },
     shape = CircleShape,
     color = color,
   ) {}

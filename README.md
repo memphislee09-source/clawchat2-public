@@ -125,6 +125,10 @@ Install and launch:
 adb shell am start -n ai.openclaw.app/.MainActivity
 ```
 
+Current local verification:
+
+- the current `main` workspace was compiled, installed, and launched successfully on the local Android 15 emulator `clawchat2_api35` on 2026-03-24
+
 ### Releases
 
 - Public end users should install APKs from GitHub Releases instead of building from source.
@@ -237,6 +241,26 @@ ClawChat2 当前支持 agent 发送的结构化媒体消息：
 - `mediaPath` + `mediaPort` 是本分叉当前优先使用的字段
 - `mediaUrl` 保留作为兼容性 fallback
 - 当前用户主动发送仍主要是图片选择；音频/视频增强主要面向 agent 到客户端的接收链路
+- 视频全屏当前优先走 Android Media3/ExoPlayer 的流式播放，必要时再回退到本地文件路径
+
+### 构建
+
+```bash
+./gradlew :app:assembleDebug
+./gradlew :app:compileDebugKotlin
+./gradlew :app:testDebugUnitTest
+```
+
+安装并启动：
+
+```bash
+./gradlew :app:installDebug
+adb shell am start -n ai.openclaw.app/.MainActivity
+```
+
+当前本地验证结论：
+
+- 当前 `main` 工作区已于 2026-03-24 在本地 Android 15 模拟器 `clawchat2_api35` 上成功编译、安装并启动
 
 操作文档：
 
