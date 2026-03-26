@@ -128,7 +128,9 @@ class DeviceHandler(
   }
 
   private fun permissionsPayloadJson(): String {
-    val canSendSms = appContext.packageManager.hasSystemFeature(PackageManager.FEATURE_TELEPHONY)
+    val smsFeatureAvailable =
+      BuildConfig.OPENCLAW_ENABLE_SMS &&
+        appContext.packageManager.hasSystemFeature(PackageManager.FEATURE_TELEPHONY)
     val notificationAccess = DeviceNotificationListenerService.isAccessEnabled(appContext)
     val photosGranted =
       if (Build.VERSION.SDK_INT >= 33) {
@@ -173,8 +175,8 @@ class DeviceHandler(
           put(
             "sms",
             permissionStateJson(
-              granted = hasPermission(Manifest.permission.SEND_SMS) && canSendSms,
-              promptableWhenDenied = canSendSms,
+              granted = BuildConfig.OPENCLAW_ENABLE_SMS && hasPermission(Manifest.permission.SEND_SMS) && smsFeatureAvailable,
+              promptableWhenDenied = smsFeatureAvailable,
             ),
           )
           put(

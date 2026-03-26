@@ -71,6 +71,19 @@ android {
         }
     }
 
+    flavorDimensions += "store"
+
+    productFlavors {
+        create("play") {
+            dimension = "store"
+            buildConfigField("boolean", "OPENCLAW_ENABLE_SMS", "false")
+        }
+        create("thirdParty") {
+            dimension = "store"
+            buildConfigField("boolean", "OPENCLAW_ENABLE_SMS", "true")
+        }
+    }
+
     buildTypes {
         release {
             if (hasAndroidReleaseSigning) {
@@ -131,8 +144,9 @@ androidComponents {
             .forEach { output ->
                 val versionName = output.versionName.orNull ?: "0"
                 val buildType = variant.buildType
+                val flavorName = variant.flavorName?.takeIf { it.isNotBlank() } ?: "main"
 
-                val outputFileName = "openclaw-$versionName-$buildType.apk"
+                val outputFileName = "openclaw-$versionName-$flavorName-$buildType.apk"
                 output.outputFileName = outputFileName
             }
     }

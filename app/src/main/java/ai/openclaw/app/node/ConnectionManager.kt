@@ -22,6 +22,8 @@ class ConnectionManager(
   private val manualTls: () -> Boolean,
 ) {
   companion object {
+    internal val defaultOperatorScopes = listOf("operator.read", "operator.write")
+
     internal fun resolveTlsParamsForEndpoint(
       endpoint: GatewayEndpoint,
       storedFingerprint: String?,
@@ -140,7 +142,8 @@ class ConnectionManager(
   fun buildOperatorConnectOptions(): GatewayConnectOptions {
     return GatewayConnectOptions(
       role = "operator",
-      scopes = listOf("operator.read", "operator.write", "operator.talk.secrets"),
+      // Keep the default Android pairing path limited to the scopes needed for chat/control.
+      scopes = defaultOperatorScopes,
       caps = emptyList(),
       commands = emptyList(),
       permissions = emptyMap(),

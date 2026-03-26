@@ -2,10 +2,17 @@ package ai.openclaw.app.node
 
 import ai.openclaw.app.gateway.GatewayEndpoint
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ConnectionManagerTest {
+  @Test
+  fun defaultOperatorScopes_requestsBasicChatScopesOnly() {
+    assertEquals(listOf("operator.read", "operator.write"), ConnectionManager.defaultOperatorScopes)
+    assertFalse(ConnectionManager.defaultOperatorScopes.contains("operator.talk.secrets"))
+  }
+
   @Test
   fun resolveTlsParamsForEndpoint_prefersStoredPinOverAdvertisedFingerprint() {
     val endpoint =

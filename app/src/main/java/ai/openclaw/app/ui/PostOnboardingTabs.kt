@@ -68,11 +68,12 @@ private enum class HomeTab(
   Contacts(labelEn = "Contacts", labelZh = "联系人"),
   Connect(labelEn = "Connect", labelZh = "连接"),
   Chat(labelEn = "Chat", labelZh = "聊天"),
+  Voice(labelEn = "Voice", labelZh = "语音"),
   Screen(labelEn = "Screen", labelZh = "屏幕"),
   Settings(labelEn = "Settings", labelZh = "设置"),
 }
 
-private val overflowMenuTabs = listOf(HomeTab.Connect, HomeTab.Screen, HomeTab.Settings)
+private val overflowMenuTabs = listOf(HomeTab.Connect, HomeTab.Voice, HomeTab.Screen, HomeTab.Settings)
 
 @Composable
 fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) {
@@ -109,6 +110,12 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
   val chatSessions by viewModel.chatSessions.collectAsState()
   val agentContacts by viewModel.agentContacts.collectAsState()
   val mainSessionKey by viewModel.mainSessionKey.collectAsState()
+
+  LaunchedEffect(activeTab, chatSessionKey) {
+    if (activeTab == HomeTab.Voice) {
+      viewModel.prepareVoiceConversation(chatSessionKey)
+    }
+  }
 
   val chatTopBarTitle =
     remember(chatSessionKey, chatSessions, agentContacts, mainSessionKey) {
@@ -200,6 +207,7 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
                 voiceDialogOpen = true
               },
             )
+          HomeTab.Voice -> VoiceTabScreen(viewModel = viewModel)
           HomeTab.Screen -> ScreenTabScreen(viewModel = viewModel)
           HomeTab.Settings -> SettingsSheet(viewModel = viewModel)
         }
@@ -488,6 +496,7 @@ private val HomeTab.persistedName: String
       HomeTab.Chat -> "chat"
       HomeTab.Contacts -> "contacts"
       HomeTab.Connect -> "connect"
+      HomeTab.Voice -> "voice"
       HomeTab.Screen -> "screen"
       HomeTab.Settings -> "settings"
     }
@@ -496,6 +505,7 @@ private fun String.toHomeTab(): HomeTab =
   when (trim().lowercase()) {
     "chat" -> HomeTab.Chat
     "connect" -> HomeTab.Connect
+    "voice" -> HomeTab.Voice
     "screen" -> HomeTab.Screen
     "settings" -> HomeTab.Settings
     else -> HomeTab.Contacts

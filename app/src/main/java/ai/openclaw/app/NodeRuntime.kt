@@ -46,6 +46,7 @@ import java.util.concurrent.atomic.AtomicLong
 class NodeRuntime(context: Context) {
   private val appContext = context.applicationContext
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+  private val smsCapabilityEnabled = BuildConfig.OPENCLAW_ENABLE_SMS
 
   val prefs = SecurePrefs(appContext)
   private val deviceAuthStore = DeviceAuthStore(prefs)
@@ -132,7 +133,7 @@ class NodeRuntime(context: Context) {
     voiceWakeMode = { VoiceWakeMode.Off },
     motionActivityAvailable = { motionHandler.isActivityAvailable() },
     motionPedometerAvailable = { motionHandler.isPedometerAvailable() },
-    smsAvailable = { sms.canSendSms() },
+    smsAvailable = { smsCapabilityEnabled && sms.canSendSms() },
     hasRecordAudioPermission = { hasRecordAudioPermission() },
     manualTls = { manualTls.value },
   )
@@ -154,7 +155,7 @@ class NodeRuntime(context: Context) {
     isForeground = { _isForeground.value },
     cameraEnabled = { cameraEnabled.value },
     locationEnabled = { locationMode.value != LocationMode.Off },
-    smsAvailable = { sms.canSendSms() },
+    smsAvailable = { smsCapabilityEnabled && sms.canSendSms() },
     debugBuild = { BuildConfig.DEBUG },
     refreshNodeCanvasCapability = { nodeSession.refreshNodeCanvasCapability() },
     onCanvasA2uiPush = {
@@ -535,6 +536,7 @@ class NodeRuntime(context: Context) {
   fun setGatewayToken(value: String) = prefs.setGatewayToken(value)
   fun setGatewayBootstrapToken(value: String) = prefs.setGatewayBootstrapToken(value)
   fun setGatewayPassword(value: String) = prefs.setGatewayPassword(value)
+  fun saveGatewayTlsFingerprint(stableId: String, fingerprint: String) = prefs.saveGatewayTlsFingerprint(stableId, fingerprint)
   fun setTailscaleHost(value: String) = prefs.setTailscaleHost(value)
   fun setTailscalePort(value: Int) = prefs.setTailscalePort(value)
   fun setOnboardingCompleted(value: Boolean) = prefs.setOnboardingCompleted(value)
