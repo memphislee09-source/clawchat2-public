@@ -91,10 +91,10 @@ fun ChatComposer(
     OutlinedTextField(
       value = input,
       onValueChange = { input = it },
-      modifier = Modifier.fillMaxWidth().heightIn(min = 82.dp, max = 118.dp),
+      modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp, max = 156.dp),
       placeholder = { Text("输入消息", style = mobileBodyStyle(), color = mobileTextTertiary) },
-      minLines = 2,
-      maxLines = 5,
+      minLines = 1,
+      maxLines = 6,
       textStyle = mobileBodyStyle().copy(color = mobileText),
       shape = RoundedCornerShape(6.dp),
       colors = chatTextFieldColors(),

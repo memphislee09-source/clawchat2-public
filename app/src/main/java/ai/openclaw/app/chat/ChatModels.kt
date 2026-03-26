@@ -1,5 +1,8 @@
 package ai.openclaw.app.chat
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class ChatMessage(
   val id: String,
   val role: String,
@@ -7,6 +10,7 @@ data class ChatMessage(
   val timestampMs: Long?,
 )
 
+@Serializable
 data class ChatMessageContent(
   val type: String = "text",
   val text: String? = null,
@@ -19,6 +23,10 @@ data class ChatMessageContent(
   val mediaSha256: String? = null,
   val sizeBytes: Long? = null,
 )
+
+internal fun ChatMessage.sanitizedForCache(): ChatMessage {
+  return copy(content = content.map { it.copy(base64 = null) })
+}
 
 data class ChatPendingToolCall(
   val toolCallId: String,

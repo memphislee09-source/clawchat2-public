@@ -111,6 +111,7 @@ fun ChatSheetContent(viewModel: MainViewModel, onOpenVoice: () -> Unit) {
     }
 
     ChatMessageListCard(
+      sessionKey = chatSessionKey,
       messages = messages,
       pendingRunCount = pendingRunCount,
       pendingToolCalls = pendingToolCalls,

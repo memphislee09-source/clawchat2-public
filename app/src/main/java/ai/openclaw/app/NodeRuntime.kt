@@ -12,6 +12,7 @@ import ai.openclaw.app.chat.ChatPendingToolCall
 import ai.openclaw.app.chat.ChatSessionEntry
 import ai.openclaw.app.chat.OutgoingAttachment
 import ai.openclaw.app.chat.WebChatController
+import ai.openclaw.app.chat.WebChatHistoryCacheStore
 import ai.openclaw.app.chat.webChatSessionKey
 import ai.openclaw.app.gateway.DeviceAuthStore
 import ai.openclaw.app.gateway.DeviceIdentityStore
@@ -326,6 +327,7 @@ class NodeRuntime(context: Context) {
       scope = scope,
       prefs = prefs,
       json = json,
+      historyCacheStore = WebChatHistoryCacheStore(appContext, json),
       initialSessionKey = prefs.lastChatSessionKey.value.trim(),
     )
   private val voiceReplySpeakerLazy: Lazy<TalkModeManager> = lazy {

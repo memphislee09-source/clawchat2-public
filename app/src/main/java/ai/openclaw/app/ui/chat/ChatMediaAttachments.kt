@@ -17,6 +17,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -56,9 +57,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -714,6 +717,9 @@ private fun FullscreenImageDialog(
     if (base64 != null) rememberBase64ImageState(base64, decodeRequest = decodeRequest) else null
   val image = fileImageState?.image ?: base64ImageState?.image
   val failed = fileImageState?.failed == true || base64ImageState?.failed == true
+  var scale by remember(image) { mutableStateOf(1f) }
+  var translationX by remember(image) { mutableStateOf(0f) }
+  var translationY by remember(image) { mutableStateOf(0f) }
 
   Dialog(
     onDismissRequest = onDismiss,
@@ -735,7 +741,28 @@ private fun FullscreenImageDialog(
             bitmap = image,
             contentDescription = mimeType ?: "image",
             contentScale = ContentScale.Fit,
-            modifier = Modifier.fillMaxSize(),
+            modifier =
+              Modifier
+                .fillMaxSize()
+                .pointerInput(image) {
+                  detectTransformGestures { _, pan, zoom, _ ->
+                    val nextScale = (scale * zoom).coerceIn(1f, 4f)
+                    if (nextScale <= 1f) {
+                      scale = 1f
+                      translationX = 0f
+                      translationY = 0f
+                    } else {
+                      scale = nextScale
+                      translationX += pan.x
+                      translationY += pan.y
+                    }
+                  }
+                }.graphicsLayer {
+                  scaleX = scale
+                  scaleY = scale
+                  translationX = translationX
+                  translationY = translationY
+                },
           )
         } else if (failed) {
           Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

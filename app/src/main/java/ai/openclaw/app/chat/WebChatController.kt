@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.util.Locale
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -33,12 +34,14 @@ import ai.openclaw.app.SecurePrefs
 private const val WEBCHAT_PORT = 3770
 private const val WEBCHAT_PREFIX = "openclaw-webchat:"
 private const val WEBCHAT_POLL_INTERVAL_MS = 10_000L
+private const val WEBCHAT_HISTORY_PREFETCH_LIMIT = 8
 private val WEBCHAT_JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 
 class WebChatController(
   private val scope: CoroutineScope,
   private val prefs: SecurePrefs,
   private val json: Json,
+  private val historyCacheStore: WebChatHistoryCacheStore,
   initialSessionKey: String = "",
 ) {
   private val client = OkHttpClient.Builder().build()
@@ -98,6 +101,11 @@ class WebChatController(
   private var preferredBaseUrl: String? = null
   private var startupContactsLoaded = false
   private var startupContactsRefreshInFlight = false
+  private val navigationVersion = AtomicLong(0L)
+  private var navigationTargetSessionKey: String? = null
+  private var loadedSessionKey: String? = null
+  private val sessionHistoryCache = historyCacheStore.load().toMutableMap()
+  private val prefetchingSessionKeys = mutableSetOf<String>()
 
   init {
     scope.launch {
@@ -125,8 +133,20 @@ class WebChatController(
   }
 
   fun load(sessionKey: String) {
+    val trimmed = sessionKey.trim()
+    if (trimmed.isEmpty()) {
+      val navVersion = navigationVersion.incrementAndGet()
+      navigationTargetSessionKey = null
+      scope.launch {
+        switchSessionInternal(sessionKey = "", navVersion = navVersion)
+      }
+      return
+    }
+    if (trimmed == loadedSessionKey || trimmed == navigationTargetSessionKey) return
+    val optimisticAgentId = resolveAgentIdForSessionKey(trimmed)
+    val navVersion = beginNavigation(targetSessionKey = trimmed, optimisticAgentId = optimisticAgentId)
     scope.launch {
-      switchSessionInternal(sessionKey)
+      switchSessionInternal(sessionKey = trimmed, navVersion = navVersion)
     }
   }
 
@@ -171,14 +191,32 @@ class WebChatController(
   }
 
   fun openAgentChat(agentId: String) {
+    val normalized = agentId.trim()
+    if (normalized.isEmpty()) return
+    val sessionKey = resolveSessionKeyForAgentId(normalized)
+    if (sessionKey == loadedSessionKey && activeAgentId == normalized) return
+    if (sessionKey == navigationTargetSessionKey) return
+    val navVersion = beginNavigation(targetSessionKey = sessionKey, optimisticAgentId = normalized)
     scope.launch {
-      openAgentInternal(agentId = agentId.trim(), reportErrors = true)
+      openAgentInternal(agentId = normalized, reportErrors = true, navVersion = navVersion)
     }
   }
 
   fun switchSession(sessionKey: String) {
+    val trimmed = sessionKey.trim()
+    if (trimmed.isEmpty()) {
+      val navVersion = navigationVersion.incrementAndGet()
+      navigationTargetSessionKey = null
+      scope.launch {
+        switchSessionInternal(sessionKey = "", navVersion = navVersion)
+      }
+      return
+    }
+    if (trimmed == loadedSessionKey || trimmed == navigationTargetSessionKey) return
+    val optimisticAgentId = resolveAgentIdForSessionKey(trimmed)
+    val navVersion = beginNavigation(targetSessionKey = trimmed, optimisticAgentId = optimisticAgentId)
     scope.launch {
-      switchSessionInternal(sessionKey)
+      switchSessionInternal(sessionKey = trimmed, navVersion = navVersion)
     }
   }
 
@@ -232,6 +270,7 @@ class WebChatController(
           timestampMs = System.currentTimeMillis(),
         )
       _messages.value = _messages.value + optimisticMessage
+      updateSessionCache(sessionKey = currentSessionKey, agentId = agentId, messages = _messages.value)
 
       try {
         val uploadedBlocks = attachments.map { uploadAttachment(it) }
@@ -245,9 +284,10 @@ class WebChatController(
                   put("blocks", JsonArray(uploadedBlocks))
                 }
               },
-          )
+        )
         val assistantMessage = parsePresentedHistoryEntry(response["message"]) ?: return@launch
         _messages.value = _messages.value + assistantMessage
+        updateSessionCache(sessionKey = currentSessionKey, agentId = agentId, messages = _messages.value)
       } catch (err: Throwable) {
         _errorText.value = err.message ?: "Send failed"
       } finally {
@@ -261,23 +301,25 @@ class WebChatController(
     // WebChat state is polled over HTTP and does not consume gateway event streams.
   }
 
-  private suspend fun switchSessionInternal(sessionKey: String) {
+  private suspend fun switchSessionInternal(sessionKey: String, navVersion: Long) {
     val trimmed = sessionKey.trim()
     if (trimmed.isEmpty()) {
       val contacts = refreshAgentsInternal(silent = true)
       val fallback = activeAgentId ?: contacts.firstOrNull()?.agentId
       if (!fallback.isNullOrBlank()) {
-        openAgentInternal(fallback, reportErrors = false)
+        val targetSessionKey = buildFallbackSessionKey(fallback)
+        if (navigationTargetSessionKey != targetSessionKey) {
+          beginNavigation(targetSessionKey = targetSessionKey, optimisticAgentId = fallback)
+        }
+        openAgentInternal(fallback, reportErrors = false, navVersion = navVersion)
       }
       return
     }
 
-    val contactAgentId =
-      _agentContacts.value.firstOrNull { it.directSessionKey == trimmed }?.agentId
-        ?: parseAgentIdFromSessionKey(trimmed)
+    val contactAgentId = resolveAgentIdForSessionKey(trimmed)
 
     if (!contactAgentId.isNullOrBlank()) {
-      openAgentInternal(contactAgentId, reportErrors = false)
+      openAgentInternal(contactAgentId, reportErrors = false, navVersion = navVersion)
       return
     }
 
@@ -288,7 +330,7 @@ class WebChatController(
         ?: contacts.firstOrNull()?.agentId
 
     if (!resolvedAgentId.isNullOrBlank()) {
-      openAgentInternal(resolvedAgentId, reportErrors = false)
+      openAgentInternal(resolvedAgentId, reportErrors = false, navVersion = navVersion)
     }
   }
 
@@ -304,6 +346,7 @@ class WebChatController(
         )
       parsePresentedHistoryEntry(response["message"])?.let { message ->
         _messages.value = _messages.value + message
+        updateSessionCache(sessionKey = currentSessionKey, agentId = activeAgentId, messages = _messages.value)
       }
     } catch (err: Throwable) {
       _errorText.value = err.message ?: "Command failed"
@@ -314,15 +357,22 @@ class WebChatController(
 
   private suspend fun refreshActiveConversationInternal(silent: Boolean) {
     val agentId = activeAgentId ?: return
+    val sessionKey = _sessionKey.value.trim()
     try {
       val historyPayload =
         apiGet(
           path = "/api/openclaw-webchat/agents/${encodePath(agentId)}/history?limit=200",
         )
-      _messages.value = parsePresentedHistory(historyPayload["messages"])
+      if (agentId != activeAgentId) return
+      val parsedMessages = parsePresentedHistory(historyPayload["messages"])
+      _messages.value = parsedMessages
+      if (sessionKey.isNotEmpty()) {
+        updateSessionCache(sessionKey = sessionKey, agentId = agentId, messages = parsedMessages)
+      }
       _errorText.value = null
       _healthOk.value = true
     } catch (err: Throwable) {
+      if (agentId != activeAgentId) return
       if (!silent) {
         _errorText.value = err.message ?: "Failed to refresh chat"
       }
@@ -330,7 +380,7 @@ class WebChatController(
     }
   }
 
-  private suspend fun openAgentInternal(agentId: String, reportErrors: Boolean) {
+  private suspend fun openAgentInternal(agentId: String, reportErrors: Boolean, navVersion: Long) {
     if (agentId.isBlank()) return
     try {
       val response =
@@ -338,15 +388,23 @@ class WebChatController(
           path = "/api/openclaw-webchat/agents/${encodePath(agentId)}/open",
           body = buildJsonObject {},
         )
+      if (!isCurrentNavigation(navVersion)) return
+      val resolvedSessionKey = response["sessionKey"].stringOrNull()?.trim().orEmpty().ifBlank { buildFallbackSessionKey(agentId) }
       activeAgentId = agentId
-      _sessionKey.value = response["sessionKey"].stringOrNull()?.trim().orEmpty().ifBlank { buildFallbackSessionKey(agentId) }
+      _sessionKey.value = resolvedSessionKey
       _sessionId.value = null
-      _messages.value = parsePresentedHistory(response["history"].asObjectOrNull()?.get("messages"))
+      val parsedMessages = parsePresentedHistory(response["history"].asObjectOrNull()?.get("messages"))
+      _messages.value = parsedMessages
       _errorText.value = null
       _healthOk.value = true
+      loadedSessionKey = resolvedSessionKey
+      navigationTargetSessionKey = null
+      updateSessionCache(sessionKey = resolvedSessionKey, agentId = agentId, messages = parsedMessages)
       refreshActiveConversationInternal(silent = true)
       _pendingRunCount.value = 0
     } catch (err: Throwable) {
+      if (!isCurrentNavigation(navVersion)) return
+      navigationTargetSessionKey = null
       if (reportErrors) {
         _errorText.value = err.message ?: "Failed to open conversation"
       }
@@ -385,6 +443,7 @@ class WebChatController(
       _errorText.value = _errorText.value?.takeIf { it.startsWith("Send failed") || it.startsWith("Command failed") }
       _healthOk.value = true
       publishPendingStateFromContacts()
+      scheduleHistoryPrefetch(_agentContacts.value)
       _agentContacts.value
     } catch (err: Throwable) {
       _agentContactsError.value = err.message ?: "Failed to refresh contacts"
@@ -404,6 +463,48 @@ class WebChatController(
     val currentAgentId = activeAgentId
     val activeContact = _agentContacts.value.firstOrNull { it.agentId == currentAgentId }
     _pendingRunCount.value = if (activeContact?.presence == "running") 1 else 0
+  }
+
+  private fun scheduleHistoryPrefetch(contacts: List<AgentContactEntry>) {
+    contacts
+      .asSequence()
+      .filter { it.hasDirectSession }
+      .filter { it.directSessionKey.isNotBlank() }
+      .filterNot { sessionHistoryCache.containsKey(it.directSessionKey) }
+      .take(WEBCHAT_HISTORY_PREFETCH_LIMIT)
+      .forEach { contact ->
+        val sessionKey = contact.directSessionKey.trim()
+        synchronized(prefetchingSessionKeys) {
+          if (!prefetchingSessionKeys.add(sessionKey)) {
+            return@forEach
+          }
+        }
+        scope.launch {
+          try {
+            prefetchAgentHistory(contact.agentId, sessionKey)
+          } finally {
+            synchronized(prefetchingSessionKeys) {
+              prefetchingSessionKeys.remove(sessionKey)
+            }
+          }
+        }
+      }
+  }
+
+  private suspend fun prefetchAgentHistory(agentId: String, sessionKey: String) {
+    runCatching {
+      val historyPayload =
+        apiGet(
+          path = "/api/openclaw-webchat/agents/${encodePath(agentId)}/history?limit=80",
+        )
+      val parsedMessages = parsePresentedHistory(historyPayload["messages"])
+      if (parsedMessages.isNotEmpty()) {
+        updateSessionCache(sessionKey = sessionKey, agentId = agentId, messages = parsedMessages)
+        if (_sessionKey.value.trim() == sessionKey && _messages.value.isEmpty()) {
+          _messages.value = parsedMessages
+        }
+      }
+    }
   }
 
   private suspend fun uploadAttachment(attachment: OutgoingAttachment): JsonObject {
@@ -626,6 +727,53 @@ class WebChatController(
       "high" -> "high"
       else -> "off"
     }
+  }
+
+  private fun resolveAgentIdForSessionKey(sessionKey: String): String? {
+    val trimmed = sessionKey.trim()
+    if (trimmed.isEmpty()) return null
+    return _agentContacts.value.firstOrNull { it.directSessionKey == trimmed }?.agentId
+      ?: parseAgentIdFromSessionKey(trimmed)
+  }
+
+  private fun resolveSessionKeyForAgentId(agentId: String): String {
+    val normalized = agentId.trim()
+    if (normalized.isEmpty()) return ""
+    return _agentContacts.value.firstOrNull { it.agentId == normalized }?.directSessionKey?.trim().orEmpty()
+      .ifBlank { buildFallbackSessionKey(normalized) }
+  }
+
+  private fun beginNavigation(targetSessionKey: String, optimisticAgentId: String?): Long {
+    val normalized = targetSessionKey.trim()
+    navigationTargetSessionKey = normalized
+    if (_sessionKey.value != normalized) {
+      _sessionKey.value = normalized
+    }
+    if (!optimisticAgentId.isNullOrBlank()) {
+      activeAgentId = optimisticAgentId
+    }
+    if (loadedSessionKey != normalized) {
+      _sessionId.value = null
+      _messages.value = sessionHistoryCache[normalized].orEmpty()
+      _errorText.value = null
+      _streamingAssistantText.value = null
+      _pendingToolCalls.value = emptyList()
+      _pendingRunCount.value = 0
+    }
+    return navigationVersion.incrementAndGet()
+  }
+
+  private fun isCurrentNavigation(navVersion: Long): Boolean = navigationVersion.get() == navVersion
+
+  private fun updateSessionCache(sessionKey: String, agentId: String?, messages: List<ChatMessage>) {
+    val normalized = sessionKey.trim()
+    if (normalized.isEmpty()) return
+    val cachedMessages = messages.takeLast(WEBCHAT_HISTORY_CACHE_MAX_MESSAGES).map { it.sanitizedForCache() }
+    sessionHistoryCache[normalized] = cachedMessages
+    agentId?.trim()?.takeIf { it.isNotEmpty() }?.let { normalizedAgentId ->
+      sessionHistoryCache[buildFallbackSessionKey(normalizedAgentId)] = cachedMessages
+    }
+    historyCacheStore.save(sessionHistoryCache)
   }
 }
 

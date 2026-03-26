@@ -75,3 +75,133 @@
 - The real gateway connection uses OkHttp WebSocket with a custom `X509TrustManager` and optional hostname bypass when a fingerprint is pinned.
 - The probe and the real session therefore do not share the same DNS, route selection, connect fallback, timeout behavior, or platform TLS integration, so the probe can fail on devices where the later OkHttp connection would succeed.
 - Safest fix: replace the raw-socket probe with an OkHttp-based preflight that captures the peer certificate fingerprint through the same client/TLS stack used by `GatewaySession`, but still gates pin persistence behind the existing user trust prompt.
+
+## Voice Conversation Plan
+
+- [x] Confirm the target product shape is continuous bidirectional voice conversation, not raw WebRTC phone-style transport.
+- [x] Keep `openclaw-webchat` as the single source of truth for sessions, history, and voice-originated turns.
+- [x] Draft the required `openclaw-webchat` API contract for streaming voice turns, run abort, and raw audio clip persistence.
+- [ ] Implement the `openclaw-webchat` turn-streaming and abort endpoints.
+- [ ] Update Android voice mode to submit turns through `openclaw-webchat` instead of the gateway-direct voice path.
+- [ ] Add Android capture support for preserving raw user audio clips alongside the transcript text.
+- [ ] Verify on device that voice turns stream back live, support barge-in, and persist transcript plus raw audio in the same chat history.
+
+## Voice Conversation Review
+
+- The agreed direction is to make voice mode feel like a live two-way conversation while still using chat turns under the hood.
+- The main architectural rule is that voice must not create a second session truth beside `openclaw-webchat`.
+- Server-side interface requirements have been written to `OPENCLAW_WEBCHAT_VOICE_SESSION_API.md` so the paired project agent can implement against a stable contract before Android-side integration starts.
+
+## Contact Navigation Investigation Plan
+
+- [x] Trace the contacts click path into session-switch and chat-load state.
+- [x] Compare contact click navigation with chat screen auto-load and saved-session restore behavior.
+- [x] Check whether a connected device or emulator is available for targeted repro.
+- [x] Confirm the root cause and decide whether the next step should be a narrow code fix or a repro-only report.
+- [x] Fix the contact-to-chat session race so the selected contact wins.
+- [x] Make chat entry anchor to the latest message on new-session entry without forcing later jumpy auto-scroll.
+- [x] Rebuild and verify on the connected Android phone.
+
+## Contact Navigation Investigation Review
+
+- The current working hypothesis is a session-selection race between contact click navigation, chat screen startup auto-load, and saved-session restoration.
+- Root cause confirmed on the connected Redmi K20 (`c2f22adf`): tapping `bai` from Contacts could open `yuyan-mini` because chat navigation, chat-screen startup `loadChat(chatSessionKey)`, and saved-session restoration were all allowed to race without a "latest navigation wins" guard.
+- `WebChatController` now applies an optimistic target session immediately, tracks in-flight navigation, and ignores stale open/history responses from superseded session requests.
+- `ChatMessageListCard` now anchors a newly entered session directly to the latest message with a non-animated jump, then only auto-scrolls later updates when the user is already following the bottom.
+- Fresh verification completed on 2026-03-26 with:
+- `./gradlew :app:compilePlayDebugKotlin`
+- `./gradlew :app:assemblePlayDebug`
+- `adb -s c2f22adf install -r app/build/outputs/apk/play/debug/openclaw-0.2.3-play-debug.apk`
+- Real-device repro before fix: tapping `bai` opened `yuyan-mini`.
+- Real-device verification after fix: tapping `bai` opened `bai`, and tapping `王语嫣` opened `王语嫣`.
+
+## Instant Chat Entry Plan
+
+- [x] Confirm why contact-to-chat still shows a long blank loading period after the session race fix.
+- [x] Add a local webchat history cache so entering a known session can render recent messages immediately.
+- [x] Keep the cached view consistent with background refresh and outbound messages.
+- [x] Rebuild and verify on device that contact entry shows cached history instantly without reintroducing session mix-ups.
+
+## Instant Chat Entry Review
+
+- The blank delay after entering from Contacts was caused by Chat waiting for a fresh `/agents/{id}/open` or `/history` response before rendering anything, even when the session had already been seen locally.
+- `WebChatController` now persists recent per-session chat history to app-local storage and restores it optimistically on session navigation, so known sessions can render immediately before network refresh completes.
+- Cached histories are sanitized before persistence so large inline attachment payloads are not written back into the cache file.
+- Contact navigation now prefers the contact's real direct session key when choosing optimistic state, instead of only using the fallback `openclaw-webchat:` key. This was required for the cache to hit existing `agent:<id>:clawchat2` sessions.
+- Background refresh, outbound sends, slash-command results, and agent-open results now all refresh the local history cache so the instant view stays aligned with the latest transcript.
+- Contacts refresh now also warms recent direct-session histories in the background for up to 8 contacts, which makes "not opened in this process yet" sessions behave much closer to WeChat after the contacts page has been visible briefly.
+- Fresh verification completed on 2026-03-26 with:
+- `./gradlew :app:compilePlayDebugKotlin`
+- `./gradlew :app:assemblePlayDebug`
+- `adb -s c2f22adf install -r app/build/outputs/apk/play/debug/openclaw-0.2.3-play-debug.apk`
+- Real-device verification on Redmi K20 (`c2f22adf`):
+- Cold-start reopen of `bai` restored message history immediately from local cache.
+- Returning to Contacts and tapping `bai`, then dumping UI after `0.2s`, showed cached chat content immediately instead of the previous blank loading state.
+- Returning to Contacts, waiting `3s` for background prefetch, and tapping `王语嫣`, then dumping UI after `0.2s`, showed the correct `王语嫣` conversation content immediately.
+- The previous wrong-session regression did not return during this verification: tapping `王语嫣` still opened `王语嫣`, not another agent.
+
+## Local SQLite Evaluation Plan
+
+- [x] Compare the current lightweight history cache against a formal local SQLite session/message store.
+- [x] Estimate the work for a minimal SQLite MVP versus a more complete local-first chat system.
+- [x] Record the evaluation in project docs and defer implementation for now.
+
+## Local SQLite Evaluation Review
+
+- SQLite is a viable next step if ClawChat2 later wants stronger WeChat-like behavior than the current lightweight cache can provide.
+- The work has been evaluated and documented in `docs/webchat-local-sqlite-evaluation.md`.
+- Current recommendation is to keep the lightweight cache for now and only start SQLite work later if the project wants a true local-first session/message read path.
+- The preferred future entry point is a narrow MVP first: `sessions` + `messages`, local-first open, then background refresh layered on top.
+
+## Chat UX Polish Plan
+
+- [x] Trace the current chat image viewer and composer input implementations.
+- [x] Add touch pinch-to-zoom behavior for chat image viewing.
+- [x] Change the chat composer to default to one line and grow with input content.
+- [x] Rebuild and verify the updated chat interactions.
+
+## Chat UX Polish Review
+
+- Fullscreen chat images now support two-finger pinch zoom and pan inside the viewer, so image inspection no longer depends on the fixed fit-to-screen scale.
+- The chat composer now starts at a single-line height and grows with message length up to a bounded maximum, instead of reserving a two-line tall input by default.
+- Fresh verification completed on 2026-03-26 with:
+- `./gradlew :app:compilePlayDebugKotlin`
+- `./gradlew :app:assemblePlayDebug`
+- This round was build-verified only; no fresh device-side manual interaction pass was run after the UI polish change.
+
+## Chat Bottom Anchor Plan
+
+- [x] Reproduce and trace why entering a contact chat does not land on the real conversation bottom.
+- [x] Replace the current last-item jump with a true scroll-to-bottom behavior.
+- [x] Rebuild, install, and verify on device that contact entry lands at the latest message.
+
+## Chat Bottom Anchor Review
+
+- Root cause: `ChatMessageListCard` treated `scrollToItem(lastIndex)` as a bottom-anchor primitive, but that only jumps to the start of the last item. For long final messages, the viewport still landed above the true conversation bottom.
+- `ChatMessageListCard` now uses explicit `scrollToConversationBottom` / `animateToConversationBottom` helpers that first jump to the last item and then continue scrolling until the list can no longer scroll forward.
+- Fresh verification completed on 2026-03-26 with:
+- `./gradlew :app:compilePlayDebugKotlin`
+- `./gradlew :app:assemblePlayDebug`
+- `adb -s c2f22adf install -r app/build/outputs/apk/play/debug/openclaw-0.2.3-play-debug.apk`
+- Real-device verification on Redmi K20 (`c2f22adf`):
+- Re-entered the `王语嫣` contact conversation after install and dumped the UI tree.
+- Visible content now starts inside the tail end of the latest long assistant message instead of the beginning of that message, which confirms the viewport is landing at the true bottom of the conversation rather than the top of the last item.
+
+## Release 0.2.4 Plan
+
+- [x] Review the current workspace status and decide the next version bump target.
+- [x] Bump Android app version to `0.2.4` / `versionCode 6`.
+- [x] Update release-facing docs to reflect the new baseline and this round's chat/contact UX fixes.
+- [x] Build and verify the new `playDebug` APK.
+- [ ] Commit the release prep changes on `main` and push to `origin/main`.
+
+## Release 0.2.4 Review
+
+- Android app version has been bumped to `0.2.4` with `versionCode 6`.
+- Release-facing docs now point at the `0.2.4` baseline, and a new `RELEASE_NOTES_v0.2.4.md` has been added for this round's contact/chat UX work.
+- This release includes the current verified chat UX fixes: instant local history restore for known sessions, contact-entry bottom anchoring, fullscreen image pinch zoom, and the single-line auto-growing composer.
+- Fresh verification completed on 2026-03-26 with:
+- `./gradlew :app:compilePlayDebugKotlin`
+- `./gradlew :app:assemblePlayDebug`
+- `adb -s c2f22adf install -r app/build/outputs/apk/play/debug/openclaw-0.2.4-play-debug.apk`
+- Verified artifact for this release-prep pass: `app/build/outputs/apk/play/debug/openclaw-0.2.4-play-debug.apk` built at `2026-03-26 19:23 +0800`.

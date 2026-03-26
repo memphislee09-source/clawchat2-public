@@ -1,12 +1,14 @@
 package ai.openclaw.app.ui.chat
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,7 +16,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -31,6 +37,9 @@ import ai.openclaw.app.ui.mobileHeadline
 import ai.openclaw.app.ui.mobileSurface
 import ai.openclaw.app.ui.mobileText
 import ai.openclaw.app.ui.mobileTextSecondary
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
 
 private sealed interface ChatTimelineEntry {
   val key: String
@@ -54,6 +63,7 @@ private sealed interface ChatTimelineEntry {
 
 @Composable
 fun ChatMessageListCard(
+  sessionKey: String,
   messages: List<ChatMessage>,
   pendingRunCount: Int,
   pendingToolCalls: List<ChatPendingToolCall>,
@@ -65,6 +75,8 @@ fun ChatMessageListCard(
   modifier: Modifier = Modifier,
 ) {
   val listState = rememberLazyListState()
+  var followBottom by remember(sessionKey) { mutableStateOf(true) }
+  var anchoredSessionKey by remember { mutableStateOf<String?>(null) }
   val dismissImeOnPullDown =
     remember(onPullDown) {
       object : NestedScrollConnection {
@@ -77,6 +89,25 @@ fun ChatMessageListCard(
       }
     }
 
+  LaunchedEffect(listState, sessionKey) {
+    snapshotFlow {
+      val layoutInfo = listState.layoutInfo
+      val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()?.index
+      if (lastVisible == null) {
+        null
+      } else {
+        val total = layoutInfo.totalItemsCount
+        total to lastVisible
+      }
+    }
+      .filterNotNull()
+      .map { (total, lastVisible) -> total == 0 || lastVisible >= total - 2 }
+      .distinctUntilChanged()
+      .collect { isNearBottom ->
+        followBottom = isNearBottom
+      }
+  }
+
   val timelineEntries =
     remember(messages, pendingRunCount, pendingToolCalls, streamingAssistantText) {
       buildList {
@@ -87,9 +118,15 @@ fun ChatMessageListCard(
       }
     }
 
-  LaunchedEffect(messages.size, pendingRunCount, pendingToolCalls, streamingAssistantText) {
+  LaunchedEffect(sessionKey, timelineEntries.size, pendingRunCount, pendingToolCalls, streamingAssistantText) {
     if (timelineEntries.isNotEmpty()) {
-      listState.animateScrollToItem(index = timelineEntries.lastIndex)
+      if (anchoredSessionKey != sessionKey) {
+        listState.scrollToConversationBottom(timelineEntries.lastIndex)
+        anchoredSessionKey = sessionKey
+        followBottom = true
+      } else if (followBottom) {
+        listState.animateToConversationBottom(timelineEntries.lastIndex)
+      }
     }
   }
 
@@ -121,6 +158,28 @@ fun ChatMessageListCard(
     if (messages.isEmpty() && pendingRunCount == 0 && pendingToolCalls.isEmpty() && streamingAssistantText.isNullOrBlank()) {
       EmptyChatHint(modifier = Modifier.align(Alignment.Center), healthOk = healthOk)
     }
+  }
+}
+
+private suspend fun LazyListState.scrollToConversationBottom(lastIndex: Int) {
+  if (lastIndex < 0) return
+  scrollToItem(index = lastIndex)
+  settleConversationBottom()
+}
+
+private suspend fun LazyListState.animateToConversationBottom(lastIndex: Int) {
+  if (lastIndex < 0) return
+  animateScrollToItem(index = lastIndex)
+  settleConversationBottom()
+}
+
+private suspend fun LazyListState.settleConversationBottom() {
+  var attempts = 0
+  while (canScrollForward && attempts < 32) {
+    val viewportHeight = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
+    val step = viewportHeight.toFloat().coerceAtLeast(1f)
+    scrollBy(step)
+    attempts += 1
   }
 }
 
