@@ -20,9 +20,9 @@
 - [x] Reduce default Android operator pairing scopes so `pairing required` approvals do not need `operator.talk.secrets`.
 - [x] Verify basic pairing still works with the reduced operator scope set.
 - [x] Rebuild a fresh `playDebug` APK for the Mate60 pairing retest.
-- [ ] Merge `codex/upstream-bridge-pass` into `main` as the new development baseline.
-- [ ] Verify local `main` points at the tested onboarding/Tailscale/pairing fix set.
-- [ ] Push updated `main` to GitHub and keep future work based on it.
+- [x] Merge `codex/upstream-bridge-pass` into `main` as the new development baseline.
+- [x] Verify local `main` points at the tested onboarding/Tailscale/pairing fix set.
+- [x] Push updated `main` to GitHub and keep future work based on it.
 
 # Review
 
@@ -59,6 +59,8 @@
 - `./gradlew :app:testPlayDebugUnitTest --tests ai.openclaw.app.node.ConnectionManagerTest --tests ai.openclaw.app.gateway.GatewayTlsTest --tests ai.openclaw.app.ui.GatewayDiagnosticsTest`
 - `./gradlew :app:assemblePlayDebug`
 - Fresh pairing-retest artifact: `app/build/outputs/apk/play/debug/openclaw-0.2.3-play-debug.apk` built at `2026-03-26 15:20:38 +0800`.
+- The verified branch `codex/upstream-bridge-pass` has now been merged into local `main` and pushed to `origin/main` as merge commit `accdac1dc9`.
+- Future development should continue from `main` at or after `accdac1dc9`; the branch work is no longer just an experiment and is now the project baseline.
 
 ## TLS Probe Inspection Plan
 
