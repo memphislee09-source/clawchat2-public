@@ -156,6 +156,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     runtime.setGatewayPassword(value)
   }
 
+  fun saveGatewayTlsFingerprint(stableId: String, fingerprint: String) {
+    runtime.saveGatewayTlsFingerprint(stableId, fingerprint)
+  }
+
   fun setTailscaleHost(value: String) {
     runtime.setTailscaleHost(value)
   }

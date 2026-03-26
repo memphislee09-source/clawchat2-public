@@ -42,14 +42,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import ai.openclaw.app.MainViewModel
+import ai.openclaw.app.gateway.GatewayEndpoint
+import ai.openclaw.app.gateway.normalizeGatewayFingerprintOrNull
 
 @Composable
 fun ConnectTabScreen(viewModel: MainViewModel) {
+  val context = LocalContext.current
   val statusText by viewModel.statusText.collectAsState()
   val isConnected by viewModel.isConnected.collectAsState()
   val remoteAddress by viewModel.remoteAddress.collectAsState()
@@ -80,6 +84,7 @@ fun ConnectTabScreen(viewModel: MainViewModel) {
   var tailscaleHostInput by rememberSaveable { mutableStateOf(tailscaleHost.ifBlank { "example.tailnet.ts.net" }) }
   var tailscalePortInput by rememberSaveable { mutableStateOf(tailscalePort.toString()) }
   var passwordInput by rememberSaveable { mutableStateOf("") }
+  var tlsFingerprintInput by rememberSaveable { mutableStateOf("") }
   var validationText by rememberSaveable { mutableStateOf<String?>(null) }
 
   if (pendingTrust != null) {
@@ -247,6 +252,21 @@ fun ConnectTabScreen(viewModel: MainViewModel) {
           return@Button
         }
 
+        val normalizedTlsFingerprint =
+          if (config.tls) {
+            val rawFingerprint = tlsFingerprintInput.trim()
+            if (rawFingerprint.isEmpty()) {
+              null
+            } else {
+              normalizeGatewayFingerprintOrNull(rawFingerprint) ?: run {
+                validationText = "TLS fingerprint must be a valid SHA-256 value."
+                return@Button
+              }
+            }
+          } else {
+            null
+          }
+
         validationText = null
         viewModel.setManualEnabled(true)
         viewModel.setManualHost(config.host)
@@ -257,6 +277,10 @@ fun ConnectTabScreen(viewModel: MainViewModel) {
         viewModel.setTailscalePort(tailscalePortInput.toIntOrNull() ?: 443)
         viewModel.setGatewayToken(config.token)
         viewModel.setGatewayPassword(config.password)
+        if (normalizedTlsFingerprint != null) {
+          val stableId = GatewayEndpoint.manual(host = config.host, port = config.port).stableId
+          viewModel.saveGatewayTlsFingerprint(stableId, normalizedTlsFingerprint)
+        }
         viewModel.connectManual()
       },
       modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -268,6 +292,25 @@ fun ConnectTabScreen(viewModel: MainViewModel) {
         ),
     ) {
       Text(primaryLabel, style = mobileHeadline.copy(fontWeight = FontWeight.Bold))
+    }
+
+    if (gatewayStatusHasDiagnostics(statusText)) {
+      TextButton(
+        onClick = {
+          copyGatewayDiagnosticsReport(
+            context = context,
+            screen = "connect_tab",
+            gatewayAddress = activeEndpoint,
+            statusText = statusText,
+          )
+        },
+      ) {
+        Text(
+          tr("Copy diagnostics", "复制诊断信息"),
+          style = mobileCallout.copy(fontWeight = FontWeight.SemiBold),
+          color = mobileAccent,
+        )
+      }
     }
 
     Surface(
@@ -493,6 +536,29 @@ fun ConnectTabScreen(viewModel: MainViewModel) {
             shape = RoundedCornerShape(14.dp),
             colors = outlinedColors(),
           )
+
+          Text(tr("TLS fingerprint (optional)", "TLS 指纹（可选）"), style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold), color = mobileTextSecondary)
+          OutlinedTextField(
+            value = tlsFingerprintInput,
+            onValueChange = { tlsFingerprintInput = it },
+            placeholder = { Text("sha256:ab12cd34...", style = mobileBody, color = mobileTextTertiary) },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 2,
+            maxLines = 3,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+            textStyle = mobileBody.copy(fontFamily = FontFamily.Monospace, color = mobileText),
+            shape = RoundedCornerShape(14.dp),
+            colors = outlinedColors(),
+          )
+          Text(
+            tr(
+              "For devices that fail first-time TLS probing, paste the gateway certificate SHA-256 fingerprint here to skip automatic fingerprint capture.",
+              "如果设备首次 TLS 探测失败，可在这里粘贴网关证书的 SHA-256 指纹，跳过自动读取。",
+            ),
+            style = mobileCallout,
+            color = mobileTextSecondary,
+          )
+          CommandBlock("openssl s_client -connect <host>:<port> -servername <host> </dev/null 2>/dev/null | openssl x509 -noout -fingerprint -sha256")
 
           HorizontalDivider(color = mobileBorder)
 

@@ -83,9 +83,12 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import ai.openclaw.app.BuildConfig
 import ai.openclaw.app.LocationMode
 import ai.openclaw.app.MainViewModel
 import ai.openclaw.app.R
+import ai.openclaw.app.gateway.GatewayEndpoint
+import ai.openclaw.app.gateway.normalizeGatewayFingerprintOrNull
 import ai.openclaw.app.node.DeviceNotificationListenerService
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
@@ -226,6 +229,7 @@ fun OnboardingFlow(viewModel: MainViewModel, modifier: Modifier = Modifier) {
   var setupCode by rememberSaveable { mutableStateOf("") }
   var gatewayUrl by rememberSaveable { mutableStateOf("") }
   var gatewayPassword by rememberSaveable { mutableStateOf("") }
+  var gatewayTlsFingerprint by rememberSaveable { mutableStateOf("") }
   var gatewayInputMode by rememberSaveable { mutableStateOf(GatewayInputMode.SetupCode) }
   var gatewayAdvancedOpen by rememberSaveable { mutableStateOf(false) }
   var manualHost by rememberSaveable { mutableStateOf("10.0.2.2") }
@@ -236,9 +240,11 @@ fun OnboardingFlow(viewModel: MainViewModel, modifier: Modifier = Modifier) {
 
   val lifecycleOwner = LocalLifecycleOwner.current
 
+  val smsCapabilityEnabled = BuildConfig.OPENCLAW_ENABLE_SMS
   val smsAvailable =
     remember(context) {
-      context.packageManager?.hasSystemFeature(PackageManager.FEATURE_TELEPHONY) == true
+      smsCapabilityEnabled &&
+        context.packageManager?.hasSystemFeature(PackageManager.FEATURE_TELEPHONY) == true
     }
   val motionAvailable =
     remember(context) {
@@ -548,6 +554,7 @@ fun OnboardingFlow(viewModel: MainViewModel, modifier: Modifier = Modifier) {
               manualTls = manualTls,
               gatewayToken = persistedGatewayToken,
               gatewayPassword = gatewayPassword,
+              gatewayTlsFingerprint = gatewayTlsFingerprint,
               gatewayError = gatewayError,
               onScanQrClick = {
                 gatewayError = null
@@ -580,6 +587,7 @@ fun OnboardingFlow(viewModel: MainViewModel, modifier: Modifier = Modifier) {
               onManualTlsChange = { manualTls = it },
               onTokenChange = viewModel::setGatewayToken,
               onPasswordChange = { gatewayPassword = it },
+              onTlsFingerprintChange = { gatewayTlsFingerprint = it },
             )
           OnboardingStep.Permissions ->
             PermissionsStep(
@@ -697,6 +705,7 @@ fun OnboardingFlow(viewModel: MainViewModel, modifier: Modifier = Modifier) {
             )
           OnboardingStep.FinalCheck ->
             FinalStep(
+              context = context,
               parsedGateway = parseGatewayEndpoint(gatewayUrl),
               statusText = statusText,
               isConnected = isConnected,
@@ -861,6 +870,20 @@ fun OnboardingFlow(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                       ""
                     }
                   val password = gatewayPassword.trim()
+                  val normalizedTlsFingerprint =
+                    if (parsed.tls) {
+                      val rawFingerprint = gatewayTlsFingerprint.trim()
+                      if (rawFingerprint.isEmpty()) {
+                        null
+                      } else {
+                        normalizeGatewayFingerprintOrNull(rawFingerprint) ?: run {
+                          gatewayError = "TLS fingerprint must be a valid SHA-256 value."
+                          return@Button
+                        }
+                      }
+                    } else {
+                      null
+                    }
                   attemptedConnect = true
                   viewModel.setManualEnabled(true)
                   viewModel.setManualHost(parsed.host)
@@ -869,6 +892,10 @@ fun OnboardingFlow(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                   viewModel.setGatewayBootstrapToken(bootstrapToken)
                   viewModel.setGatewayToken(token)
                   viewModel.setGatewayPassword(password)
+                  if (normalizedTlsFingerprint != null) {
+                    val stableId = GatewayEndpoint.manual(host = parsed.host, port = parsed.port).stableId
+                    viewModel.saveGatewayTlsFingerprint(stableId, normalizedTlsFingerprint)
+                  }
                   viewModel.connectManual()
                 },
                 modifier = Modifier.weight(1f).height(52.dp),
@@ -987,6 +1014,7 @@ private fun GatewayStep(
   manualTls: Boolean,
   gatewayToken: String,
   gatewayPassword: String,
+  gatewayTlsFingerprint: String,
   gatewayError: String?,
   onScanQrClick: () -> Unit,
   onAdvancedOpenChange: (Boolean) -> Unit,
@@ -997,6 +1025,7 @@ private fun GatewayStep(
   onManualTlsChange: (Boolean) -> Unit,
   onTokenChange: (String) -> Unit,
   onPasswordChange: (String) -> Unit,
+  onTlsFingerprintChange: (String) -> Unit,
 ) {
   val resolvedEndpoint = remember(setupCode) { decodeGatewaySetupCode(setupCode)?.url?.let { parseGatewayEndpoint(it)?.displayUrl } }
   val manualResolvedEndpoint = remember(manualHost, manualPort, manualTls) { composeGatewayManualUrl(manualHost, manualPort, manualTls)?.let { parseGatewayEndpoint(it)?.displayUrl } }
@@ -1226,6 +1255,35 @@ private fun GatewayStep(
             ResolvedEndpoint(endpoint = manualResolvedEndpoint)
           }
         }
+
+        Text("TLS FINGERPRINT (OPTIONAL)", style = onboardingCaption1Style.copy(letterSpacing = 0.9.sp), color = onboardingTextSecondary)
+        OutlinedTextField(
+          value = gatewayTlsFingerprint,
+          onValueChange = onTlsFingerprintChange,
+          placeholder = { Text("sha256:ab12cd34...", color = onboardingTextTertiary, style = onboardingBodyStyle) },
+          modifier = Modifier.fillMaxWidth(),
+          minLines = 2,
+          maxLines = 3,
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+          textStyle = onboardingBodyStyle.copy(fontFamily = FontFamily.Monospace, color = onboardingText),
+          shape = RoundedCornerShape(14.dp),
+          colors =
+            OutlinedTextFieldDefaults.colors(
+              focusedContainerColor = onboardingSurface,
+              unfocusedContainerColor = onboardingSurface,
+              focusedBorderColor = onboardingAccent,
+              unfocusedBorderColor = onboardingBorder,
+              focusedTextColor = onboardingText,
+              unfocusedTextColor = onboardingText,
+              cursorColor = onboardingAccent,
+            ),
+        )
+        Text(
+          "If this phone cannot read the first TLS fingerprint automatically, paste the gateway certificate SHA-256 fingerprint here.",
+          style = onboardingCalloutStyle.copy(lineHeight = 18.sp),
+          color = onboardingTextSecondary,
+        )
+        CommandBlock("openssl s_client -connect <host>:<port> -servername <host> </dev/null 2>/dev/null | openssl x509 -noout -fingerprint -sha256")
       }
     }
 
@@ -1552,6 +1610,7 @@ private fun PermissionToggleRow(
 
 @Composable
 private fun FinalStep(
+  context: Context,
   parsedGateway: GatewayEndpointConfig?,
   statusText: String,
   isConnected: Boolean,
@@ -1573,11 +1632,33 @@ private fun FinalStep(
       if (isConnected) {
         Text("Connected to ${serverName ?: remoteAddress ?: "gateway"}", style = onboardingCalloutStyle, color = onboardingSuccess)
       } else {
+        if (gatewayStatusHasDiagnostics(statusText)) {
+          TextButton(
+            onClick = {
+              copyGatewayDiagnosticsReport(
+                context = context,
+                screen = "onboarding_final",
+                gatewayAddress = parsedGateway?.displayUrl.orEmpty(),
+                statusText = statusText,
+              )
+            },
+          ) {
+            Text("Copy diagnostics", color = onboardingAccent, style = onboardingCalloutStyle.copy(fontWeight = FontWeight.SemiBold))
+          }
+        }
         GuideBlock(title = "Pairing Required") {
-          Text("Run these on the gateway host:", style = onboardingCalloutStyle, color = onboardingTextSecondary)
-          CommandBlock("openclaw devices list")
-          CommandBlock("openclaw devices approve <requestId>")
-          Text("Then tap Connect again.", style = onboardingCalloutStyle, color = onboardingTextSecondary)
+          if (gatewayStatusLooksLikePairing(statusText)) {
+            Text("Run these on the gateway host:", style = onboardingCalloutStyle, color = onboardingTextSecondary)
+            CommandBlock("openclaw devices list")
+            CommandBlock("openclaw devices approve <requestId>")
+            Text("Then tap Connect again.", style = onboardingCalloutStyle, color = onboardingTextSecondary)
+          } else {
+            Text(
+              "If this still fails, copy diagnostics first, then confirm the route, address, token, and gateway status on the host.",
+              style = onboardingCalloutStyle,
+              color = onboardingTextSecondary,
+            )
+          }
         }
       }
     }

@@ -3,14 +3,18 @@ package ai.openclaw.app.gateway
 import android.annotation.SuppressLint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.net.Socket
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.HostnameVerifier
 import javax.net.ssl.SSLContext
@@ -86,7 +90,7 @@ fun buildGatewayTlsConfig(
 suspend fun probeGatewayTlsFingerprint(
   host: String,
   port: Int,
-  timeoutMs: Int = 3_000,
+  timeoutMs: Int = 10_000,
 ): String? {
   val trimmedHost = host.trim()
   if (trimmedHost.isEmpty()) return null
@@ -105,49 +109,160 @@ suspend fun probeGatewayTlsFingerprint(
 
     val context = SSLContext.getInstance("TLS")
     context.init(null, arrayOf(trustAll), SecureRandom())
+    val socketFactory = context.socketFactory
 
-    val addresses =
-      runCatching {
-        InetAddress.getAllByName(trimmedHost)
-          .sortedWith(compareBy<InetAddress>({ if (it is Inet4Address) 0 else 1 }, { it.hostAddress ?: "" }))
-      }.getOrElse { emptyList() }
-    if (addresses.isEmpty()) {
-      return@withContext null
+    probeGatewayTlsFingerprintWithHttps(
+      host = trimmedHost,
+      port = port,
+      timeoutMs = timeoutMs,
+      socketFactory = socketFactory,
+      trustManager = trustAll,
+    ) ?: probeGatewayTlsFingerprintWithDirectSocket(
+      host = trimmedHost,
+      port = port,
+      timeoutMs = timeoutMs,
+      socketFactory = socketFactory,
+    ) ?: probeGatewayTlsFingerprintWithSocket(
+      host = trimmedHost,
+      port = port,
+      timeoutMs = timeoutMs,
+      socketFactory = socketFactory,
+    )
+  }
+}
+
+private fun probeGatewayTlsFingerprintWithHttps(
+  host: String,
+  port: Int,
+  timeoutMs: Int,
+  socketFactory: SSLSocketFactory,
+  trustManager: X509TrustManager,
+): String? {
+  val client =
+    OkHttpClient.Builder()
+      .connectTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
+      .readTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
+      .callTimeout((timeoutMs * 2L).coerceAtLeast(timeoutMs.toLong()), TimeUnit.MILLISECONDS)
+      .followRedirects(false)
+      .followSslRedirects(false)
+      .retryOnConnectionFailure(false)
+      .sslSocketFactory(socketFactory, trustManager)
+      .hostnameVerifier(HostnameVerifier { _, _ -> true })
+      .build()
+
+  return try {
+    val request = Request.Builder().url(buildGatewayHttpsProbeUrl(host, port)).get().build()
+    client.newCall(request).execute().use { response ->
+      val cert = response.handshake?.peerCertificates?.firstOrNull() as? X509Certificate ?: return null
+      sha256Hex(cert.encoded)
     }
+  } catch (_: Throwable) {
+    null
+  } finally {
+    client.dispatcher.executorService.shutdown()
+    client.connectionPool.evictAll()
+  }
+}
 
-    for (address in addresses) {
-      val socket = (context.socketFactory.createSocket() as SSLSocket)
+private fun probeGatewayTlsFingerprintWithSocket(
+  host: String,
+  port: Int,
+  timeoutMs: Int,
+  socketFactory: SSLSocketFactory,
+): String? {
+  val addresses =
+    runCatching {
+      InetAddress.getAllByName(host)
+        .sortedWith(compareBy<InetAddress>({ if (it is Inet4Address) 0 else 1 }, { it.hostAddress ?: "" }))
+    }.getOrElse { emptyList() }
+  if (addresses.isEmpty()) {
+    return null
+  }
+
+  for (address in addresses) {
+    val plainSocket = Socket()
+    var socket: SSLSocket? = null
+    try {
+      plainSocket.soTimeout = timeoutMs
+      plainSocket.connect(InetSocketAddress(address, port), timeoutMs)
+      socket = socketFactory.createSocket(plainSocket, host, port, true) as SSLSocket
+      socket.soTimeout = timeoutMs
+
       try {
-        socket.soTimeout = timeoutMs
-        socket.connect(InetSocketAddress(address, port), timeoutMs)
-
-        // Keep SNI on the original hostname even when dialing a resolved IP.
-        try {
-          if (trimmedHost.any { it.isLetter() }) {
-            val params = SSLParameters()
-            params.serverNames = listOf(SNIHostName(trimmedHost))
-            socket.sslParameters = params
-          }
-        } catch (_: Throwable) {
-          // ignore
+        if (host.any { it.isLetter() }) {
+          val params = SSLParameters()
+          params.serverNames = listOf(SNIHostName(host))
+          socket.sslParameters = params
         }
-
-        socket.startHandshake()
-        val cert = socket.session.peerCertificates.firstOrNull() as? X509Certificate ?: continue
-        return@withContext sha256Hex(cert.encoded)
       } catch (_: Throwable) {
-        // Try the next resolved address.
-      } finally {
-        try {
-          socket.close()
-        } catch (_: Throwable) {
-          // ignore
-        }
+        // ignore
+      }
+
+      socket.startHandshake()
+      val cert = socket.session.peerCertificates.firstOrNull() as? X509Certificate ?: continue
+      return sha256Hex(cert.encoded)
+    } catch (_: Throwable) {
+      // Try the next resolved address.
+    } finally {
+      try {
+        socket?.close()
+      } catch (_: Throwable) {
+        // ignore
+      }
+      try {
+        plainSocket.close()
+      } catch (_: Throwable) {
+        // ignore
       }
     }
-
-    null
   }
+
+  return null
+}
+
+private fun probeGatewayTlsFingerprintWithDirectSocket(
+  host: String,
+  port: Int,
+  timeoutMs: Int,
+  socketFactory: SSLSocketFactory,
+): String? {
+  var socket: SSLSocket? = null
+  return try {
+    socket = socketFactory.createSocket(host, port) as SSLSocket
+    socket.soTimeout = timeoutMs
+
+    try {
+      if (host.any { it.isLetter() }) {
+        val params = SSLParameters()
+        params.serverNames = listOf(SNIHostName(host))
+        socket.sslParameters = params
+      }
+    } catch (_: Throwable) {
+      // ignore
+    }
+
+    socket.startHandshake()
+    val cert = socket.session.peerCertificates.firstOrNull() as? X509Certificate ?: null
+    cert?.let { sha256Hex(it.encoded) }
+  } catch (_: Throwable) {
+    null
+  } finally {
+    try {
+      socket?.close()
+    } catch (_: Throwable) {
+      // ignore
+    }
+  }
+}
+
+internal fun buildGatewayHttpsProbeUrl(host: String, port: Int): String {
+  val formattedHost =
+    if (host.contains(":") && !host.startsWith("[")) {
+      "[$host]"
+    } else {
+      host
+    }
+  return "https://$formattedHost:$port/"
 }
 
 private fun defaultTrustManager(): X509TrustManager {
@@ -168,7 +283,14 @@ private fun sha256Hex(data: ByteArray): String {
 }
 
 private fun normalizeFingerprint(raw: String): String {
-  val stripped = raw.trim()
-    .replace(Regex("^sha-?256\\s*:?\\s*", RegexOption.IGNORE_CASE), "")
+  val stripped =
+    raw.trim()
+      .substringAfterLast('=', missingDelimiterValue = raw.trim())
+      .replace(Regex("^sha-?256\\s*(fingerprint)?\\s*:?\\s*", RegexOption.IGNORE_CASE), "")
   return stripped.lowercase(Locale.US).filter { it in '0'..'9' || it in 'a'..'f' }
+}
+
+internal fun normalizeGatewayFingerprintOrNull(raw: String): String? {
+  val normalized = normalizeFingerprint(raw)
+  return normalized.takeIf { it.length == 64 }
 }

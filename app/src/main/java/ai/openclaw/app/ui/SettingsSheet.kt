@@ -155,7 +155,8 @@ fun SettingsSheet(viewModel: MainViewModel) {
 
   val smsPermissionAvailable =
     remember {
-      context.packageManager?.hasSystemFeature(PackageManager.FEATURE_TELEPHONY) == true
+      BuildConfig.OPENCLAW_ENABLE_SMS &&
+        context.packageManager?.hasSystemFeature(PackageManager.FEATURE_TELEPHONY) == true
     }
   val photosPermission =
     if (Build.VERSION.SDK_INT >= 33) {
@@ -546,46 +547,62 @@ fun SettingsSheet(viewModel: MainViewModel) {
           color = mobileAccent,
         )
       }
-    item {
-      val buttonLabel =
-        when {
-          !smsPermissionAvailable -> "Unavailable"
-          smsPermissionGranted -> "Manage"
-          else -> "Grant"
-        }
-      ListItem(
-        modifier = Modifier.settingsRowModifier(),
-        colors = listItemColors,
-        headlineContent = { Text("SMS Permission", style = mobileHeadline) },
-        supportingContent = {
-          Text(
-            if (smsPermissionAvailable) {
-              "Allow the gateway to send SMS from this device."
-            } else {
-              "SMS requires a device with telephony hardware."
+      if (BuildConfig.OPENCLAW_ENABLE_SMS) {
+        item {
+          val buttonLabel =
+            when {
+              !smsPermissionAvailable -> "Unavailable"
+              smsPermissionGranted -> "Manage"
+              else -> "Grant"
+            }
+          ListItem(
+            modifier = Modifier.settingsRowModifier(),
+            colors = listItemColors,
+            headlineContent = { Text("SMS Permission", style = mobileHeadline) },
+            supportingContent = {
+              Text(
+                if (smsPermissionAvailable) {
+                  "Allow the gateway to send SMS from this device."
+                } else {
+                  "SMS requires a device with telephony hardware."
+                },
+                style = mobileCallout,
+              )
             },
-            style = mobileCallout,
-          )
-        },
-        trailingContent = {
-          Button(
-            onClick = {
-              if (!smsPermissionAvailable) return@Button
-              if (smsPermissionGranted) {
-                openAppSettings(context)
-              } else {
-                smsPermissionLauncher.launch(Manifest.permission.SEND_SMS)
+            trailingContent = {
+              Button(
+                onClick = {
+                  if (!smsPermissionAvailable) return@Button
+                  if (smsPermissionGranted) {
+                    openAppSettings(context)
+                  } else {
+                    smsPermissionLauncher.launch(Manifest.permission.SEND_SMS)
+                  }
+                },
+                enabled = smsPermissionAvailable,
+                colors = settingsPrimaryButtonColors(),
+                shape = RoundedCornerShape(14.dp),
+              ) {
+                Text(buttonLabel, style = mobileCallout.copy(fontWeight = FontWeight.Bold))
               }
             },
-            enabled = smsPermissionAvailable,
-            colors = settingsPrimaryButtonColors(),
-            shape = RoundedCornerShape(14.dp),
-          ) {
-            Text(buttonLabel, style = mobileCallout.copy(fontWeight = FontWeight.Bold))
-          }
-        },
-      )
-    }
+          )
+        }
+      } else {
+        item {
+          ListItem(
+            modifier = Modifier.settingsRowModifier(),
+            colors = listItemColors,
+            headlineContent = { Text("SMS Permission", style = mobileHeadline) },
+            supportingContent = {
+              Text(
+                "Disabled in the Play flavor to keep restricted messaging permissions out of this build.",
+                style = mobileCallout,
+              )
+            },
+          )
+        }
+      }
 
       item { HorizontalDivider(color = mobileBorder) }
 

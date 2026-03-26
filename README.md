@@ -69,7 +69,10 @@ Important:
 - for manual or Tailscale setup, the user should also fill in the gateway token
 - without that token, the device may not appear in `openclaw devices list` when approval is required
 - if OpenClaw uses `gateway.tailscale.mode=serve`, setup-code/QR routes are typically `wss://<magicdns>` on port `443`
+- if `gateway.tailscale.mode=serve` is configured but `tailscale serve status` shows no published route, the advertised `.ts.net` URL is not actually reachable yet
 - on Android, the Tailscale app must be actually connected; "installed and logged in" is not enough
+- if pairing requests keep rotating while the phone retries, approve with `openclaw devices approve --latest` instead of copying an older `requestId`
+- the current fork now keeps default Android operator pairing on `operator.read` + `operator.write`, so standard local approval no longer depends on `operator.talk.secrets`
 
 ### Media Support
 
@@ -113,21 +116,23 @@ Operational guides:
 ### Build
 
 ```bash
-./gradlew :app:assembleDebug
-./gradlew :app:compileDebugKotlin
-./gradlew :app:testDebugUnitTest
+./gradlew :app:assemblePlayDebug
+./gradlew :app:compilePlayDebugKotlin
+./gradlew :app:testPlayDebugUnitTest
 ```
 
 Install and launch:
 
 ```bash
-./gradlew :app:installDebug
+./gradlew :app:installPlayDebug
 adb shell am start -n ai.openclaw.app/.MainActivity
 ```
 
 Current local verification:
 
 - the current `main` workspace was compiled, installed, and launched successfully on the local Android 15 emulator `clawchat2_api35` on 2026-03-24
+- the current `codex/upstream-bridge-pass` workspace was rebuilt as `playDebug` and verified again on 2026-03-26 after Tailscale Serve recovery, manual TLS fallback, and Android pairing-scope reduction
+- a real Huawei Mate60 (`BRA-AL00`, Android 12 / SDK 31) completed Tailscale setup-code pairing successfully on 2026-03-26 after the route and pairing fixes
 
 ### Releases
 
