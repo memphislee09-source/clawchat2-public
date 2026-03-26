@@ -20,6 +20,9 @@
 - [x] Reduce default Android operator pairing scopes so `pairing required` approvals do not need `operator.talk.secrets`.
 - [x] Verify basic pairing still works with the reduced operator scope set.
 - [x] Rebuild a fresh `playDebug` APK for the Mate60 pairing retest.
+- [ ] Merge `codex/upstream-bridge-pass` into `main` as the new development baseline.
+- [ ] Verify local `main` points at the tested onboarding/Tailscale/pairing fix set.
+- [ ] Push updated `main` to GitHub and keep future work based on it.
 
 # Review
 
