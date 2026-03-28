@@ -280,10 +280,13 @@
 ## Documentation Sync Plan
 
 - [x] Update public-facing docs to mention chat reply readout and the verified Mate60 result.
-- [ ] Verify final workspace diff and keep local-only debug artifacts out of the commit.
-- [ ] Commit the readout + documentation changes on `main`.
-- [ ] Push updated `main` to `origin/main`.
+- [x] Verify final workspace diff and keep local-only debug artifacts out of the commit.
+- [x] Commit the readout + documentation changes on `main`.
+- [x] Push updated `main` to `origin/main`.
 
 ## Documentation Sync Review
 
-- In progress.
+- Updated `README.md`, `status.md`, and `RELEASE_NOTES_v0.2.4.md` so the repo now documents both the chat reply readout feature and the successful Mate60 verification.
+- Verified the final staged diff excluded the repository-root screenshots, UI dumps, and temporary logs, which remain local-only debug artifacts.
+- Re-ran `./gradlew :app:compilePlayDebugKotlin` before publishing.
+- Pushed the final `main` update to `origin/main` as commit `6c299e7405` (`feat: add chat reply readout`).
