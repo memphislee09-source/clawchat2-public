@@ -42,6 +42,7 @@ class WebChatController(
   private val prefs: SecurePrefs,
   private val json: Json,
   private val historyCacheStore: WebChatHistoryCacheStore,
+  private val onAssistantReplyPresented: suspend (sessionKey: String, message: ChatMessage) -> Unit = { _, _ -> },
   initialSessionKey: String = "",
 ) {
   private val client = OkHttpClient.Builder().build()
@@ -288,6 +289,7 @@ class WebChatController(
         val assistantMessage = parsePresentedHistoryEntry(response["message"]) ?: return@launch
         _messages.value = _messages.value + assistantMessage
         updateSessionCache(sessionKey = currentSessionKey, agentId = agentId, messages = _messages.value)
+        onAssistantReplyPresented(currentSessionKey, assistantMessage)
       } catch (err: Throwable) {
         _errorText.value = err.message ?: "Send failed"
       } finally {

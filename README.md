@@ -26,6 +26,7 @@ Compared with the upstream Android client, this fork currently emphasizes:
 - selectable app theme mode with dark-mode support
 - WeChat-style continuous contacts list with larger avatars and lighter separators
 - continuous chat-message presentation with simplified spacing-first styling and synced user display name
+- optional chat reply readout with a lightweight speaker toggle in the composer action row
 - enhanced agent-to-client media handling
 - practical Android playback stability improvements for fullscreen image/video viewing
 - streamed fullscreen video playback for large remote files
@@ -133,6 +134,7 @@ Current local verification:
 - the current `main` workspace was compiled, installed, and launched successfully on the local Android 15 emulator `clawchat2_api35` on 2026-03-24
 - the current `codex/upstream-bridge-pass` workspace was rebuilt as `playDebug` and verified again on 2026-03-26 after Tailscale Serve recovery, manual TLS fallback, and Android pairing-scope reduction
 - a real Huawei Mate60 (`BRA-AL00`, Android 12 / SDK 31) completed Tailscale setup-code pairing successfully on 2026-03-26 after the route and pairing fixes
+- a real Huawei Mate60 (`BRA-AL00`, Android 12 / SDK 31) also verified chat reply readout successfully on 2026-03-28 after adding Android 11+ TTS package visibility and moving the readout toggle into the composer action row
 
 ### Releases
 

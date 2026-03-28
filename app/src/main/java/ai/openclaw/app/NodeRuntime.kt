@@ -328,6 +328,13 @@ class NodeRuntime(context: Context) {
       prefs = prefs,
       json = json,
       historyCacheStore = WebChatHistoryCacheStore(appContext, json),
+      onAssistantReplyPresented = { sessionKey, message ->
+        val activeSessionKey = chat.sessionKey.value.trim()
+        if (sessionKey.trim() != activeSessionKey) return@WebChatController
+        if (!prefs.speakerEnabled.value) return@WebChatController
+        val replyText = message.replyReadoutText() ?: return@WebChatController
+        voiceReplySpeaker.speakAssistantReply(replyText)
+      },
       initialSessionKey = prefs.lastChatSessionKey.value.trim(),
     )
   private val voiceReplySpeakerLazy: Lazy<TalkModeManager> = lazy {
@@ -662,6 +669,9 @@ class NodeRuntime(context: Context) {
     _isForeground.value = value
     if (!value) {
       stopActiveVoiceSession()
+      if (voiceReplySpeakerLazy.isInitialized()) {
+        voiceReplySpeaker.stopTts()
+      }
     }
   }
 
@@ -962,6 +972,9 @@ class NodeRuntime(context: Context) {
   fun openAgentChat(agentId: String) {
     val normalized = agentId.trim()
     if (normalized.isEmpty()) return
+    if (voiceReplySpeakerLazy.isInitialized()) {
+      voiceReplySpeaker.stopTts()
+    }
     val sessionKey = webChatSessionKey(normalized)
     prefs.setLastChatSessionKey(sessionKey)
     chat.openAgentChat(normalized)
@@ -969,6 +982,9 @@ class NodeRuntime(context: Context) {
 
   fun switchChatSession(sessionKey: String) {
     val key = sessionKey.trim()
+    if (voiceReplySpeakerLazy.isInitialized()) {
+      voiceReplySpeaker.stopTts()
+    }
     prefs.setLastChatSessionKey(key)
     chat.switchSession(key)
   }
@@ -1032,4 +1048,15 @@ class NodeRuntime(context: Context) {
     }
   }
 
+}
+
+private fun ChatMessage.replyReadoutText(): String? {
+  val text =
+    content
+      .asSequence()
+      .filter { it.type.trim().equals("text", ignoreCase = true) }
+      .mapNotNull { part -> part.text?.trim()?.takeIf { value -> value.isNotEmpty() } }
+      .joinToString(separator = "\n\n")
+      .trim()
+  return text.ifEmpty { null }
 }

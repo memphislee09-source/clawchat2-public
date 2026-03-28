@@ -13,6 +13,7 @@ Highlights in this build:
 - entering a conversation from Contacts now lands at the real conversation bottom, including chats where the last message is long
 - fullscreen images now support pinch zoom and drag
 - the chat composer now starts at a single-line height and grows with message length
+- chat replies can now be read aloud through a lightweight speaker toggle in the composer action row, with Android system TTS verified on a real Huawei Mate60
 
 Important notes:
 
@@ -39,6 +40,7 @@ ClawChat2 仍然是一个非官方 OpenClaw Android 分叉，目标是在 Androi
 - 从联系人进入会话时，现在会真正落到对话底部，即使最后一条消息很长也一样
 - 全屏图片现在支持双指缩放和拖动查看
 - 聊天输入框默认收敛为单行，并会随着输入内容自动增高
+- 聊天回复现在可以通过输入框下方操作按钮行里的喇叭开关直接朗读，并且已在真实 Huawei Mate60 上验证 Android 系统 TTS 可正常工作
 
 重要说明：
 

@@ -1177,6 +1177,7 @@ class TalkModeManager(
     withContext(Dispatchers.Main) {
       ensurePlaybackActive(playbackToken)
       val params = Bundle()
+      Log.d(tag, "system TTS speak start chars=${trimmed.length}")
       tts.speak(trimmed, TextToSpeech.QUEUE_FLUSH, params, utteranceId)
     }
 
@@ -1212,6 +1213,7 @@ class TalkModeManager(
           override fun onDone(utteranceId: String?) {
             if (utteranceId == null) return
             if (utteranceId != systemTtsPendingId) return
+            Log.d(tag, "system TTS utterance done")
             systemTtsPending?.complete(Unit)
             systemTtsPending = null
             systemTtsPendingId = null
@@ -1222,6 +1224,7 @@ class TalkModeManager(
           override fun onError(utteranceId: String?) {
             if (utteranceId == null) return
             if (utteranceId != systemTtsPendingId) return
+            Log.w(tag, "system TTS utterance error")
             systemTtsPending?.completeExceptionally(IllegalStateException("system TTS error"))
             systemTtsPending = null
             systemTtsPendingId = null
@@ -1230,6 +1233,7 @@ class TalkModeManager(
           override fun onError(utteranceId: String?, errorCode: Int) {
             if (utteranceId == null) return
             if (utteranceId != systemTtsPendingId) return
+            Log.w(tag, "system TTS utterance error code=$errorCode")
             systemTtsPending?.completeExceptionally(IllegalStateException("system TTS error $errorCode"))
             systemTtsPending = null
             systemTtsPendingId = null
@@ -1245,6 +1249,7 @@ class TalkModeManager(
         }
       if (ok) {
         systemTts = tts
+        Log.d(tag, "system TTS initialized")
       } else {
         tts.shutdown()
       }

@@ -16,8 +16,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AttachFile
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.CircularProgressIndicator
@@ -64,13 +65,13 @@ fun ChatComposer(
   thinkingSupported: Boolean,
   pendingRunCount: Int,
   abortSupported: Boolean,
-  voiceSupported: Boolean,
+  readoutEnabled: Boolean,
   attachments: List<PendingImageAttachment>,
   onPickImages: () -> Unit,
   onRemoveAttachment: (id: String) -> Unit,
   onSetThinkingLevel: (level: String) -> Unit,
+  onToggleReadout: (Boolean) -> Unit,
   onRefresh: () -> Unit,
-  onOpenVoice: () -> Unit,
   onAbort: () -> Unit,
   onSend: (text: String) -> Unit,
 ) {
@@ -100,7 +101,7 @@ fun ChatComposer(
       colors = chatTextFieldColors(),
     )
 
-  if (!healthOk) {
+    if (!healthOk) {
       Text(
         text = "Chat service unavailable. Pull to refresh.",
         style = mobileCallout,
@@ -182,19 +183,19 @@ fun ChatComposer(
       }
       FlatIconAction(
         modifier = Modifier.weight(1f),
-        icon = Icons.Default.Mic,
-        contentDescription = "Open voice conversation",
-        enabled = healthOk && voiceSupported,
-        tint = mobileAccent,
-        onClick = onOpenVoice,
-      )
-      FlatIconAction(
-        modifier = Modifier.weight(1f),
         icon = Icons.Default.Stop,
         contentDescription = "Abort response",
         enabled = abortSupported && pendingRunCount > 0,
         tint = if (abortSupported && pendingRunCount > 0) mobileAccent else mobileTextTertiary,
         onClick = onAbort,
+      )
+      FlatIconAction(
+        modifier = Modifier.weight(1f),
+        icon = if (readoutEnabled) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
+        contentDescription = if (readoutEnabled) "Disable reply readout" else "Enable reply readout",
+        enabled = true,
+        tint = if (readoutEnabled) mobileAccent else mobileTextSecondary,
+        onClick = { onToggleReadout(!readoutEnabled) },
       )
     }
   }

@@ -205,3 +205,85 @@
 - `./gradlew :app:assemblePlayDebug`
 - `adb -s c2f22adf install -r app/build/outputs/apk/play/debug/openclaw-0.2.4-play-debug.apk`
 - Verified artifact for this release-prep pass: `app/build/outputs/apk/play/debug/openclaw-0.2.4-play-debug.apk` built at `2026-03-26 19:23 +0800`.
+
+## Project Re-entry Plan
+
+- [x] Read the main project status docs and recent task history.
+- [x] Inspect local git branch state and uncommitted workspace contents.
+- [x] Fetch remote state from GitHub remotes and compare ahead/behind status.
+- [x] Summarize the current baseline, sync status, and the safest next starting point.
+
+## Project Re-entry Review
+
+- Read `README.md`, `status.md`, and `tasks/todo.md` to re-establish the active product baseline before continuing work.
+- Local development baseline is `main` at `c31cd620fa` (`release: cut 0.2.4 baseline`), and `git rev-list --left-right --count main...origin/main` returned `0 0`, so the private GitHub repo is fully in sync with the local checked-out branch.
+- The local workspace is not clean: it contains many untracked emulator screenshots, UI XML dumps, and temporary log files in the repo root, plus this `tasks/todo.md` update.
+- `public/main` is not a branch with shared ancestry to this private repo; it is a separate public-history line currently at `aa4ec3cd83` (`ci: fix android checks workflow`), so ahead/behind counts are not a safe measure of product sync there.
+- Content comparison confirms the public repo is still on the older `0.2.1` baseline (`versionCode 3`, `versionName 0.2.1` in `app/build.gradle.kts`), while local/private `main` is on `0.2.4` (`versionCode 6`, `versionName 0.2.4`) and includes the later chat UX, diagnostics, flavor split, TLS fallback, pairing-scope, and webchat-cache work.
+- `upstream/main` has also diverged with unrelated history and a very different product scope, so it should be treated only as an upstream reference source, not as a branch that can be compared to local `main` by simple ahead/behind sync status.
+- Safest restart point: continue all new ClawChat2 development from local/private `main` tracked against `origin/main`, and treat `public/main` as a later release/public-sync target rather than the active development baseline.
+
+## Chat Reply Readout Interface Review Plan
+
+- [x] Confirm the requested feature is agent-reply readout, not full duplex voice conversation.
+- [x] Read the `claw-webchat` Android voice integration doc and identify the newly available server interfaces.
+- [x] Compare those interfaces against the current ClawChat2 chat + local TTS architecture.
+- [x] Decide whether agent-reply readout should call webchat voice APIs or stay local-only.
+
+## Chat Reply Readout Interface Review
+
+- `claw-webchat/docs/ANDROID_VOICE_AGENT_INTEGRATION.md` is specifically an implementation guide for replacing the old gateway-direct Android voice flow with WebChat-backed async turns, session SSE, upload-backed raw audio persistence, and session-scoped abort.
+- The newly available server interfaces are `GET /api/openclaw-webchat/sessions/{sessionKey}/events`, `POST /api/openclaw-webchat/sessions/{sessionKey}/turns`, and `POST /api/openclaw-webchat/sessions/{sessionKey}/runs/{runId}/abort`.
+- Those interfaces are aimed at full voice conversation behavior: async voice/text turns, live assistant streaming, raw user audio upload persistence, and barge-in abort. They are not required for a feature whose only goal is to read an already-rendered agent reply aloud on Android.
+- Current ClawChat2 chat still uses the older HTTP-only WebChat path in `WebChatController`: `POST /sessions/{sessionKey}/send`, polling-based refresh, and no SSE consumption yet. The controller still contains a stale comment saying WebChat has no abort API.
+- ClawChat2 already has a reusable local reply-TTS layer in `NodeRuntime` + `TalkModeManager`, including persisted speaker enablement, system-TTS fallback, and immediate stop/mute behavior.
+- Recommended decision for the current feature: do not call the new WebChat voice endpoints just to add chat reply readout. Implement reply readout locally off the existing chat message flow, using current WebChat message/history state as the trigger and the existing Android TTS layer as the output path.
+- Separate follow-up decision: if the project later resumes true Android voice conversation work, then the Android client should migrate that voice path onto the new WebChat `/events` + `/turns` + `/abort` interfaces and retire the remaining gateway-direct voice plumbing.
+
+## Chat Reply Readout Implementation Plan
+
+- [x] Wire chat reply readout onto the existing local Android TTS path instead of the new WebChat voice endpoints.
+- [x] Remove the chat composer microphone action.
+- [x] Add a readout toggle below the chat input and bind it to persisted speaker state.
+- [x] Trigger readout only for newly arrived assistant replies in the active chat session.
+- [x] Rebuild the Android app to verify the change compiles and packages cleanly.
+
+## Chat Reply Readout Implementation Review
+
+- The chat composer microphone icon has been removed, and the input area now shows a dedicated `朗读 Agent 回复` switch directly below the text field.
+- The new chat toggle reuses the existing persisted speaker state, so the preference survives app restarts and stays aligned with the existing TTS plumbing.
+- `NodeRuntime` now watches the active WebChat session, arms reply readout only while a run is pending, and reads aloud only the next newly arrived assistant message with speakable text. This avoids replaying old history on chat open or session switch.
+- Switching chats or sending the app to the background now stops any in-progress reply readout.
+- Fresh verification completed with:
+- `./gradlew :app:compilePlayDebugKotlin`
+- `./gradlew :app:assemblePlayDebug`
+
+## Chat Reply Readout Regression Debug Plan
+
+- [x] Reproduce the missing-readout issue on the connected Redmi K20 instead of handing testing back to the user.
+- [x] Capture runtime evidence to distinguish missing callback vs. TTS playback failure.
+- [x] Apply the narrowest fix for the proven root cause.
+- [x] Rebuild, reinstall, and re-test on the phone until the TTS path completes successfully.
+
+## Chat Reply Readout Regression Debug Review
+
+- Root cause was not the chat callback anymore; the device reached `TalkMode` and tried to fall back to system TTS, but Android package visibility blocked access to the installed Xiaomi TTS engine (`AppsFilter ... ai.openclaw.app -> com.xiaomi.mibrain.speech BLOCKED`), which made `TextToSpeech` initialization fail.
+- Fixed by adding an Android manifest `<queries>` entry for `android.intent.action.TTS_SERVICE`, allowing the app to discover and bind system TTS engines on Android 11+.
+- Also added explicit `TalkMode` debug logs for system TTS initialization, speak start, and utterance completion so device-side verification is straightforward.
+- During the same pass, the chat readout control was tightened from a full-width row into the composer action strip as the rightmost speaker icon, matching the requested lighter interaction footprint.
+- Fresh device verification on Redmi K20 (`c2f22adf`) after reinstall showed:
+- `TextToSpeech: Sucessfully bound to com.xiaomi.mibrain.speech`
+- `TalkMode: system TTS initialized`
+- `TalkMode: system TTS speak start chars=67`
+- `TalkMode: system TTS utterance done`
+
+## Documentation Sync Plan
+
+- [x] Update public-facing docs to mention chat reply readout and the verified Mate60 result.
+- [ ] Verify final workspace diff and keep local-only debug artifacts out of the commit.
+- [ ] Commit the readout + documentation changes on `main`.
+- [ ] Push updated `main` to `origin/main`.
+
+## Documentation Sync Review
+
+- In progress.

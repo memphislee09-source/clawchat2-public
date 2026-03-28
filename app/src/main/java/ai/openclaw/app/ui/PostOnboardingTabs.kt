@@ -200,13 +200,7 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
             )
           HomeTab.Connect -> ConnectTabScreen(viewModel = viewModel)
           HomeTab.Chat ->
-            ChatSheet(
-              viewModel = viewModel,
-              onOpenVoice = {
-                viewModel.prepareVoiceConversation(chatSessionKey)
-                voiceDialogOpen = true
-              },
-            )
+            ChatSheet(viewModel = viewModel)
           HomeTab.Voice -> VoiceTabScreen(viewModel = viewModel)
           HomeTab.Screen -> ScreenTabScreen(viewModel = viewModel)
           HomeTab.Settings -> SettingsSheet(viewModel = viewModel)

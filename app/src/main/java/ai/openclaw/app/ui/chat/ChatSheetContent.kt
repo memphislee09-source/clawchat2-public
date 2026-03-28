@@ -45,7 +45,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun ChatSheetContent(viewModel: MainViewModel, onOpenVoice: () -> Unit) {
+fun ChatSheetContent(viewModel: MainViewModel) {
   val messages by viewModel.chatMessages.collectAsState()
   val errorText by viewModel.chatError.collectAsState()
   val pendingRunCount by viewModel.pendingRunCount.collectAsState()
@@ -56,9 +56,9 @@ fun ChatSheetContent(viewModel: MainViewModel, onOpenVoice: () -> Unit) {
   val pendingToolCalls by viewModel.chatPendingToolCalls.collectAsState()
   val agentContacts by viewModel.agentContacts.collectAsState()
   val userLabel by viewModel.chatUserDisplayName.collectAsState()
-  val voiceSupported by viewModel.chatVoiceSupported.collectAsState()
   val abortSupported by viewModel.chatAbortSupported.collectAsState()
   val thinkingSupported by viewModel.chatThinkingSupported.collectAsState()
+  val speakerEnabled by viewModel.speakerEnabled.collectAsState()
 
   LaunchedEffect(chatSessionKey) {
     viewModel.loadChat(chatSessionKey)
@@ -133,18 +133,15 @@ fun ChatSheetContent(viewModel: MainViewModel, onOpenVoice: () -> Unit) {
         thinkingSupported = thinkingSupported,
         pendingRunCount = pendingRunCount,
         abortSupported = abortSupported,
-        voiceSupported = voiceSupported,
+        readoutEnabled = speakerEnabled,
         attachments = attachments,
         onPickImages = { pickImages.launch("image/*") },
         onRemoveAttachment = { id -> attachments.removeAll { it.id == id } },
         onSetThinkingLevel = { level -> viewModel.setChatThinkingLevel(level) },
+        onToggleReadout = { enabled -> viewModel.setSpeakerEnabled(enabled) },
         onRefresh = {
           viewModel.refreshChat()
           viewModel.refreshChatSessions(limit = 200)
-        },
-        onOpenVoice = {
-          viewModel.prepareVoiceConversation(chatSessionKey)
-          onOpenVoice()
         },
         onAbort = { viewModel.abortChat() },
         onSend = { text ->
