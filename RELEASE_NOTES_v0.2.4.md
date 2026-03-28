@@ -15,6 +15,7 @@ Highlights in this build:
 - the chat composer now starts at a single-line height and grows with message length
 - chat replies can now be read aloud through a lightweight speaker toggle in the composer action row, with Android system TTS verified on a real Huawei Mate60
 - the chat attachment button can now upload images, audio, video, and regular files, with generic file cards rendered directly in the transcript
+- the composer action row now also exposes direct send/stop, `/new`, model, and thinking controls so common WebChat chat actions do not require manual slash-command entry
 
 Important notes:
 
@@ -43,6 +44,7 @@ ClawChat2 仍然是一个非官方 OpenClaw Android 分叉，目标是在 Androi
 - 聊天输入框默认收敛为单行，并会随着输入内容自动增高
 - 聊天回复现在可以通过输入框下方操作按钮行里的喇叭开关直接朗读，并且已在真实 Huawei Mate60 上验证 Android 系统 TTS 可正常工作
 - 聊天附件按钮现在已经支持上传图片、音频、视频和普通文件，普通文件也会直接在聊天记录里显示为文件卡片
+- 输入框下方的操作按钮行现在也直接提供 send/stop、`/new`、模型和 thinking 控制，常用 WebChat 聊天操作不再需要手动输入 slash 命令
 
 重要说明：
 

@@ -27,6 +27,7 @@ Compared with the upstream Android client, this fork currently emphasizes:
 - WeChat-style continuous contacts list with larger avatars and lighter separators
 - continuous chat-message presentation with simplified spacing-first styling and synced user display name
 - optional chat reply readout with a lightweight speaker toggle in the composer action row
+- quick composer controls for send/stop, `/new`, model switch, and thinking switch directly under the input box
 - enhanced agent-to-client media handling
 - generic user attachment upload for images, audio, video, and regular files
 - practical Android playback stability improvements for fullscreen image/video viewing
@@ -139,6 +140,7 @@ Current local verification:
 - a real Huawei Mate60 (`BRA-AL00`, Android 12 / SDK 31) completed Tailscale setup-code pairing successfully on 2026-03-26 after the route and pairing fixes
 - a real Huawei Mate60 (`BRA-AL00`, Android 12 / SDK 31) also verified chat reply readout successfully on 2026-03-28 after adding Android 11+ TTS package visibility and moving the readout toggle into the composer action row
 - a real Huawei Mate60 (`BRA-AL00`, Android 12 / SDK 31) also verified generic attachment upload successfully on 2026-03-28 by sending a Markdown file through the chat attachment button
+- a real Redmi K20 (`c2f22adf`) also verified the new composer-side `/new` shortcut successfully on 2026-03-29 after adding the `N` action next to send
 
 ### Releases
 
@@ -180,6 +182,7 @@ ClawChat2 是一个基于官方 OpenClaw Android 客户端 `openclaw/openclaw ->
 - 更简化、聊天优先的导航方式
 - 支持可切换的应用主题模式与深色模式
 - 更强的 agent 到客户端媒体处理能力
+- 输入框下方现在也提供轻量快捷控制，包括 send/stop、`/new`、模型切换和 thinking 切换
 - 支持用户侧上传图片、音频、视频和普通文件给 agent
 - 更稳定的 Android 图片/视频全屏播放体验
 - 更贴近实际使用的网关接入方式，包括对 Tailscale 场景的友好支持
@@ -276,6 +279,7 @@ adb shell am start -n ai.openclaw.app/.MainActivity
 
 - 当前 `main` 工作区已于 2026-03-24 在本地 Android 15 模拟器 `clawchat2_api35` 上成功编译、安装并启动
 - 当前 `main` 工作区也已于 2026-03-28 在 Huawei Mate60（`BRA-AL00`，Android 12 / SDK 31）上完成通用附件上传验证，测试文件为 Markdown，验证结果通过
+- 当前 `main` 工作区也已于 2026-03-29 在 Redmi K20（设备 `c2f22adf`）上完成聊天页 `N` 按钮验证，确认该按钮会执行 `/new`
 
 操作文档：
 

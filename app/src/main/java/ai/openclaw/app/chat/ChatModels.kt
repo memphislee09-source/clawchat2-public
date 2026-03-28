@@ -36,6 +36,18 @@ data class ChatPendingToolCall(
   val isError: Boolean? = null,
 )
 
+data class ChatThinkingOption(
+  val value: String,
+  val label: String,
+)
+
+data class ChatModelOption(
+  val provider: String,
+  val model: String,
+  val label: String,
+  val available: Boolean = true,
+)
+
 data class ChatSessionEntry(
   val key: String,
   val updatedAtMs: Long?,

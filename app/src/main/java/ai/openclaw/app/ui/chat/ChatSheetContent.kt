@@ -59,7 +59,19 @@ fun ChatSheetContent(viewModel: MainViewModel) {
   val agentContacts by viewModel.agentContacts.collectAsState()
   val userLabel by viewModel.chatUserDisplayName.collectAsState()
   val abortSupported by viewModel.chatAbortSupported.collectAsState()
+  val stopInFlight by viewModel.chatStopInFlight.collectAsState()
   val thinkingSupported by viewModel.chatThinkingSupported.collectAsState()
+  val modelSupported by viewModel.chatModelSupported.collectAsState()
+  val thinkingOptions by viewModel.chatThinkingOptions.collectAsState()
+  val thinkingOptionsLoading by viewModel.chatThinkingOptionsLoading.collectAsState()
+  val thinkingOptionsError by viewModel.chatThinkingOptionsError.collectAsState()
+  val thinkingModelLabel by viewModel.chatThinkingModelLabel.collectAsState()
+  val thinkingSwitchingLevel by viewModel.chatThinkingSwitchingLevel.collectAsState()
+  val currentModel by viewModel.chatCurrentModel.collectAsState()
+  val modelOptions by viewModel.chatModelOptions.collectAsState()
+  val modelOptionsLoading by viewModel.chatModelOptionsLoading.collectAsState()
+  val modelOptionsError by viewModel.chatModelOptionsError.collectAsState()
+  val modelSwitchingLabel by viewModel.chatModelSwitchingLabel.collectAsState()
   val speakerEnabled by viewModel.speakerEnabled.collectAsState()
 
   LaunchedEffect(chatSessionKey) {
@@ -134,18 +146,32 @@ fun ChatSheetContent(viewModel: MainViewModel) {
       ChatComposer(
         healthOk = healthOk,
         thinkingLevel = thinkingLevel,
-        thinkingSupported = thinkingSupported,
+        thinkingSupported = thinkingSupported && chatSessionKey.isNotBlank(),
+        modelSupported = modelSupported && chatSessionKey.isNotBlank(),
         pendingRunCount = pendingRunCount,
         abortSupported = abortSupported,
+        stopInFlight = stopInFlight,
+        currentModel = currentModel,
+        modelOptions = modelOptions,
+        modelOptionsLoading = modelOptionsLoading,
+        modelOptionsError = modelOptionsError,
+        modelSwitchingLabel = modelSwitchingLabel,
+        thinkingOptions = thinkingOptions,
+        thinkingOptionsLoading = thinkingOptionsLoading,
+        thinkingOptionsError = thinkingOptionsError,
+        thinkingModelLabel = thinkingModelLabel,
+        thinkingSwitchingLevel = thinkingSwitchingLevel,
         readoutEnabled = speakerEnabled,
         attachments = attachments,
         onPickAttachments = { pickAttachments.launch(arrayOf("*/*")) },
         onRemoveAttachment = { id -> attachments.removeAll { it.id == id } },
+        onOpenModelMenu = { viewModel.refreshChatModelOptions(force = false, silent = false) },
+        onSetModel = { provider, model -> viewModel.setChatModel(provider = provider, model = model) },
+        onOpenThinkingMenu = { viewModel.refreshChatThinkingOptions(force = false, silent = false) },
         onSetThinkingLevel = { level -> viewModel.setChatThinkingLevel(level) },
         onToggleReadout = { enabled -> viewModel.setSpeakerEnabled(enabled) },
-        onRefresh = {
-          viewModel.refreshChat()
-          viewModel.refreshChatSessions(limit = 200)
+        onNew = {
+          viewModel.sendChat(message = "/new", thinking = thinkingLevel, attachments = emptyList())
         },
         onAbort = { viewModel.abortChat() },
         onSend = { text ->

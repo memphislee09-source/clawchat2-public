@@ -21,7 +21,6 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.CircularProgressIndicator
@@ -49,12 +48,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ai.openclaw.app.chat.ChatThinkingOption
+import ai.openclaw.app.chat.ChatModelOption
 import ai.openclaw.app.ui.mobileAccent
 import ai.openclaw.app.ui.mobileAccentSoft
 import ai.openclaw.app.ui.mobileBorder
 import ai.openclaw.app.ui.mobileBorderStrong
 import ai.openclaw.app.ui.mobileCallout
 import ai.openclaw.app.ui.mobileCaption1
+import ai.openclaw.app.ui.mobileDanger
 import ai.openclaw.app.ui.mobileHeadline
 import ai.openclaw.app.ui.mobileSurface
 import ai.openclaw.app.ui.mobileText
@@ -66,23 +68,45 @@ fun ChatComposer(
   healthOk: Boolean,
   thinkingLevel: String,
   thinkingSupported: Boolean,
+  modelSupported: Boolean,
   pendingRunCount: Int,
   abortSupported: Boolean,
+  stopInFlight: Boolean,
+  currentModel: ChatModelOption?,
+  modelOptions: List<ChatModelOption>,
+  modelOptionsLoading: Boolean,
+  modelOptionsError: String?,
+  modelSwitchingLabel: String?,
+  thinkingOptions: List<ChatThinkingOption>,
+  thinkingOptionsLoading: Boolean,
+  thinkingOptionsError: String?,
+  thinkingModelLabel: String?,
+  thinkingSwitchingLevel: String?,
   readoutEnabled: Boolean,
   attachments: List<PendingAttachment>,
   onPickAttachments: () -> Unit,
   onRemoveAttachment: (id: String) -> Unit,
+  onOpenModelMenu: () -> Unit,
+  onSetModel: (provider: String, model: String) -> Unit,
+  onOpenThinkingMenu: () -> Unit,
   onSetThinkingLevel: (level: String) -> Unit,
   onToggleReadout: (Boolean) -> Unit,
-  onRefresh: () -> Unit,
+  onNew: () -> Unit,
   onAbort: () -> Unit,
   onSend: (text: String) -> Unit,
 ) {
   var input by rememberSaveable { mutableStateOf("") }
+  var showModelMenu by remember { mutableStateOf(false) }
   var showThinkingMenu by remember { mutableStateOf(false) }
 
-  val canSend = pendingRunCount == 0 && (input.trim().isNotEmpty() || attachments.isNotEmpty()) && healthOk
   val sendBusy = pendingRunCount > 0
+  val hasDraft = input.trim().isNotEmpty() || attachments.isNotEmpty()
+  val sendEnabled = if (sendBusy) abortSupported && !stopInFlight else hasDraft && healthOk
+  val newEnabled = !sendBusy && !stopInFlight && healthOk
+  val sendContentDescription = if (sendBusy) "Stop current reply" else "Send message"
+  val modelButtonEnabled = modelSupported && !sendBusy && !stopInFlight
+  val thinkingButtonEnabled = thinkingSupported && !sendBusy && !stopInFlight
+  val sendTint = if (sendBusy) mobileDanger else mobileAccent
 
   Column(
     modifier = Modifier.fillMaxWidth(),
@@ -106,7 +130,7 @@ fun ChatComposer(
 
     if (!healthOk) {
       Text(
-        text = "Chat service unavailable. Pull to refresh.",
+        text = "Chat service unavailable. Reconnect the gateway or reopen this chat.",
         style = mobileCallout,
         color = ai.openclaw.app.ui.mobileWarning,
       )
@@ -119,14 +143,6 @@ fun ChatComposer(
     ) {
       FlatIconAction(
         modifier = Modifier.weight(1f),
-        icon = Icons.Default.Refresh,
-        contentDescription = "Refresh chat",
-        enabled = true,
-        tint = mobileTextSecondary,
-        onClick = onRefresh,
-      )
-      FlatIconAction(
-        modifier = Modifier.weight(1f),
         icon = Icons.Default.AttachFile,
         contentDescription = "Add file attachment",
         enabled = true,
@@ -135,63 +151,148 @@ fun ChatComposer(
       )
       FlatIconAction(
         modifier = Modifier.weight(1f),
-        icon = Icons.AutoMirrored.Filled.Send,
-        contentDescription = "Send message",
-        enabled = canSend,
-        tint = mobileAccent,
+        icon = if (sendBusy) Icons.Default.Stop else Icons.AutoMirrored.Filled.Send,
+        contentDescription = sendContentDescription,
+        enabled = sendEnabled,
+        tint = sendTint,
         onClick = {
-          val text = input
-          input = ""
-          onSend(text)
+          if (sendBusy) {
+            onAbort()
+          } else {
+            val text = input
+            input = ""
+            onSend(text)
+          }
         },
         content = {
-          if (sendBusy) {
-            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = mobileAccent)
+          if (stopInFlight) {
+            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = mobileDanger)
+          } else if (sendBusy) {
+            Icon(
+              imageVector = Icons.Default.Stop,
+              contentDescription = null,
+              modifier = Modifier.size(22.dp),
+              tint = if (sendEnabled) mobileDanger else mobileTextTertiary,
+            )
           } else {
             Icon(
               imageVector = Icons.AutoMirrored.Filled.Send,
               contentDescription = null,
               modifier = Modifier.size(22.dp),
-              tint = if (canSend) mobileAccent else mobileTextTertiary,
+              tint = if (sendEnabled) mobileAccent else mobileTextTertiary,
             )
           }
         },
       )
       Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
         Text(
-          text = "T",
+          text = "N",
           modifier =
             Modifier
-              .clickable(enabled = thinkingSupported) { showThinkingMenu = !showThinkingMenu }
+              .clickable(enabled = newEnabled) {
+                showModelMenu = false
+                showThinkingMenu = false
+                onNew()
+              }
               .padding(horizontal = 8.dp, vertical = 10.dp),
           style = mobileHeadline.copy(fontWeight = FontWeight.Bold),
-          color = if (thinkingSupported) mobileAccent else mobileTextTertiary,
+          color = if (newEnabled) mobileAccent else mobileTextTertiary,
+          textAlign = TextAlign.Center,
+        )
+      }
+      Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+        Text(
+          text = "M",
+          modifier =
+            Modifier
+              .clickable(enabled = modelButtonEnabled) {
+                showModelMenu = !showModelMenu
+                if (showModelMenu) {
+                  showThinkingMenu = false
+                  onOpenModelMenu()
+                }
+              }
+              .padding(horizontal = 8.dp, vertical = 10.dp),
+          style = mobileHeadline.copy(fontWeight = FontWeight.Bold),
+          color = if (modelButtonEnabled) mobileAccent else mobileTextTertiary,
           textAlign = TextAlign.Center,
         )
         DropdownMenu(
-          expanded = thinkingSupported && showThinkingMenu,
-          onDismissRequest = { showThinkingMenu = false },
-          modifier = Modifier.width(148.dp),
+          expanded = modelButtonEnabled && showModelMenu,
+          onDismissRequest = { showModelMenu = false },
+          modifier = Modifier.width(260.dp),
           shape = RoundedCornerShape(6.dp),
           containerColor = mobileSurface,
           tonalElevation = 0.dp,
           shadowElevation = 0.dp,
           border = BorderStroke(1.dp, mobileBorder),
         ) {
-          ThinkingMenuItem("off", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
-          ThinkingMenuItem("low", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
-          ThinkingMenuItem("medium", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
-          ThinkingMenuItem("high", thinkingLevel, onSetThinkingLevel) { showThinkingMenu = false }
+          ModelMenuStatus(
+            loading = modelOptionsLoading,
+            errorText = modelOptionsError,
+            switchingLabel = modelSwitchingLabel,
+          )
+          if (!modelOptionsLoading && modelOptions.isEmpty()) {
+            ModelMenuEmptyState(message = modelOptionsError ?: "当前没有可切换的模型。")
+          } else {
+            modelOptions.forEach { option ->
+              ModelMenuItem(
+                option = option,
+                currentModel = currentModel,
+                switchingLabel = modelSwitchingLabel,
+                onSet = onSetModel,
+              )
+            }
+          }
         }
       }
-      FlatIconAction(
-        modifier = Modifier.weight(1f),
-        icon = Icons.Default.Stop,
-        contentDescription = "Abort response",
-        enabled = abortSupported && pendingRunCount > 0,
-        tint = if (abortSupported && pendingRunCount > 0) mobileAccent else mobileTextTertiary,
-        onClick = onAbort,
-      )
+      Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+        Text(
+          text = "T",
+          modifier =
+            Modifier
+              .clickable(enabled = thinkingButtonEnabled) {
+                showThinkingMenu = !showThinkingMenu
+                if (showThinkingMenu) {
+                  showModelMenu = false
+                  onOpenThinkingMenu()
+                }
+              }
+              .padding(horizontal = 8.dp, vertical = 10.dp),
+          style = mobileHeadline.copy(fontWeight = FontWeight.Bold),
+          color = if (thinkingButtonEnabled) mobileAccent else mobileTextTertiary,
+          textAlign = TextAlign.Center,
+        )
+        DropdownMenu(
+          expanded = thinkingButtonEnabled && showThinkingMenu,
+          onDismissRequest = { showThinkingMenu = false },
+          modifier = Modifier.width(220.dp),
+          shape = RoundedCornerShape(6.dp),
+          containerColor = mobileSurface,
+          tonalElevation = 0.dp,
+          shadowElevation = 0.dp,
+          border = BorderStroke(1.dp, mobileBorder),
+        ) {
+          ThinkingMenuHeader(
+            currentLevel = thinkingLevel,
+            modelLabel = thinkingModelLabel,
+            loading = thinkingOptionsLoading,
+            errorText = thinkingOptionsError,
+          )
+          if (!thinkingOptionsLoading && thinkingOptions.isEmpty()) {
+            ThinkingMenuEmptyState(message = thinkingOptionsError ?: "当前模型没有可切换的 thinking 选项。")
+          } else {
+            thinkingOptions.forEach { option ->
+              ThinkingMenuItem(
+                option = option,
+                current = thinkingLevel,
+                switchingLevel = thinkingSwitchingLevel,
+                onSet = onSetThinkingLevel,
+              )
+            }
+          }
+        }
+      }
       FlatIconAction(
         modifier = Modifier.weight(1f),
         icon = if (readoutEnabled) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
@@ -231,40 +332,153 @@ private fun FlatIconAction(
 }
 
 @Composable
-private fun ThinkingMenuItem(
-  value: String,
-  current: String,
-  onSet: (String) -> Unit,
-  onDismiss: () -> Unit,
+private fun ModelMenuStatus(
+  loading: Boolean,
+  errorText: String?,
+  switchingLabel: String?,
 ) {
+  val message =
+    when {
+      errorText != null -> errorText
+      switchingLabel != null -> "正在切换模型到 $switchingLabel…"
+      loading -> "正在加载模型选项…"
+      else -> null
+    } ?: return
+
+  Text(
+    text = message,
+    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+    style = mobileCallout,
+    color = if (errorText != null) mobileDanger else mobileTextSecondary,
+  )
+}
+
+@Composable
+private fun ModelMenuEmptyState(message: String) {
+  Text(
+    text = message,
+    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+    style = mobileCallout,
+    color = mobileTextSecondary,
+  )
+}
+
+@Composable
+private fun ModelMenuItem(
+  option: ChatModelOption,
+  currentModel: ChatModelOption?,
+  switchingLabel: String?,
+  onSet: (provider: String, model: String) -> Unit,
+) {
+  val isCurrent = currentModel?.provider == option.provider && currentModel.model == option.model
+  val isSwitching = switchingLabel == option.label
+
   DropdownMenuItem(
     text = {
       Text(
-        text = thinkingLabel(value),
+        text = option.label,
         style = mobileCallout,
-        color = if (value == current.trim().lowercase()) mobileAccent else mobileText,
+        color = if (isCurrent) mobileAccent else mobileText,
         maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
       )
     },
     onClick = {
-      onSet(value)
-      onDismiss()
+      if (!isCurrent && !isSwitching) {
+        onSet(option.provider, option.model)
+      }
     },
+    enabled = option.available && !isSwitching,
     trailingIcon = {
-      if (value == current.trim().lowercase()) {
-        Text("✓", style = mobileCallout, color = mobileAccent)
+      when {
+        isSwitching -> Text("切换中", style = mobileCallout, color = mobileTextSecondary)
+        isCurrent -> Text("✓", style = mobileCallout, color = mobileAccent)
       }
     },
   )
 }
 
-private fun thinkingLabel(raw: String): String {
-  return when (raw.trim().lowercase()) {
-    "low" -> "Low"
-    "medium" -> "Medium"
-    "high" -> "High"
-    else -> "Off"
+@Composable
+private fun ThinkingMenuHeader(
+  currentLevel: String,
+  modelLabel: String?,
+  loading: Boolean,
+  errorText: String?,
+) {
+  Column(
+    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+    verticalArrangement = Arrangement.spacedBy(4.dp),
+  ) {
+    Text(text = "Thinking", style = mobileCaption1, color = mobileTextSecondary)
+    Text(
+      text = modelLabel?.takeIf { it.isNotBlank() } ?: "选择这个 agent 当前模型的 thinking level。",
+      style = mobileCallout,
+      color = mobileText,
+      maxLines = 2,
+      overflow = TextOverflow.Ellipsis,
+    )
+    Text(
+      text = "当前 thinking：${currentLevel.ifBlank { "off" }}",
+      style = mobileCallout,
+      color = mobileAccent,
+      maxLines = 1,
+    )
+    when {
+      errorText != null -> {
+        Text(text = errorText, style = mobileCallout, color = mobileDanger)
+      }
+      loading -> {
+        Text(text = "正在加载 thinking 选项…", style = mobileCallout, color = mobileTextSecondary)
+      }
+    }
   }
+}
+
+@Composable
+private fun ThinkingMenuEmptyState(message: String) {
+  Text(
+    text = message,
+    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+    style = mobileCallout,
+    color = mobileTextSecondary,
+  )
+}
+
+@Composable
+private fun ThinkingMenuItem(
+  option: ChatThinkingOption,
+  current: String,
+  switchingLevel: String?,
+  onSet: (String) -> Unit,
+) {
+  val currentValue = current.trim().lowercase()
+  val optionValue = option.value.trim().lowercase()
+  val isCurrent = optionValue == currentValue
+  val isSwitching = switchingLevel?.trim()?.lowercase() == optionValue
+
+  DropdownMenuItem(
+    text = {
+      Text(
+        text = option.label,
+        style = mobileCallout,
+        color = if (isCurrent) mobileAccent else mobileText,
+        maxLines = 1,
+      )
+    },
+    onClick = {
+      if (!isCurrent && !isSwitching) {
+        onSet(option.value)
+      }
+    },
+    enabled = !isSwitching,
+    trailingIcon = {
+      when {
+        isSwitching -> Text("切换中", style = mobileCallout, color = mobileTextSecondary)
+        isCurrent ->
+        Text("✓", style = mobileCallout, color = mobileAccent)
+      }
+    },
+  )
 }
 
 @Composable

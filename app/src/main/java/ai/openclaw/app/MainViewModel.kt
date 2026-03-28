@@ -3,8 +3,10 @@ package ai.openclaw.app
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import ai.openclaw.app.chat.AgentContactEntry
-import ai.openclaw.app.gateway.GatewayEndpoint
+import ai.openclaw.app.chat.ChatModelOption
+import ai.openclaw.app.chat.ChatThinkingOption
 import ai.openclaw.app.chat.OutgoingAttachment
+import ai.openclaw.app.gateway.GatewayEndpoint
 import ai.openclaw.app.node.CameraCaptureManager
 import ai.openclaw.app.node.CanvasController
 import ai.openclaw.app.node.SmsManager
@@ -86,7 +88,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   val pendingRunCount: StateFlow<Int> = runtime.pendingRunCount
   val chatVoiceSupported: StateFlow<Boolean> = runtime.chatVoiceSupported
   val chatAbortSupported: StateFlow<Boolean> = runtime.chatAbortSupported
+  val chatStopInFlight: StateFlow<Boolean> = runtime.chatStopInFlight
   val chatThinkingSupported: StateFlow<Boolean> = runtime.chatThinkingSupported
+  val chatModelSupported: StateFlow<Boolean> = runtime.chatModelSupported
+  val chatThinkingOptions = runtime.chatThinkingOptions
+  val chatThinkingOptionsLoading: StateFlow<Boolean> = runtime.chatThinkingOptionsLoading
+  val chatThinkingOptionsError: StateFlow<String?> = runtime.chatThinkingOptionsError
+  val chatThinkingModelLabel: StateFlow<String?> = runtime.chatThinkingModelLabel
+  val chatThinkingSwitchingLevel: StateFlow<String?> = runtime.chatThinkingSwitchingLevel
+  val chatCurrentModel: StateFlow<ChatModelOption?> = runtime.chatCurrentModel
+  val chatModelOptions = runtime.chatModelOptions
+  val chatModelOptionsLoading: StateFlow<Boolean> = runtime.chatModelOptionsLoading
+  val chatModelOptionsError: StateFlow<String?> = runtime.chatModelOptionsError
+  val chatModelSwitchingLabel: StateFlow<String?> = runtime.chatModelSwitchingLabel
 
   fun setForeground(value: Boolean) {
     runtime.setForeground(value)
@@ -250,6 +264,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
   fun setChatThinkingLevel(level: String) {
     runtime.setChatThinkingLevel(level)
+  }
+
+  fun refreshChatThinkingOptions(force: Boolean = false, silent: Boolean = false) {
+    runtime.refreshChatThinkingOptions(force = force, silent = silent)
+  }
+
+  fun setChatModel(provider: String, model: String) {
+    runtime.setChatModel(provider = provider, model = model)
+  }
+
+  fun refreshChatModelOptions(force: Boolean = false, silent: Boolean = false) {
+    runtime.refreshChatModelOptions(force = force, silent = silent)
   }
 
   fun openAgentChat(agentId: String) {

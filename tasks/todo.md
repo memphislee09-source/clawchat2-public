@@ -312,3 +312,156 @@
 - `./gradlew :app:assemblePlayDebug`
 - User-side manual verification also passed on 2026-03-28: a real Huawei Mate60 successfully uploaded a Markdown file through the chat attachment button, confirming the generic `file` path works end to end on device.
 - One verification caveat showed up during the first parallel Gradle run: Kotlin incremental compilation briefly hit the known multi-daemon backup/classpath issue, but the serial rerun completed successfully and no code-level compile errors remained.
+
+## Chat Send/Stop Button Plan
+
+- [x] Trace the current Android chat send button and stop path against the existing WebChat behavior.
+- [x] Replace the separate Android send/stop split with a single send button that switches to stop-state while a reply is running.
+- [x] Wire the stop action to the existing WebChat session stop endpoint so tapping the send button again aborts the active reply.
+- [x] Add focused regression coverage for the WebChat send/stop controller behavior.
+- [x] Rebuild and verify the updated Android chat composer flow.
+
+## Chat Send/Stop Button Review
+
+- Android chat composer send behavior now matches the current `openclaw-webchat` input more closely: once a chat run is pending, the existing send button switches from the paper-plane icon to a stop icon instead of leaving a separate stop control in the button row.
+- Tapping the send button again while a reply is pending now calls `WebChatController.abort()`, which is no longer a stub. The controller now posts to `POST /api/openclaw-webchat/sessions/{sessionKey}/stop`, tracks a transient `stopInFlight` state, and clears that state when the pending run settles or the user switches chats.
+- `ChatComposer` no longer shows the old dedicated stop button. The button row stays compact, and the send button now owns all send/stop semantics: send when idle, stop while pending, and spinner while the stop request itself is in flight.
+- Added a focused Robolectric + MockWebServer regression test in `WebChatControllerTest` to verify that aborting during an in-flight send issues the expected session stop request to WebChat.
+- Fresh verification completed on 2026-03-28 with:
+- `./gradlew :app:testPlayDebugUnitTest --tests ai.openclaw.app.chat.WebChatControllerTest`
+- `./gradlew :app:compilePlayDebugKotlin`
+- `./gradlew :app:assemblePlayDebug`
+- Installed the fresh APK onto the connected real device `c2f22adf` with:
+- `adb -s c2f22adf install -r app/build/outputs/apk/play/debug/openclaw-0.2.4-play-debug.apk`
+- Brought `ai.openclaw.app/.MainActivity` to the foreground on that device so the user can test the send-button stop interaction immediately.
+
+## Chat Stop Color + Thinking Picker Plan
+
+- [x] Compare the current Android `T` button against the live WebChat thinking picker endpoints and interaction model.
+- [x] Change the send button stop-state styling to use a red abort affordance instead of the normal accent color.
+- [x] Replace the local fixed `T` menu with a session-backed thinking picker that loads options from WebChat and patches the current session on selection.
+- [x] Add focused regression coverage for WebChat thinking option fetch/switch behavior.
+- [x] Rebuild, install to the connected real device, and update review notes.
+
+## Chat Stop Color + Thinking Picker Review
+
+- The composer send button now uses a red stop-state affordance while a reply is pending, so the same button clearly reads as an abort action instead of looking like the normal blue send action.
+- The Android `T` control no longer uses a fixed local `off/low/medium/high` list. It now opens a session-backed picker that requests `GET /api/openclaw-webchat/sessions/{sessionKey}/thinking-options`, shows the current thinking level plus the current model label, and renders the real option list returned by WebChat.
+- Selecting a thinking option now patches the active WebChat session immediately through `PATCH /api/openclaw-webchat/sessions/{sessionKey}/thinking`, updates the local current-thinking state from the response, and supports provider-specific values such as binary `on/off` models instead of forcing everything through the old four-level mapping.
+- Added focused coverage in `WebChatControllerTest` for both stop-request routing and the thinking picker fetch/switch flow, using MockWebServer to verify the Android controller hits the expected WebChat endpoints and updates local state from their responses.
+- Fresh verification completed on 2026-03-28 with:
+- `./gradlew :app:testPlayDebugUnitTest --tests ai.openclaw.app.chat.WebChatControllerTest`
+- `./gradlew :app:compilePlayDebugKotlin`
+- `./gradlew :app:assemblePlayDebug`
+- Installed the fresh APK onto the connected real device `c2f22adf` with:
+- `adb -s c2f22adf install -r app/build/outputs/apk/play/debug/openclaw-0.2.4-play-debug.apk`
+- Brought `ai.openclaw.app/.MainActivity` to the foreground after install so the user can test the red stop-state button and the new `T` thinking picker immediately.
+
+## Chat Model Picker Plan
+
+- [x] Compare the WebChat model picker endpoints and interaction against the current Android composer controls.
+- [x] Remove the leftmost refresh button from the Android composer strip and insert an `M` model button to the left of `T`.
+- [x] Add a session-backed model picker that loads the current model plus available models from WebChat and switches the active session model on selection.
+- [x] Add focused regression coverage for WebChat model option fetch/switch behavior.
+- [x] Rebuild, install to the connected real device, and update review notes.
+
+## Chat Model Picker Review
+
+- The Android composer control strip no longer shows the leftmost refresh button. The strip now uses attachment, send/stop, `M`, `T`, and readout controls, which keeps the lightweight chat controls focused on in-thread actions instead of a dedicated refresh icon.
+- Added an `M` button immediately to the left of `T`. Tapping it opens an upward model picker that shows the agent's current model on the first line and the currently available model list below, matching the role that WebChat exposes through its `/model` command and model picker.
+- The Android model picker is now session-backed instead of local-only. `WebChatController` loads `GET /api/openclaw-webchat/sessions/{sessionKey}/model-options`, stores the current model plus available models, and switches the active session through `PATCH /api/openclaw-webchat/sessions/{sessionKey}/model` with the selected `provider` and `model`.
+- After a model switch succeeds, the Android client clears the cached thinking picker state so the next `T` open reloads the new model's valid thinking levels instead of reusing stale options from the previous model.
+- Added focused MockWebServer coverage in `WebChatControllerTest` for the model picker fetch/switch flow alongside the existing send/stop and thinking-picker tests.
+- Fresh verification completed on 2026-03-28 with:
+- `./gradlew :app:testPlayDebugUnitTest --tests ai.openclaw.app.chat.WebChatControllerTest`
+- `./gradlew :app:compilePlayDebugKotlin`
+- `./gradlew :app:assemblePlayDebug`
+- Installed the fresh APK onto the connected real device `c2f22adf` with:
+- `adb -s c2f22adf install -r app/build/outputs/apk/play/debug/openclaw-0.2.4-play-debug.apk`
+- Brought `ai.openclaw.app/.MainActivity` to the foreground after install so the user can test the new `M` model picker immediately.
+
+## Chat Model Picker Follow-up Plan
+
+- [x] Fix the Android model picker so WebChat model options are actually selectable when `available` is omitted from the payload.
+- [x] Remove the model picker header copy and current-model line so the popup stays as a compact list-first chooser.
+- [x] Rebuild, install to the connected real device, and update review notes.
+
+## Chat Model Picker Follow-up Review
+
+- Root cause of the unselectable `M` picker was Android-side option parsing, not the menu click handler: `WebChatController` treated a missing `available` field as `false`, which disabled every WebChat model option even though WebChat itself treats omitted `available` as selectable-by-default.
+- Model option parsing now defaults missing `available` to `true`, so the menu can actually switch models when WebChat returns its normal payload shape without an explicit `available` flag on each item.
+- The `M` popup has been simplified by removing the top current-model summary and explanatory copy. It now behaves as a compact list-first chooser, with only a short transient status line shown when loading, switching, or reporting an error.
+- Added a tighter assertion to `WebChatControllerTest` so the model picker regression coverage now explicitly verifies that fetched model options remain selectable when `available` is omitted from the payload.
+- Fresh verification completed on 2026-03-28 with:
+- `./gradlew :app:testPlayDebugUnitTest --tests ai.openclaw.app.chat.WebChatControllerTest`
+- `./gradlew :app:compilePlayDebugKotlin`
+- `./gradlew :app:assemblePlayDebug`
+- Installed the fresh APK onto the connected real device `c2f22adf` with:
+- `adb -s c2f22adf install -r app/build/outputs/apk/play/debug/openclaw-0.2.4-play-debug.apk`
+- Brought `ai.openclaw.app/.MainActivity` to the foreground after install so the user can immediately retest model selection on device.
+
+## Chat Picker Stay-Open Plan
+
+- [x] Change the `M` and `T` picker interactions so selecting an item does not auto-dismiss the popup.
+- [x] Keep popup dismissal user-driven by outside tap only, while preserving the in-menu success feedback through the updated active-state highlight.
+- [x] Rebuild, install to the connected real device, and update review notes.
+
+## Chat Picker Stay-Open Review
+
+- The `M` and `T` picker rows no longer auto-dismiss after a selection. Choosing a model or thinking level now leaves the popup open so the user can confirm the new active highlight before deciding to tap outside and close it.
+- Popup dismissal is now fully user-driven by outside-tap dismissal. The in-menu success confirmation comes from the active option styling updating in place once the switch succeeds, instead of the menu disappearing immediately after the tap.
+- Fresh verification completed on 2026-03-28 with:
+- `./gradlew :app:testPlayDebugUnitTest --tests ai.openclaw.app.chat.WebChatControllerTest`
+- `./gradlew :app:compilePlayDebugKotlin`
+- `./gradlew :app:assemblePlayDebug`
+- Installed the fresh APK onto the connected real device `c2f22adf` with:
+- `adb -s c2f22adf install -r app/build/outputs/apk/play/debug/openclaw-0.2.4-play-debug.apk`
+- Brought `ai.openclaw.app/.MainActivity` to the foreground after install so the user can immediately retest the stay-open picker behavior on device.
+
+## Public Release Review Plan
+
+- [x] Inspect the current git/worktree state and identify the exact code under review for this public release candidate.
+- [x] Review the recent chat composer, send/stop, thinking picker, and model picker changes for correctness, regressions, and WebChat contract alignment.
+- [x] Check whether automated verification meaningfully covers the new release-critical behavior and note any gaps.
+- [x] Report review findings ordered by severity, with file references and residual release risks.
+
+## Public Release Fix Plan
+
+- [x] Gate the Android stop, model, and thinking composer controls on WebChat server capability instead of enabling them unconditionally.
+- [x] Replace the stale `Pull to refresh` composer error copy with a recovery instruction that matches the actual Android UI.
+- [x] Add focused regression coverage for the capability gating path so older WebChat deployments keep the new controls disabled cleanly.
+- [x] Rebuild, reinstall on the connected real device, and capture the release-fix review notes.
+
+## Public Release Fix Review
+
+- The new chat composer controls no longer assume every WebChat server is new enough to support them. Android now reads `projectInfo.version` from `GET /api/openclaw-webchat/settings` and only enables the stop, model, and thinking controls when the connected server is at least `v0.1.6`, which is the first published WebChat line that contains all three endpoints.
+- The capability gate is enforced both in the UI and in `WebChatController` itself. That means older or partially upgraded WebChat deployments now fail closed: the buttons stay disabled and the controller will not fire unsupported `stop`, `model`, or `thinking` requests behind the UI.
+- The stale composer helper text has been corrected. When chat service health is down, the Android input area now tells the user to reconnect the gateway or reopen the chat instead of instructing them to use a non-existent refresh affordance.
+- Added focused regression coverage in `WebChatControllerTest` for the new version gate, and updated the existing stop/thinking/model controller tests so they explicitly opt into the supported-capability state they are validating.
+- Fresh verification completed on 2026-03-28 with:
+- `./gradlew :app:testPlayDebugUnitTest --tests ai.openclaw.app.chat.WebChatControllerTest`
+- `./gradlew :app:compilePlayDebugKotlin`
+- `./gradlew :app:assemblePlayDebug`
+- Installed the fresh APK onto the connected real device `c2f22adf` with:
+- `adb -s c2f22adf install -r /Users/memphis/.openclaw/workspace-mira/clawchat2/app/build/outputs/apk/play/debug/openclaw-0.2.4-play-debug.apk`
+- Brought `ai.openclaw.app/.MainActivity` to the foreground after install so the public-release candidate can be retested immediately on device.
+
+## Chat New Button Plan
+
+- [x] Add a compact `N` control immediately to the right of the send button in the chat composer button row.
+- [x] Wire the new button to execute the existing WebChat `/new` slash-command path without disturbing the rest of the composer controls.
+- [x] Rebuild, install to the connected real device, and capture review notes for the new-button behavior.
+
+## Chat New Button Review
+
+- The chat composer button row now includes a compact `N` control immediately to the right of the send button, keeping the lightweight controls aligned in a single strip without adding a separate row.
+- Tapping `N` now sends the existing `/new` slash command through the normal WebChat send path, so the feature reuses the server-side conversation-reset behavior instead of introducing a second Android-only reset implementation.
+- The `N` button is only enabled when chat is healthy and idle, matching the other lightweight composer controls. It also closes any open `M` or `T` popup before dispatching `/new`, which keeps the button row interaction tidy.
+- This implementation intentionally leaves any unsent text draft or pending attachment chips in place, so using `/new` resets the conversation context without silently discarding the user's current composer draft.
+- Fresh verification completed on 2026-03-29 with:
+- `./gradlew :app:testPlayDebugUnitTest --tests ai.openclaw.app.chat.WebChatControllerTest`
+- `./gradlew :app:compilePlayDebugKotlin`
+- `./gradlew :app:assemblePlayDebug`
+- Installed the fresh APK onto the connected real device `c2f22adf` with:
+- `adb -s c2f22adf install -r /Users/memphis/.openclaw/workspace-mira/clawchat2/app/build/outputs/apk/play/debug/openclaw-0.2.4-play-debug.apk`
+- Brought `ai.openclaw.app/.MainActivity` to the foreground after install so the user can test the new `N` control immediately.

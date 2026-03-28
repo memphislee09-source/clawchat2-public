@@ -8,8 +8,10 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import ai.openclaw.app.chat.AgentContactEntry
 import ai.openclaw.app.chat.ChatMessage
+import ai.openclaw.app.chat.ChatModelOption
 import ai.openclaw.app.chat.ChatPendingToolCall
 import ai.openclaw.app.chat.ChatSessionEntry
+import ai.openclaw.app.chat.ChatThinkingOption
 import ai.openclaw.app.chat.OutgoingAttachment
 import ai.openclaw.app.chat.WebChatController
 import ai.openclaw.app.chat.WebChatHistoryCacheStore
@@ -578,7 +580,19 @@ class NodeRuntime(context: Context) {
   val chatUserDisplayName: StateFlow<String> = chat.userDisplayName
   val chatVoiceSupported: StateFlow<Boolean> = chat.voiceSupported
   val chatAbortSupported: StateFlow<Boolean> = chat.abortSupported
+  val chatStopInFlight: StateFlow<Boolean> = chat.stopInFlight
   val chatThinkingSupported: StateFlow<Boolean> = chat.thinkingSupported
+  val chatModelSupported: StateFlow<Boolean> = chat.modelSupported
+  val chatThinkingOptions: StateFlow<List<ChatThinkingOption>> = chat.thinkingOptions
+  val chatThinkingOptionsLoading: StateFlow<Boolean> = chat.thinkingOptionsLoading
+  val chatThinkingOptionsError: StateFlow<String?> = chat.thinkingOptionsError
+  val chatThinkingModelLabel: StateFlow<String?> = chat.thinkingModelLabel
+  val chatThinkingSwitchingLevel: StateFlow<String?> = chat.thinkingSwitchingLevel
+  val chatCurrentModel: StateFlow<ChatModelOption?> = chat.currentModel
+  val chatModelOptions: StateFlow<List<ChatModelOption>> = chat.modelOptions
+  val chatModelOptionsLoading: StateFlow<Boolean> = chat.modelOptionsLoading
+  val chatModelOptionsError: StateFlow<String?> = chat.modelOptionsError
+  val chatModelSwitchingLabel: StateFlow<String?> = chat.modelSwitchingLabel
 
   init {
     if (prefs.voiceWakeMode.value != VoiceWakeMode.Off) {
@@ -967,6 +981,18 @@ class NodeRuntime(context: Context) {
 
   fun setChatThinkingLevel(level: String) {
     chat.setThinkingLevel(level)
+  }
+
+  fun refreshChatThinkingOptions(force: Boolean = false, silent: Boolean = false) {
+    chat.refreshThinkingOptions(force = force, silent = silent)
+  }
+
+  fun setChatModel(provider: String, model: String) {
+    chat.setModel(provider = provider, model = model)
+  }
+
+  fun refreshChatModelOptions(force: Boolean = false, silent: Boolean = false) {
+    chat.refreshModelOptions(force = force, silent = silent)
   }
 
   fun openAgentChat(agentId: String) {

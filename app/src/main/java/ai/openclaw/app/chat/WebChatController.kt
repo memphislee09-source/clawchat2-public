@@ -35,6 +35,7 @@ private const val WEBCHAT_PORT = 3770
 private const val WEBCHAT_PREFIX = "openclaw-webchat:"
 private const val WEBCHAT_POLL_INTERVAL_MS = 10_000L
 private const val WEBCHAT_HISTORY_PREFETCH_LIMIT = 8
+private const val WEBCHAT_COMPOSER_CONTROL_MIN_VERSION = "0.1.6"
 private val WEBCHAT_JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 
 class WebChatController(
@@ -98,6 +99,42 @@ class WebChatController(
   private val _thinkingSupported = MutableStateFlow(false)
   val thinkingSupported: StateFlow<Boolean> = _thinkingSupported.asStateFlow()
 
+  private val _modelSupported = MutableStateFlow(false)
+  val modelSupported: StateFlow<Boolean> = _modelSupported.asStateFlow()
+
+  private val _stopInFlight = MutableStateFlow(false)
+  val stopInFlight: StateFlow<Boolean> = _stopInFlight.asStateFlow()
+
+  private val _thinkingOptions = MutableStateFlow<List<ChatThinkingOption>>(emptyList())
+  val thinkingOptions: StateFlow<List<ChatThinkingOption>> = _thinkingOptions.asStateFlow()
+
+  private val _thinkingOptionsLoading = MutableStateFlow(false)
+  val thinkingOptionsLoading: StateFlow<Boolean> = _thinkingOptionsLoading.asStateFlow()
+
+  private val _thinkingOptionsError = MutableStateFlow<String?>(null)
+  val thinkingOptionsError: StateFlow<String?> = _thinkingOptionsError.asStateFlow()
+
+  private val _thinkingModelLabel = MutableStateFlow<String?>(null)
+  val thinkingModelLabel: StateFlow<String?> = _thinkingModelLabel.asStateFlow()
+
+  private val _thinkingSwitchingLevel = MutableStateFlow<String?>(null)
+  val thinkingSwitchingLevel: StateFlow<String?> = _thinkingSwitchingLevel.asStateFlow()
+
+  private val _currentModel = MutableStateFlow<ChatModelOption?>(null)
+  val currentModel: StateFlow<ChatModelOption?> = _currentModel.asStateFlow()
+
+  private val _modelOptions = MutableStateFlow<List<ChatModelOption>>(emptyList())
+  val modelOptions: StateFlow<List<ChatModelOption>> = _modelOptions.asStateFlow()
+
+  private val _modelOptionsLoading = MutableStateFlow(false)
+  val modelOptionsLoading: StateFlow<Boolean> = _modelOptionsLoading.asStateFlow()
+
+  private val _modelOptionsError = MutableStateFlow<String?>(null)
+  val modelOptionsError: StateFlow<String?> = _modelOptionsError.asStateFlow()
+
+  private val _modelSwitchingLabel = MutableStateFlow<String?>(null)
+  val modelSwitchingLabel: StateFlow<String?> = _modelSwitchingLabel.asStateFlow()
+
   private var activeAgentId: String? = parseAgentIdFromSessionKey(initialSessionKey)
   private var preferredBaseUrl: String? = null
   private var startupContactsLoaded = false
@@ -107,6 +144,9 @@ class WebChatController(
   private var loadedSessionKey: String? = null
   private val sessionHistoryCache = historyCacheStore.load().toMutableMap()
   private val prefetchingSessionKeys = mutableSetOf<String>()
+  private var stopRequestedSessionKey: String? = null
+  private var thinkingOptionsSessionKey: String? = null
+  private var modelOptionsSessionKey: String? = null
 
   init {
     scope.launch {
@@ -188,7 +228,168 @@ class WebChatController(
   }
 
   fun setThinkingLevel(thinkingLevel: String) {
-    _thinkingLevel.value = normalizeThinkingLevel(thinkingLevel)
+    if (!_thinkingSupported.value) return
+    val normalized = normalizeThinkingLevel(thinkingLevel)
+    val currentSessionKey = _sessionKey.value.trim()
+    if (currentSessionKey.isEmpty()) return
+    if (_thinkingOptionsLoading.value || _thinkingSwitchingLevel.value != null) return
+    if (normalized == _thinkingLevel.value && thinkingOptionsSessionKey == currentSessionKey) return
+
+    _thinkingOptionsError.value = null
+    _thinkingSwitchingLevel.value = normalized
+    scope.launch {
+      try {
+        val payload =
+          apiPatch(
+            path = "/api/openclaw-webchat/sessions/${encodePath(currentSessionKey)}/thinking",
+            body =
+              buildJsonObject {
+                put("thinkingLevel", JsonPrimitive(normalized))
+              },
+          )
+        if (_sessionKey.value.trim() != currentSessionKey) return@launch
+        applyThinkingPickerPayload(payload, currentSessionKey)
+      } catch (err: Throwable) {
+        if (_sessionKey.value.trim() == currentSessionKey) {
+          _thinkingOptionsError.value = err.message ?: "Failed to switch thinking level"
+        }
+      } finally {
+        if (_sessionKey.value.trim() == currentSessionKey) {
+          _thinkingSwitchingLevel.value = null
+        }
+      }
+    }
+  }
+
+  fun refreshThinkingOptions(force: Boolean = false, silent: Boolean = false) {
+    if (!_thinkingSupported.value) {
+      clearThinkingPickerState()
+      return
+    }
+    val currentSessionKey = _sessionKey.value.trim()
+    if (currentSessionKey.isEmpty()) {
+      clearThinkingPickerState()
+      return
+    }
+    if (
+      !force &&
+      thinkingOptionsSessionKey == currentSessionKey &&
+      (_thinkingOptions.value.isNotEmpty() || _thinkingLevel.value.isNotBlank())
+    ) {
+      return
+    }
+
+    scope.launch {
+      _thinkingOptionsLoading.value = true
+      if (!silent) {
+        _thinkingOptionsError.value = null
+      }
+      try {
+        val payload =
+          apiGet(
+            path = "/api/openclaw-webchat/sessions/${encodePath(currentSessionKey)}/thinking-options",
+          )
+        if (_sessionKey.value.trim() != currentSessionKey) return@launch
+        applyThinkingPickerPayload(payload, currentSessionKey)
+      } catch (err: Throwable) {
+        if (_sessionKey.value.trim() == currentSessionKey && !silent) {
+          _thinkingOptionsError.value = err.message ?: "Failed to load thinking options"
+        }
+      } finally {
+        if (_sessionKey.value.trim() == currentSessionKey) {
+          _thinkingOptionsLoading.value = false
+        }
+      }
+    }
+  }
+
+  fun setModel(provider: String, model: String) {
+    if (!_modelSupported.value) return
+    val currentSessionKey = _sessionKey.value.trim()
+    if (currentSessionKey.isEmpty()) return
+    if (_modelOptionsLoading.value || _modelSwitchingLabel.value != null) return
+
+    val normalizedProvider = provider.trim().ifEmpty { "default" }
+    val normalizedModel = model.trim()
+    if (normalizedModel.isEmpty()) return
+    if (_currentModel.value?.provider == normalizedProvider && _currentModel.value?.model == normalizedModel) return
+
+    val target =
+      _modelOptions.value.firstOrNull { it.provider == normalizedProvider && it.model == normalizedModel }
+        ?: ChatModelOption(
+          provider = normalizedProvider,
+          model = normalizedModel,
+          label = "$normalizedProvider/$normalizedModel",
+        )
+
+    _modelOptionsError.value = null
+    _modelSwitchingLabel.value = target.label
+    scope.launch {
+      try {
+        val payload =
+          apiPatch(
+            path = "/api/openclaw-webchat/sessions/${encodePath(currentSessionKey)}/model",
+            body =
+              buildJsonObject {
+                put("provider", JsonPrimitive(normalizedProvider))
+                put("model", JsonPrimitive(normalizedModel))
+              },
+          )
+        if (_sessionKey.value.trim() != currentSessionKey) return@launch
+        applyModelPickerPayload(payload, currentSessionKey)
+        clearThinkingPickerState()
+      } catch (err: Throwable) {
+        if (_sessionKey.value.trim() == currentSessionKey) {
+          _modelOptionsError.value = err.message ?: "Failed to switch model"
+        }
+      } finally {
+        if (_sessionKey.value.trim() == currentSessionKey) {
+          _modelSwitchingLabel.value = null
+        }
+      }
+    }
+  }
+
+  fun refreshModelOptions(force: Boolean = false, silent: Boolean = false) {
+    if (!_modelSupported.value) {
+      clearModelPickerState()
+      return
+    }
+    val currentSessionKey = _sessionKey.value.trim()
+    if (currentSessionKey.isEmpty()) {
+      clearModelPickerState()
+      return
+    }
+    if (
+      !force &&
+      modelOptionsSessionKey == currentSessionKey &&
+      (_currentModel.value != null || _modelOptions.value.isNotEmpty())
+    ) {
+      return
+    }
+
+    scope.launch {
+      _modelOptionsLoading.value = true
+      if (!silent) {
+        _modelOptionsError.value = null
+      }
+      try {
+        val payload =
+          apiGet(
+            path = "/api/openclaw-webchat/sessions/${encodePath(currentSessionKey)}/model-options",
+          )
+        if (_sessionKey.value.trim() != currentSessionKey) return@launch
+        applyModelPickerPayload(payload, currentSessionKey)
+      } catch (err: Throwable) {
+        if (_sessionKey.value.trim() == currentSessionKey && !silent) {
+          _modelOptionsError.value = err.message ?: "Failed to load model options"
+        }
+      } finally {
+        if (_sessionKey.value.trim() == currentSessionKey) {
+          _modelOptionsLoading.value = false
+        }
+      }
+    }
   }
 
   fun openAgentChat(agentId: String) {
@@ -222,7 +423,28 @@ class WebChatController(
   }
 
   fun abort() {
-    // openclaw-webchat does not currently expose an abort API.
+    if (!_abortSupported.value) return
+    val currentSessionKey = _sessionKey.value.trim()
+    if (currentSessionKey.isEmpty()) return
+    if (_pendingRunCount.value <= 0) return
+    if (_stopInFlight.value) return
+
+    stopRequestedSessionKey = currentSessionKey
+    _stopInFlight.value = true
+    scope.launch {
+      try {
+        apiPost(
+          path = "/api/openclaw-webchat/sessions/${encodePath(currentSessionKey)}/stop",
+          body = buildJsonObject {},
+        )
+        _errorText.value = null
+      } catch (err: Throwable) {
+        if (stopRequestedSessionKey == currentSessionKey) {
+          _errorText.value = err.message ?: "Failed to stop reply"
+          _stopInFlight.value = false
+        }
+      }
+    }
   }
 
   fun sendMessage(message: String, thinkingLevel: String, attachments: List<OutgoingAttachment>) {
@@ -242,6 +464,8 @@ class WebChatController(
       _streamingAssistantText.value = null
       _pendingToolCalls.value = emptyList()
       _pendingRunCount.value = 1
+      _stopInFlight.value = false
+      stopRequestedSessionKey = null
 
       if (text.startsWith("/") && attachments.isEmpty()) {
         handleSlashCommand(currentSessionKey = currentSessionKey, command = text)
@@ -274,7 +498,16 @@ class WebChatController(
       updateSessionCache(sessionKey = currentSessionKey, agentId = agentId, messages = _messages.value)
 
       try {
-        val uploadedBlocks = attachments.map { uploadAttachment(it) }
+        val uploadedBlocks = mutableListOf<JsonObject>()
+        for (attachment in attachments) {
+          if (isStopRequestedFor(currentSessionKey)) {
+            return@launch
+          }
+          uploadedBlocks += uploadAttachment(attachment)
+        }
+        if (isStopRequestedFor(currentSessionKey)) {
+          return@launch
+        }
         val response =
           apiPost(
             path = "/api/openclaw-webchat/sessions/${encodePath(currentSessionKey)}/send",
@@ -286,13 +519,19 @@ class WebChatController(
                 }
               },
         )
+        if (response["aborted"].booleanOrFalse()) {
+          return@launch
+        }
         val assistantMessage = parsePresentedHistoryEntry(response["message"]) ?: return@launch
         _messages.value = _messages.value + assistantMessage
         updateSessionCache(sessionKey = currentSessionKey, agentId = agentId, messages = _messages.value)
         onAssistantReplyPresented(currentSessionKey, assistantMessage)
       } catch (err: Throwable) {
-        _errorText.value = err.message ?: "Send failed"
+        if (!isStopRequestedFor(currentSessionKey)) {
+          _errorText.value = err.message ?: "Send failed"
+        }
       } finally {
+        clearStopState(currentSessionKey)
         _pendingRunCount.value = 0
       }
     }
@@ -353,6 +592,7 @@ class WebChatController(
     } catch (err: Throwable) {
       _errorText.value = err.message ?: "Command failed"
     } finally {
+      clearStopState(currentSessionKey)
       _pendingRunCount.value = 0
     }
   }
@@ -403,6 +643,9 @@ class WebChatController(
       navigationTargetSessionKey = null
       updateSessionCache(sessionKey = resolvedSessionKey, agentId = agentId, messages = parsedMessages)
       refreshActiveConversationInternal(silent = true)
+      clearStopState()
+      clearModelPickerState()
+      clearThinkingPickerState()
       _pendingRunCount.value = 0
     } catch (err: Throwable) {
       if (!isCurrentNavigation(navVersion)) return
@@ -421,8 +664,9 @@ class WebChatController(
     return try {
       val payload = apiGet("/api/openclaw-webchat/agents")
       val agents = parseAgents(payload["agents"])
-      runCatching { apiGet("/api/openclaw-webchat/settings") }
-        .getOrNull()
+      val settingsPayload = runCatching { apiGet("/api/openclaw-webchat/settings") }.getOrNull()
+      applyComposerCapabilities(settingsPayload?.get("projectInfo"))
+      settingsPayload
         ?.get("userProfile")
         .asObjectOrNull()
         ?.get("displayName")
@@ -465,6 +709,9 @@ class WebChatController(
     val currentAgentId = activeAgentId
     val activeContact = _agentContacts.value.firstOrNull { it.agentId == currentAgentId }
     _pendingRunCount.value = if (activeContact?.presence == "running") 1 else 0
+    if (_pendingRunCount.value == 0) {
+      clearStopState()
+    }
   }
 
   private fun scheduleHistoryPrefetch(contacts: List<AgentContactEntry>) {
@@ -543,6 +790,10 @@ class WebChatController(
     return requestJson(method = "POST", path = path, body = body)
   }
 
+  private suspend fun apiPatch(path: String, body: JsonObject): JsonObject {
+    return requestJson(method = "PATCH", path = path, body = body)
+  }
+
   private suspend fun requestJson(method: String, path: String, body: JsonObject?): JsonObject =
     withContext(Dispatchers.IO) {
       val candidateUrls = candidateBaseUrls()
@@ -553,8 +804,13 @@ class WebChatController(
             Request.Builder()
               .url(baseUrl.trimEnd('/') + path)
               .header("accept", "application/json")
-          if (method == "POST") {
-            requestBuilder.post((body?.toString() ?: "{}").toRequestBody(WEBCHAT_JSON_MEDIA_TYPE))
+          if (method == "POST" || method == "PATCH") {
+            val requestBody = (body?.toString() ?: "{}").toRequestBody(WEBCHAT_JSON_MEDIA_TYPE)
+            if (method == "PATCH") {
+              requestBuilder.patch(requestBody)
+            } else {
+              requestBuilder.post(requestBody)
+            }
             requestBuilder.header("content-type", "application/json")
           }
           client.newCall(requestBuilder.build()).execute().use { response ->
@@ -723,12 +979,7 @@ class WebChatController(
   private fun encodePath(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8.toString())
 
   private fun normalizeThinkingLevel(level: String): String {
-    return when (level.trim().lowercase(Locale.US)) {
-      "low" -> "low"
-      "medium" -> "medium"
-      "high" -> "high"
-      else -> "off"
-    }
+    return level.trim().lowercase(Locale.US).ifEmpty { "off" }
   }
 
   private fun resolveAgentIdForSessionKey(sessionKey: String): String? {
@@ -743,6 +994,67 @@ class WebChatController(
     if (normalized.isEmpty()) return ""
     return _agentContacts.value.firstOrNull { it.agentId == normalized }?.directSessionKey?.trim().orEmpty()
       .ifBlank { buildFallbackSessionKey(normalized) }
+  }
+
+  private fun applyThinkingPickerPayload(payload: JsonObject, sessionKey: String) {
+    _thinkingLevel.value = payload["currentLevel"].stringOrNull()?.trim().orEmpty().ifBlank { "off" }
+    _thinkingOptions.value =
+      (payload["options"] as? JsonArray).orEmpty().mapNotNull { option ->
+        val obj = option.asObjectOrNull() ?: return@mapNotNull null
+        val value = obj["value"].stringOrNull()?.trim().orEmpty()
+        if (value.isEmpty()) return@mapNotNull null
+        ChatThinkingOption(
+          value = value,
+          label = obj["label"].stringOrNull()?.trim().takeUnless { it.isNullOrEmpty() } ?: value,
+        )
+      }
+    _thinkingModelLabel.value = payload["modelLabel"].stringOrNull()?.trim()
+    _thinkingOptionsError.value = null
+    thinkingOptionsSessionKey = sessionKey
+  }
+
+  private fun applyModelPickerPayload(payload: JsonObject, sessionKey: String) {
+    _currentModel.value = parseModelOption(payload["current"])
+    _modelOptions.value = (payload["models"] as? JsonArray).orEmpty().mapNotNull(::parseModelOption)
+    _modelOptionsError.value = null
+    modelOptionsSessionKey = sessionKey
+  }
+
+  private fun parseModelOption(element: JsonElement?): ChatModelOption? {
+    val obj = element.asObjectOrNull() ?: return null
+    val model = obj["model"].stringOrNull()?.trim().orEmpty()
+    if (model.isEmpty()) return null
+    val provider = obj["provider"].stringOrNull()?.trim().orEmpty().ifEmpty { "default" }
+    val label = obj["label"].stringOrNull()?.trim().takeUnless { it.isNullOrEmpty() } ?: "$provider/$model"
+    return ChatModelOption(
+      provider = provider,
+      model = model,
+      label = label,
+      available =
+        when (obj["available"]) {
+          null -> true
+          else -> obj["available"].booleanOrFalse()
+        },
+    )
+  }
+
+  private fun clearModelPickerState() {
+    _currentModel.value = null
+    _modelOptions.value = emptyList()
+    _modelOptionsLoading.value = false
+    _modelOptionsError.value = null
+    _modelSwitchingLabel.value = null
+    modelOptionsSessionKey = null
+  }
+
+  private fun clearThinkingPickerState() {
+    _thinkingLevel.value = "off"
+    _thinkingOptionsLoading.value = false
+    _thinkingOptionsError.value = null
+    _thinkingModelLabel.value = null
+    _thinkingSwitchingLevel.value = null
+    _thinkingOptions.value = emptyList()
+    thinkingOptionsSessionKey = null
   }
 
   private fun beginNavigation(targetSessionKey: String, optimisticAgentId: String?): Long {
@@ -760,6 +1072,9 @@ class WebChatController(
       _errorText.value = null
       _streamingAssistantText.value = null
       _pendingToolCalls.value = emptyList()
+      clearStopState()
+      clearModelPickerState()
+      clearThinkingPickerState()
       _pendingRunCount.value = 0
     }
     return navigationVersion.incrementAndGet()
@@ -776,6 +1091,55 @@ class WebChatController(
       sessionHistoryCache[buildFallbackSessionKey(normalizedAgentId)] = cachedMessages
     }
     historyCacheStore.save(sessionHistoryCache)
+  }
+
+  private fun isStopRequestedFor(sessionKey: String): Boolean = stopRequestedSessionKey == sessionKey
+
+  private fun clearStopState(sessionKey: String? = null) {
+    if (sessionKey == null || stopRequestedSessionKey == sessionKey) {
+      stopRequestedSessionKey = null
+    }
+    _stopInFlight.value = false
+  }
+
+  private fun applyComposerCapabilities(projectInfo: JsonElement?) {
+    val version = projectInfo.asObjectOrNull()?.get("version").stringOrNull()
+    val supported = isVersionAtLeast(version, WEBCHAT_COMPOSER_CONTROL_MIN_VERSION)
+    _abortSupported.value = supported
+    _thinkingSupported.value = supported
+    _modelSupported.value = supported
+    if (!supported) {
+      clearStopState()
+      clearThinkingPickerState()
+      clearModelPickerState()
+    }
+  }
+
+  private fun isVersionAtLeast(version: String?, minimum: String): Boolean {
+    val actualParts = parseVersionParts(version) ?: return false
+    val minimumParts = parseVersionParts(minimum) ?: return false
+    for (index in 0 until maxOf(actualParts.size, minimumParts.size)) {
+      val actual = actualParts.getOrElse(index) { 0 }
+      val required = minimumParts.getOrElse(index) { 0 }
+      if (actual != required) {
+        return actual > required
+      }
+    }
+    return true
+  }
+
+  private fun parseVersionParts(version: String?): List<Int>? {
+    val normalized =
+      version
+        ?.trim()
+        ?.removePrefix("v")
+        ?.substringBefore('-')
+        ?.substringBefore('+')
+        ?.takeIf { it.isNotEmpty() }
+        ?: return null
+    val parts = normalized.split('.')
+    if (parts.isEmpty()) return null
+    return parts.map { it.toIntOrNull() ?: return null }
   }
 }
 
