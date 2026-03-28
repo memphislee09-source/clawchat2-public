@@ -2,6 +2,7 @@ package ai.openclaw.app.ui.chat
 
 import android.content.ContentResolver
 import android.net.Uri
+import android.provider.OpenableColumns
 import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -40,6 +41,7 @@ import ai.openclaw.app.ui.mobileDanger
 import ai.openclaw.app.ui.mobileDangerSoft
 import ai.openclaw.app.ui.mobileText
 import java.io.ByteArrayOutputStream
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -75,20 +77,22 @@ fun ChatSheetContent(viewModel: MainViewModel) {
   val focusManager = LocalFocusManager.current
   val keyboardController = LocalSoftwareKeyboardController.current
 
-  val attachments = remember { mutableStateListOf<PendingImageAttachment>() }
+  val attachments = remember { mutableStateListOf<PendingAttachment>() }
   val assistantLabel =
     agentContacts.firstOrNull { it.directSessionKey == chatSessionKey }?.let { contact ->
       formatAgentContactTitle(displayName = contact.displayName, emoji = contact.emoji)
     } ?: "assistant"
 
-  val pickImages =
-    rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
+  val pickAttachments =
+    rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
       if (uris.isNullOrEmpty()) return@rememberLauncherForActivityResult
+      val slotsLeft = (MAX_PENDING_ATTACHMENTS - attachments.size).coerceAtLeast(0)
+      if (slotsLeft == 0) return@rememberLauncherForActivityResult
       scope.launch(Dispatchers.IO) {
         val next =
-          uris.take(8).mapNotNull { uri ->
+          uris.take(slotsLeft).mapNotNull { uri ->
             try {
-              loadImageAttachment(resolver, uri)
+              loadAttachment(resolver, uri)
             } catch (_: Throwable) {
               null
             }
@@ -135,7 +139,7 @@ fun ChatSheetContent(viewModel: MainViewModel) {
         abortSupported = abortSupported,
         readoutEnabled = speakerEnabled,
         attachments = attachments,
-        onPickImages = { pickImages.launch("image/*") },
+        onPickAttachments = { pickAttachments.launch(arrayOf("*/*")) },
         onRemoveAttachment = { id -> attachments.removeAll { it.id == id } },
         onSetThinkingLevel = { level -> viewModel.setChatThinkingLevel(level) },
         onToggleReadout = { enabled -> viewModel.setSpeakerEnabled(enabled) },
@@ -148,7 +152,7 @@ fun ChatSheetContent(viewModel: MainViewModel) {
           val outgoing =
             attachments.map { att ->
               OutgoingAttachment(
-                type = "image",
+                type = att.type,
                 mimeType = att.mimeType,
                 fileName = att.fileName,
                 base64 = att.base64,
@@ -181,16 +185,21 @@ private fun ChatErrorRail(errorText: String) {
   }
 }
 
-data class PendingImageAttachment(
+private const val MAX_PENDING_ATTACHMENTS = 8
+
+data class PendingAttachment(
   val id: String,
+  val type: String,
   val fileName: String,
   val mimeType: String,
   val base64: String,
 )
 
-private suspend fun loadImageAttachment(resolver: ContentResolver, uri: Uri): PendingImageAttachment {
-  val mimeType = resolver.getType(uri) ?: "image/*"
-  val fileName = (uri.lastPathSegment ?: "image").substringAfterLast('/')
+private suspend fun loadAttachment(resolver: ContentResolver, uri: Uri): PendingAttachment {
+  val fileName = queryAttachmentFileName(resolver, uri)
+  val detectedMimeType = resolver.getType(uri)?.trim()?.ifEmpty { null }
+  val type = detectAttachmentType(mimeType = detectedMimeType, fileName = fileName)
+  val mimeType = detectedMimeType ?: defaultMimeTypeForAttachmentType(type)
   val bytes =
     withContext(Dispatchers.IO) {
       resolver.openInputStream(uri)?.use { input ->
@@ -201,10 +210,51 @@ private suspend fun loadImageAttachment(resolver: ContentResolver, uri: Uri): Pe
     }
   if (bytes.isEmpty()) throw IllegalStateException("empty attachment")
   val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
-  return PendingImageAttachment(
+  return PendingAttachment(
     id = uri.toString() + "#" + System.currentTimeMillis().toString(),
+    type = type,
     fileName = fileName,
     mimeType = mimeType,
     base64 = base64,
   )
 }
+
+private fun queryAttachmentFileName(resolver: ContentResolver, uri: Uri): String {
+  resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+    val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+    if (index >= 0 && cursor.moveToFirst()) {
+      cursor.getString(index)?.trim()?.ifEmpty { null }?.let { return it }
+    }
+  }
+  return (uri.lastPathSegment ?: "attachment").substringAfterLast('/')
+}
+
+private fun detectAttachmentType(mimeType: String?, fileName: String): String {
+  val normalizedMime = mimeType?.trim()?.lowercase(Locale.US).orEmpty()
+  val extension = fileName.substringAfterLast('.', "").trim().lowercase(Locale.US)
+
+  return when {
+    normalizedMime.startsWith("image/") || extension in imageExtensions -> "image"
+    normalizedMime.startsWith("audio/") || extension in audioExtensions -> "audio"
+    normalizedMime.startsWith("video/") || extension in videoExtensions -> "video"
+    else -> "file"
+  }
+}
+
+private fun defaultMimeTypeForAttachmentType(type: String): String {
+  return when (type) {
+    "image" -> "image/*"
+    "audio" -> "audio/*"
+    "video" -> "video/*"
+    else -> "application/octet-stream"
+  }
+}
+
+private val imageExtensions =
+  setOf("png", "jpg", "jpeg", "gif", "webp", "bmp", "svg")
+
+private val audioExtensions =
+  setOf("mp3", "wav", "m4a", "aac", "ogg", "opus", "flac", "webm")
+
+private val videoExtensions =
+  setOf("mp4", "mpeg", "mov", "webm", "mkv", "avi", "3gp")

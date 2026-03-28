@@ -4,7 +4,7 @@
 
 ClawChat2 is an unofficial Android fork derived from the official OpenClaw Android client in `openclaw/openclaw -> apps/android`.
 
-This fork focuses on one product goal: a simple, direct, chat-first way to talk with OpenClaw agents from Android, with stronger media receive/render support for image, audio, and video messages.
+This fork focuses on one product goal: a simple, direct, chat-first way to talk with OpenClaw agents from Android, with stronger media receive/render support and practical attachment upload for image, audio, video, and regular file messages.
 
 The short rationale for the fork is documented in [WHY_THIS_FORK.md](WHY_THIS_FORK.md).
 
@@ -28,6 +28,7 @@ Compared with the upstream Android client, this fork currently emphasizes:
 - continuous chat-message presentation with simplified spacing-first styling and synced user display name
 - optional chat reply readout with a lightweight speaker toggle in the composer action row
 - enhanced agent-to-client media handling
+- generic user attachment upload for images, audio, video, and regular files
 - practical Android playback stability improvements for fullscreen image/video viewing
 - streamed fullscreen video playback for large remote files
 - practical gateway access patterns including Tailscale-friendly usage
@@ -77,12 +78,13 @@ Important:
 
 ### Media Support
 
-ClawChat2 currently supports structured agent-sent media attachments:
+ClawChat2 currently supports structured agent-sent media attachments and user-originated generic attachment upload:
 
 - image receive and fullscreen viewing
 - audio receive and playback
 - video receive, preview, and fullscreen playback
 - streamed remote video playback without requiring a full pre-download
+- chat-side upload of images, audio, video, and regular files to `openclaw-webchat`
 
 Current local media contract in this fork prefers gateway-relative fields:
 
@@ -90,7 +92,7 @@ Current local media contract in this fork prefers gateway-relative fields:
 [
   { "type": "text", "text": "Optional caption" },
   {
-    "type": "image|audio|video",
+    "type": "image|audio|video|file",
     "mimeType": "real MIME type",
     "fileName": "original file name",
     "mediaPath": "/media/<token>",
@@ -106,7 +108,8 @@ Notes:
 
 - `mediaPath` + `mediaPort` are the preferred fields in this fork
 - `mediaUrl` is retained as a compatibility fallback
-- the current user-originated picker flow is still image-only; audio/video support in this fork is focused on agent-to-client delivery
+- the current user-originated picker flow now supports `image`, `audio`, `video`, and generic `file` uploads through the same `openclaw-webchat` upload path
+- generic files now appear in the transcript as file cards instead of being treated as unsupported attachments
 - fullscreen video playback now prefers streamed playback via Android Media3/ExoPlayer, with local-file fallback only when needed
 
 Operational guides:
@@ -135,6 +138,7 @@ Current local verification:
 - the current `codex/upstream-bridge-pass` workspace was rebuilt as `playDebug` and verified again on 2026-03-26 after Tailscale Serve recovery, manual TLS fallback, and Android pairing-scope reduction
 - a real Huawei Mate60 (`BRA-AL00`, Android 12 / SDK 31) completed Tailscale setup-code pairing successfully on 2026-03-26 after the route and pairing fixes
 - a real Huawei Mate60 (`BRA-AL00`, Android 12 / SDK 31) also verified chat reply readout successfully on 2026-03-28 after adding Android 11+ TTS package visibility and moving the readout toggle into the composer action row
+- a real Huawei Mate60 (`BRA-AL00`, Android 12 / SDK 31) also verified generic attachment upload successfully on 2026-03-28 by sending a Markdown file through the chat attachment button
 
 ### Releases
 
@@ -156,7 +160,7 @@ Current release guidance is documented in [RELEASING.md](RELEASING.md) and [RELE
 
 ClawChat2 是一个基于官方 OpenClaw Android 客户端 `openclaw/openclaw -> apps/android` 派生出来的非官方 Android 分叉项目。
 
-这个分叉主要围绕一个产品目标展开：在 Android 上以更简单、更直接、聊天优先的方式与 OpenClaw 的 agent 对话，同时增强图片、音频、视频消息的接收与渲染能力。
+这个分叉主要围绕一个产品目标展开：在 Android 上以更简单、更直接、聊天优先的方式与 OpenClaw 的 agent 对话，同时增强图片、音频、视频等消息的接收与渲染能力，并补上用户侧对常规文件附件的上传能力。
 
 关于为什么要做这个分叉的简要说明见 [WHY_THIS_FORK.md](WHY_THIS_FORK.md)。
 
@@ -176,6 +180,7 @@ ClawChat2 是一个基于官方 OpenClaw Android 客户端 `openclaw/openclaw ->
 - 更简化、聊天优先的导航方式
 - 支持可切换的应用主题模式与深色模式
 - 更强的 agent 到客户端媒体处理能力
+- 支持用户侧上传图片、音频、视频和普通文件给 agent
 - 更稳定的 Android 图片/视频全屏播放体验
 - 更贴近实际使用的网关接入方式，包括对 Tailscale 场景的友好支持
 
@@ -219,11 +224,12 @@ ClawChat2 是一个基于官方 OpenClaw Android 客户端 `openclaw/openclaw ->
 
 ### 媒体支持
 
-ClawChat2 当前支持 agent 发送的结构化媒体消息：
+ClawChat2 当前支持 agent 发送的结构化媒体消息，也支持用户从聊天页上传通用附件：
 
 - 图片接收与全屏查看
 - 音频接收与播放
 - 视频接收、预览与全屏播放
+- 聊天页上传图片、音频、视频和普通文件到 `openclaw-webchat`
 
 当前分叉中，本地媒体协议优先使用网关相对字段：
 
@@ -231,7 +237,7 @@ ClawChat2 当前支持 agent 发送的结构化媒体消息：
 [
   { "type": "text", "text": "Optional caption" },
   {
-    "type": "image|audio|video",
+    "type": "image|audio|video|file",
     "mimeType": "real MIME type",
     "fileName": "original file name",
     "mediaPath": "/media/<token>",
@@ -247,7 +253,8 @@ ClawChat2 当前支持 agent 发送的结构化媒体消息：
 
 - `mediaPath` + `mediaPort` 是本分叉当前优先使用的字段
 - `mediaUrl` 保留作为兼容性 fallback
-- 当前用户主动发送仍主要是图片选择；音频/视频增强主要面向 agent 到客户端的接收链路
+- 当前用户侧附件选择器已经支持 `image`、`audio`、`video` 和通用 `file`
+- 普通文件现在会在聊天记录中显示为文件卡片，而不是被当成不支持的附件
 - 视频全屏当前优先走 Android Media3/ExoPlayer 的流式播放，必要时再回退到本地文件路径
 
 ### 构建
@@ -268,6 +275,7 @@ adb shell am start -n ai.openclaw.app/.MainActivity
 当前本地验证结论：
 
 - 当前 `main` 工作区已于 2026-03-24 在本地 Android 15 模拟器 `clawchat2_api35` 上成功编译、安装并启动
+- 当前 `main` 工作区也已于 2026-03-28 在 Huawei Mate60（`BRA-AL00`，Android 12 / SDK 31）上完成通用附件上传验证，测试文件为 Markdown，验证结果通过
 
 操作文档：
 

@@ -8,6 +8,7 @@ internal enum class ChatAttachmentKind {
   Image,
   Audio,
   Video,
+  File,
   Unknown,
 }
 
@@ -45,6 +46,7 @@ internal fun classifyChatAttachment(type: String?, mimeType: String?): ChatAttac
     normalizedType == "image" || normalizedMime.startsWith("image/") -> ChatAttachmentKind.Image
     normalizedType == "audio" || normalizedMime.startsWith("audio/") -> ChatAttachmentKind.Audio
     normalizedType == "video" || normalizedMime.startsWith("video/") -> ChatAttachmentKind.Video
+    normalizedType == "file" -> ChatAttachmentKind.File
     else -> ChatAttachmentKind.Unknown
   }
 }
@@ -162,6 +164,7 @@ private fun defaultAttachmentName(kind: ChatAttachmentKind, mimeType: String?): 
     ChatAttachmentKind.Image -> "image"
     ChatAttachmentKind.Audio -> "audio"
     ChatAttachmentKind.Video -> "video"
+    ChatAttachmentKind.File -> "file"
     ChatAttachmentKind.Unknown -> mimeType ?: "attachment"
   }
 }

@@ -130,11 +130,65 @@ internal fun ChatMediaAttachment(descriptor: ChatAttachmentDescriptor) {
 
     ChatAttachmentKind.Audio -> ChatAudioAttachment(descriptor = descriptor)
     ChatAttachmentKind.Video -> ChatVideoAttachment(descriptor = descriptor)
+    ChatAttachmentKind.File -> ChatFileAttachment(descriptor = descriptor)
     ChatAttachmentKind.Unknown ->
       ChatUnsupportedAttachmentCard(
         descriptor = descriptor,
         title = "Unsupported attachment",
         detail = descriptor.mimeType ?: "Unknown media type",
+        iconTint = mobileTextSecondary,
+      )
+  }
+}
+
+@Composable
+private fun ChatFileAttachment(descriptor: ChatAttachmentDescriptor) {
+  if (descriptor.base64 == null && descriptor.mediaUrl == null && descriptor.mediaPath == null) {
+    ChatUnsupportedAttachmentCard(
+      descriptor = descriptor,
+      title = "File unavailable",
+      detail = "Attachment content missing",
+      iconTint = mobileTextSecondary,
+    )
+    return
+  }
+
+  val fileState = rememberResolvedMediaFileState(descriptor = descriptor)
+  when {
+    fileState.loading ->
+      ChatLoadingAttachmentCard(
+        descriptor = descriptor,
+        title = "Loading file",
+        detail = descriptor.mimeType ?: "Fetching remote file",
+      )
+
+    fileState.file != null ->
+      ChatAttachmentCard(
+        descriptor = descriptor,
+        title = "File attachment",
+        subtitle = descriptor.mimeType ?: "Generic file",
+        leadingIcon = {
+          Icon(
+            imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
+            contentDescription = null,
+            tint = mobileAccent,
+            modifier = Modifier.size(20.dp),
+          )
+        },
+        action = {
+          Icon(
+            imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
+            contentDescription = null,
+            tint = mobileTextSecondary,
+          )
+        },
+      )
+
+    else ->
+      ChatUnsupportedAttachmentCard(
+        descriptor = descriptor,
+        title = "File unavailable",
+        detail = fileState.errorText ?: "Could not fetch file attachment",
         iconTint = mobileTextSecondary,
       )
   }
@@ -1068,6 +1122,7 @@ private fun ChatUnsupportedAttachmentCard(
             ChatAttachmentKind.Image -> Icons.Default.BrokenImage
             ChatAttachmentKind.Audio -> Icons.Default.Audiotrack
             ChatAttachmentKind.Video -> Icons.Default.Videocam
+            ChatAttachmentKind.File -> Icons.AutoMirrored.Filled.InsertDriveFile
             ChatAttachmentKind.Unknown -> Icons.AutoMirrored.Filled.InsertDriveFile
           },
         contentDescription = null,
@@ -1295,6 +1350,7 @@ private fun resolveAttachmentExtension(kind: ChatAttachmentKind, mimeType: Strin
         ChatAttachmentKind.Image -> "img"
         ChatAttachmentKind.Audio -> "audio"
         ChatAttachmentKind.Video -> "mp4"
+        ChatAttachmentKind.File -> "bin"
         ChatAttachmentKind.Unknown -> "bin"
       }
   }

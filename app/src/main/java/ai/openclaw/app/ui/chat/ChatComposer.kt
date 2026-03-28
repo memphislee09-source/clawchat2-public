@@ -19,8 +19,11 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Audiotrack
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -66,8 +69,8 @@ fun ChatComposer(
   pendingRunCount: Int,
   abortSupported: Boolean,
   readoutEnabled: Boolean,
-  attachments: List<PendingImageAttachment>,
-  onPickImages: () -> Unit,
+  attachments: List<PendingAttachment>,
+  onPickAttachments: () -> Unit,
   onRemoveAttachment: (id: String) -> Unit,
   onSetThinkingLevel: (level: String) -> Unit,
   onToggleReadout: (Boolean) -> Unit,
@@ -125,10 +128,10 @@ fun ChatComposer(
       FlatIconAction(
         modifier = Modifier.weight(1f),
         icon = Icons.Default.AttachFile,
-        contentDescription = "Add attachment",
+        contentDescription = "Add file attachment",
         enabled = true,
         tint = mobileTextSecondary,
-        onClick = onPickImages,
+        onClick = onPickAttachments,
       )
       FlatIconAction(
         modifier = Modifier.weight(1f),
@@ -266,7 +269,7 @@ private fun thinkingLabel(raw: String): String {
 
 @Composable
 private fun AttachmentsStrip(
-  attachments: List<PendingImageAttachment>,
+  attachments: List<PendingAttachment>,
   onRemoveAttachment: (id: String) -> Unit,
 ) {
   Row(
@@ -275,6 +278,7 @@ private fun AttachmentsStrip(
   ) {
     for (att in attachments) {
       AttachmentChip(
+        type = att.type,
         fileName = att.fileName,
         onRemove = { onRemoveAttachment(att.id) },
       )
@@ -283,7 +287,7 @@ private fun AttachmentsStrip(
 }
 
 @Composable
-private fun AttachmentChip(fileName: String, onRemove: () -> Unit) {
+private fun AttachmentChip(type: String, fileName: String, onRemove: () -> Unit) {
   Surface(
     shape = RoundedCornerShape(999.dp),
     color = mobileAccentSoft,
@@ -294,6 +298,18 @@ private fun AttachmentChip(fileName: String, onRemove: () -> Unit) {
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+      Icon(
+        imageVector =
+          when (type.trim().lowercase()) {
+            "image" -> Icons.Default.Image
+            "audio" -> Icons.Default.Audiotrack
+            "video" -> Icons.Default.Videocam
+            else -> Icons.Default.AttachFile
+          },
+        contentDescription = null,
+        tint = mobileTextSecondary,
+        modifier = Modifier.size(14.dp),
+      )
       Text(
         text = fileName,
         style = mobileCaption1,

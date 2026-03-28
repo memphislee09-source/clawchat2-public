@@ -18,12 +18,16 @@ class ChatAttachmentSupportTest {
   fun `classify falls back to mime type`() {
     assertEquals(ChatAttachmentKind.Image, classifyChatAttachment(type = null, mimeType = "image/png"))
     assertEquals(ChatAttachmentKind.Audio, classifyChatAttachment(type = "", mimeType = "audio/mpeg"))
-    assertEquals(ChatAttachmentKind.Video, classifyChatAttachment(type = "file", mimeType = "video/mp4"))
+    assertEquals(ChatAttachmentKind.Video, classifyChatAttachment(type = "", mimeType = "video/mp4"))
+  }
+
+  @Test
+  fun `classify generic file attachment`() {
+    assertEquals(ChatAttachmentKind.File, classifyChatAttachment(type = "file", mimeType = "application/pdf"))
   }
 
   @Test
   fun `classify unknown attachment`() {
-    assertEquals(ChatAttachmentKind.Unknown, classifyChatAttachment(type = "file", mimeType = "application/pdf"))
     assertEquals(ChatAttachmentKind.Unknown, classifyChatAttachment(type = null, mimeType = null))
   }
 

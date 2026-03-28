@@ -290,3 +290,25 @@
 - Verified the final staged diff excluded the repository-root screenshots, UI dumps, and temporary logs, which remain local-only debug artifacts.
 - Re-ran `./gradlew :app:compilePlayDebugKotlin` before publishing.
 - Pushed the final `main` update to `origin/main` as commit `6c299e7405` (`feat: add chat reply readout`).
+
+## General Attachment Upload Plan
+
+- [x] Confirm the current Android composer is still image-only.
+- [x] Compare Android-side upload assumptions with the current `claw-webchat` generic attachment contract.
+- [x] Expand the composer picker and pending-upload model beyond image-only behavior.
+- [x] Send generic file blocks through the existing WebChat upload path so agents can process them.
+- [x] Rebuild and verify the updated Android attachment flow.
+
+## General Attachment Upload Review
+
+- The Android composer attachment picker was still locked to `image/*` and always converted pending uploads into `OutgoingAttachment(type = "image", ...)`, even though `openclaw-webchat` now accepts `image`, `audio`, `video`, and generic `file` uploads through the same `/api/openclaw-webchat/uploads` endpoint.
+- `ChatSheetContent` now uses `ActivityResultContracts.OpenMultipleDocuments()` with `*/*`, resolves a display name from `OpenableColumns.DISPLAY_NAME`, classifies each selected URI as `image` / `audio` / `video` / `file`, and keeps the existing max-8 pending attachment cap.
+- The composer-side pending model is now generic instead of image-only, and the pending attachment strip shows a small type icon so users can tell images, audio, video, and regular files apart before sending.
+- The existing WebChat send path did not need protocol changes: `OutgoingAttachment` was already generic enough, so the Android side now simply passes the real attachment kind through to `WebChatController.uploadAttachment()`.
+- Chat attachment rendering now treats `type = "file"` as a first-class generic file card instead of surfacing it as `Unsupported attachment`, which keeps sent and received file messages readable inside the thread.
+- Fresh verification completed on 2026-03-28 with:
+- `./gradlew :app:testPlayDebugUnitTest --tests ai.openclaw.app.ui.chat.ChatAttachmentSupportTest`
+- `./gradlew :app:compilePlayDebugKotlin`
+- `./gradlew :app:assemblePlayDebug`
+- User-side manual verification also passed on 2026-03-28: a real Huawei Mate60 successfully uploaded a Markdown file through the chat attachment button, confirming the generic `file` path works end to end on device.
+- One verification caveat showed up during the first parallel Gradle run: Kotlin incremental compilation briefly hit the known multi-daemon backup/classpath issue, but the serial rerun completed successfully and no code-level compile errors remained.
