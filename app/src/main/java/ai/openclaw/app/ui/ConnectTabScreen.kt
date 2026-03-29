@@ -585,9 +585,9 @@ private fun MethodChip(label: String, active: Boolean, onClick: () -> Unit) {
     colors =
       ButtonDefaults.buttonColors(
         containerColor = if (active) mobileAccent else mobileSurface,
-        contentColor = if (active) Color.White else mobileText,
+        contentColor = if (active) mobileCodeBg else mobileText,
       ),
-    border = BorderStroke(1.dp, if (active) Color(0xFF184DAF) else mobileBorderStrong),
+    border = BorderStroke(1.dp, if (active) mobileAccent.copy(alpha = 0.18f) else mobileBorderStrong.copy(alpha = 0.55f)),
   ) {
     Text(label, style = mobileCaption1.copy(fontWeight = FontWeight.Bold))
   }
@@ -616,10 +616,10 @@ private fun CommandBlock(command: String) {
     modifier = Modifier.fillMaxWidth(),
     shape = RoundedCornerShape(12.dp),
     color = mobileCodeBg,
-    border = BorderStroke(1.dp, Color(0xFF2B2E35)),
+    border = BorderStroke(1.dp, mobileBorderStrong.copy(alpha = 0.32f)),
   ) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-      Box(modifier = Modifier.width(3.dp).height(42.dp).background(Color(0xFF3FC97A)))
+      Box(modifier = Modifier.width(3.dp).height(42.dp).background(mobileAccent))
       Text(
         text = command,
         modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),

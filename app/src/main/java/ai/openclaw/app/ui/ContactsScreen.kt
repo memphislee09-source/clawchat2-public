@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -71,16 +71,17 @@ fun ContactsScreen(
       modifier =
         Modifier
           .fillMaxSize()
-          .background(mobileSurface)
-          .padding(vertical = 6.dp),
+          .background(mobileBackground),
+      contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+      verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       if (!errorText.isNullOrBlank()) {
         item {
           Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(6.dp),
-            color = mobileDangerSoft,
-            border = BorderStroke(1.dp, mobileDanger.copy(alpha = 0.35f)),
+            shape = RoundedCornerShape(18.dp),
+            color = mobileSurfaceStrong,
+            border = BorderStroke(1.dp, mobileDanger.copy(alpha = 0.20f)),
           ) {
             Column(
               modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 14.dp),
@@ -105,9 +106,9 @@ fun ContactsScreen(
         item {
           Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(6.dp),
-            color = mobileSurface,
-            border = BorderStroke(1.dp, mobileBorder),
+            shape = RoundedCornerShape(18.dp),
+            color = mobileSurfaceStrong,
+            border = BorderStroke(1.dp, mobileBorder.copy(alpha = 0.28f)),
           ) {
             Column(
               modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 14.dp),
@@ -127,12 +128,11 @@ fun ContactsScreen(
           }
         }
       } else {
-        itemsIndexed(items = agentContacts, key = { _, it -> it.agentId }) { index, entry ->
+        itemsIndexed(items = agentContacts, key = { _, it -> it.agentId }) { _, entry ->
           ContactListItem(
             entry = entry,
             active = entry.directSessionKey == chatSessionKey,
             unread = isContactUnread(entry = entry, lastReadAtMs = chatLastReadAtMs[entry.directSessionKey]),
-            showDivider = index < agentContacts.lastIndex,
             onClick = { onOpenChat(entry.agentId) },
           )
         }
@@ -146,17 +146,22 @@ private fun ContactListItem(
   entry: AgentContactEntry,
   active: Boolean,
   unread: Boolean,
-  showDivider: Boolean,
   onClick: () -> Unit,
 ) {
-  Column(modifier = Modifier.fillMaxWidth()) {
+  val cardColor = if (active) mobileSurfaceStrong else mobileSurface
+  val cardBorder = if (active) mobileAccent.copy(alpha = 0.22f) else mobileBorder.copy(alpha = 0.24f)
+  Surface(
+    modifier = Modifier.fillMaxWidth(),
+    shape = RoundedCornerShape(18.dp),
+    color = cardColor,
+    border = BorderStroke(1.dp, cardBorder),
+  ) {
     Row(
       modifier =
         Modifier
           .fillMaxWidth()
-          .background(if (active) mobileAccentSoft.copy(alpha = 0.55f) else Color.Transparent)
           .clickable(onClick = onClick)
-          .padding(horizontal = 12.dp, vertical = 11.dp),
+          .padding(horizontal = 12.dp, vertical = 12.dp),
       horizontalArrangement = Arrangement.spacedBy(10.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -185,8 +190,8 @@ private fun ContactListItem(
           if (active) {
             Surface(
               shape = RoundedCornerShape(999.dp),
-              color = mobileAccentSoft,
-              border = BorderStroke(1.dp, mobileAccent.copy(alpha = 0.18f)),
+              color = mobileAccentSoft.copy(alpha = 0.86f),
+              border = BorderStroke(1.dp, mobileAccent.copy(alpha = 0.14f)),
             ) {
               Text(
                 text = tr("Active", "当前"),
@@ -225,12 +230,6 @@ private fun ContactListItem(
           }
         }
       }
-    }
-    if (showDivider) {
-      HorizontalDivider(
-        modifier = Modifier.padding(start = 88.dp),
-        color = mobileBorder.copy(alpha = 0.28f),
-      )
     }
   }
 }

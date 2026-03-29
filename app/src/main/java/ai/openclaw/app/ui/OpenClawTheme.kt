@@ -14,19 +14,19 @@ import ai.openclaw.app.AppThemeMode
 private fun clawChatLightColorScheme() =
   lightColorScheme(
     primary = mobileAccent,
-    onPrimary = Color.White,
+    onPrimary = Color(0xFF072012),
     primaryContainer = mobileAccentSoft,
     onPrimaryContainer = mobileText,
     secondary = mobileSuccess,
-    onSecondary = Color.White,
+    onSecondary = Color(0xFF071E18),
     secondaryContainer = mobileSuccessSoft,
     onSecondaryContainer = mobileText,
     tertiary = mobileWarning,
-    onTertiary = Color.White,
+    onTertiary = Color(0xFF081A22),
     tertiaryContainer = mobileWarningSoft,
     onTertiaryContainer = mobileText,
     error = mobileDanger,
-    onError = Color.White,
+    onError = Color(0xFF280808),
     errorContainer = mobileDangerSoft,
     onErrorContainer = mobileText,
     background = mobileBackground,
@@ -100,7 +100,7 @@ fun OpenClawTheme(
 
 @Composable
 fun overlayContainerColor(): Color {
-  return MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)
+  return MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.82f)
 }
 
 @Composable

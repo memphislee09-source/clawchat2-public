@@ -36,46 +36,46 @@ internal data class MobileUiPalette(
 
 private val mobileLightPalette =
   MobileUiPalette(
-    background = Color(0xFFF4F8F2),
+    background = Color(0xFFF7F8FB),
     surface = Color(0xFFFFFFFF),
-    surfaceStrong = Color(0xFFEAF3E7),
-    border = Color(0xFFD4E1D0),
-    borderStrong = Color(0xFFBFD0BC),
-    text = Color(0xFF182119),
-    textSecondary = Color(0xFF556358),
-    textTertiary = Color(0xFF8B978D),
-    accent = Color(0xFF49A25A),
-    accentSoft = Color(0xFFE6F4E8),
-    success = Color(0xFF2E8A51),
-    successSoft = Color(0xFFE8F6ED),
-    warning = Color(0xFFB67B28),
-    warningSoft = Color(0xFFFFF6E7),
-    danger = Color(0xFFBF5A5A),
-    dangerSoft = Color(0xFFFBECEC),
-    codeBg = Color(0xFF182119),
-    codeText = Color(0xFFEAF4EB),
+    surfaceStrong = Color(0xFFF1F4F8),
+    border = Color(0xFFE4E9F0),
+    borderStrong = Color(0xFFD6DDE7),
+    text = Color(0xFF2E3644),
+    textSecondary = Color(0xFF768297),
+    textTertiary = Color(0xFFA0A9B8),
+    accent = Color(0xFF67C979),
+    accentSoft = Color(0xFFDDF3E2),
+    success = Color(0xFF5CCB79),
+    successSoft = Color(0xFFD9F3E0),
+    warning = Color(0xFF7ACEEA),
+    warningSoft = Color(0xFFE3F5FB),
+    danger = Color(0xFFEF6C66),
+    dangerSoft = Color(0xFFFFE3E1),
+    codeBg = Color(0xFF171D27),
+    codeText = Color(0xFFEAF0F7),
   )
 
 private val mobileDarkPalette =
   MobileUiPalette(
-    background = Color(0xFF111713),
-    surface = Color(0xFF182119),
-    surfaceStrong = Color(0xFF202B22),
-    border = Color(0xFF314036),
-    borderStrong = Color(0xFF435648),
-    text = Color(0xFFF1F7F0),
-    textSecondary = Color(0xFFB5C3B7),
-    textTertiary = Color(0xFF829186),
-    accent = Color(0xFF6CCB7C),
-    accentSoft = Color(0xFF1F3426),
-    success = Color(0xFF65C58A),
-    successSoft = Color(0xFF1C3326),
-    warning = Color(0xFFD8A24D),
-    warningSoft = Color(0xFF362819),
-    danger = Color(0xFFE18484),
-    dangerSoft = Color(0xFF3A2222),
-    codeBg = Color(0xFF0E1410),
-    codeText = Color(0xFFE8F2E9),
+    background = Color(0xFF0A111A),
+    surface = Color(0xFF111927),
+    surfaceStrong = Color(0xFF1A2231),
+    border = Color(0xFF232D3E),
+    borderStrong = Color(0xFF313E54),
+    text = Color(0xFFE2E8F2),
+    textSecondary = Color(0xFFA1ABBD),
+    textTertiary = Color(0xFF6E788C),
+    accent = Color(0xFF67CC79),
+    accentSoft = Color(0xFF223B2B),
+    success = Color(0xFF67CC79),
+    successSoft = Color(0xFF1E3928),
+    warning = Color(0xFF6BC7E8),
+    warningSoft = Color(0xFF1B3141),
+    danger = Color(0xFFFF736A),
+    dangerSoft = Color(0xFF3A2326),
+    codeBg = Color(0xFF0E1520),
+    codeText = Color(0xFFE8EDF7),
   )
 
 private object MobileUiPaletteState {
@@ -90,7 +90,7 @@ internal val mobileBackground: Color
   get() = MobileUiPaletteState.currentPalette.background
 
 internal val mobileBackgroundGradient: Brush
-  get() = Brush.verticalGradient(listOf(mobileBackground, mobileBackground))
+  get() = Brush.verticalGradient(listOf(mobileBackground, mobileSurfaceStrong))
 
 internal val mobileSurface: Color
   get() = MobileUiPaletteState.currentPalette.surface

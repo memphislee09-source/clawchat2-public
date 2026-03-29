@@ -555,3 +555,54 @@
 - Installed the fresh APK onto the connected real device `c2f22adf` with:
 - `adb -s c2f22adf install -r /Users/memphis/.openclaw/workspace-mira/clawchat2/app/build/outputs/apk/play/debug/openclaw-0.2.4-play-debug.apk`
 - Brought `ai.openclaw.app/.MainActivity` to the foreground after install so the user can test the new `N` control immediately.
+
+## Palette Alignment Pass Plan
+
+- [x] Map the provided Stitch palette and `DESIGN.md` surface hierarchy onto the existing Android theme tokens, keeping this pass focused on colors and surface layering rather than behavior changes.
+- [x] Update the shared mobile palette and Material color scheme so the app shifts from the current green-gray theme to the new deep navy, bright green, and cyan accent system.
+- [x] Apply any minimal screen-level visual adjustments needed for chat and contacts so the new palette reads correctly in containers, bubbles, composer chrome, and selection states.
+- [x] Rebuild, run the relevant verification commands, install the updated APK onto the connected real device `c2f22adf`, and capture review notes.
+
+## Palette Alignment Pass Review
+
+- Rebased the shared Android palette on the provided Stitch colors and `DESIGN.md` hierarchy: the app now uses a deep navy background/surface stack, brighter green primary accents, cyan tertiary accents, cooler slate text, and a subtle background gradient instead of the previous green-gray theme wash.
+- Updated the shared Material color scheme so primary/secondary/tertiary roles map cleanly onto the new palette without changing behavior. This keeps buttons, toggles, focus states, error surfaces, and overlay chrome visually aligned with the new editorial direction.
+- Tightened the most visible screen-level surfaces to match the new system: chat composer menus and input focus states now sit on darker layered containers, assistant/voice bubbles no longer fall back to white, empty/error cards read as tonal surfaces, and contacts now use card-like layered rows instead of divider-led separation.
+- Removed the most obvious old-theme hardcoded colors from `ConnectTabScreen`, so the connection method chips and command blocks no longer flash the previous blue/green palette inside the new navy theme.
+- Fresh verification completed on 2026-03-29 with:
+- `./gradlew :app:testPlayDebugUnitTest`
+- `./gradlew :app:compilePlayDebugKotlin`
+- `./gradlew :app:assemblePlayDebug`
+- Installed the fresh APK onto the connected real device `c2f22adf` with:
+- `adb -s c2f22adf install -r /Users/memphis/.openclaw/workspace-mira/clawchat2/app/build/outputs/apk/play/debug/openclaw-0.2.4-play-debug.apk`
+- Relaunched `ai.openclaw.app/.MainActivity` and confirmed the app process/activity came up on device with:
+- `adb -s c2f22adf shell am start -n ai.openclaw.app/.MainActivity`
+- `adb -s c2f22adf shell pidof ai.openclaw.app`
+- `adb -s c2f22adf shell dumpsys activity activities | rg "mResumedActivity|topResumedActivity|ai.openclaw.app|MainActivity"`
+
+## Chat Screenshot Palette Alignment Plan
+
+- [x] Compare the newly provided light and dark chat screenshots against the current Android result and identify the remaining mismatches in bubble/background/composer color relationships.
+- [x] Refine the shared light and dark palette values so the light theme reads as near-white with soft gray assistant surfaces, and the dark theme reads as near-black with ink-blue assistant surfaces.
+- [x] Adjust chat bubble and composer colors so user messages feel like solid green reply blocks while assistant/system surfaces stay quieter and closer to the screenshots.
+- [x] Rebuild, reinstall on `c2f22adf`, and capture review notes for this screenshot-based palette pass.
+
+## Chat Screenshot Palette Alignment Review
+
+- Tightened the light theme toward the supplied mock: the chat background now reads as near-white instead of cool tinted gray, assistant surfaces moved to a softer neutral-gray container, and metadata/secondary text shifted to calmer blue-gray values.
+- Tightened the dark theme toward the supplied mock: the base background is now closer to near-black navy, assistant containers sit on a deeper ink-blue layer, and the supporting border/text values are less bright so the green reply bubbles remain the visual focus.
+- Chat reply bubbles now match the references more closely: user messages use a solid green fill with dark text/metadata instead of the previous pale-green card treatment, while assistant/system bubbles keep quieter tonal surfaces with much softer borders.
+- The composer input now sits on the same stronger container layer in both focused and unfocused states, which makes the bottom composer read more like the dark reference screenshot instead of a brighter standalone text field.
+- Synced the same user-bubble color treatment into `VoiceTabScreen` so chat-adjacent conversation UI does not fall back to the previous pale-green style after this screenshot pass.
+- Fresh verification completed on 2026-03-29 with:
+- `./gradlew :app:testPlayDebugUnitTest`
+- `./gradlew :app:compilePlayDebugKotlin`
+- `./gradlew :app:assemblePlayDebug`
+- Installed the fresh APK onto the connected real device `c2f22adf` with:
+- `adb -s c2f22adf install -r /Users/memphis/.openclaw/workspace-mira/clawchat2/app/build/outputs/apk/play/debug/openclaw-0.2.4-play-debug.apk`
+- Relaunched and verified the app on device with:
+- `adb -s c2f22adf shell am start -n ai.openclaw.app/.MainActivity`
+- `adb -s c2f22adf shell monkey -p ai.openclaw.app -c android.intent.category.LAUNCHER 1`
+- `adb -s c2f22adf shell pidof ai.openclaw.app`
+- `adb -s c2f22adf shell dumpsys activity activities | rg "mResumedActivity|topResumedActivity|ai.openclaw.app|MainActivity"`
+- Follow-up tweak on 2026-03-29: user-bubble text was switched from white to dark text in both light and dark mode, and the same dark-text treatment was synced to `VoiceTabScreen`. Rebuilt `playDebug`, reinstalled on `c2f22adf`, and reverified foreground launch after the tweak.
