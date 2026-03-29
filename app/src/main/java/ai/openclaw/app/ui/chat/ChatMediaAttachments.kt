@@ -17,6 +17,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -90,6 +91,7 @@ import ai.openclaw.app.ui.mobileCodeBg
 import ai.openclaw.app.ui.mobileSurface
 import ai.openclaw.app.ui.mobileText
 import ai.openclaw.app.ui.mobileTextSecondary
+import ai.openclaw.app.ui.tr
 import java.io.File
 import java.io.FileOutputStream
 import java.security.MessageDigest
@@ -134,8 +136,8 @@ internal fun ChatMediaAttachment(descriptor: ChatAttachmentDescriptor) {
     ChatAttachmentKind.Unknown ->
       ChatUnsupportedAttachmentCard(
         descriptor = descriptor,
-        title = "Unsupported attachment",
-        detail = descriptor.mimeType ?: "Unknown media type",
+        title = tr("Unsupported attachment", "暂不支持的附件"),
+        detail = descriptor.mimeType ?: tr("Unknown media type", "未知媒体类型"),
         iconTint = mobileTextSecondary,
       )
   }
@@ -146,8 +148,8 @@ private fun ChatFileAttachment(descriptor: ChatAttachmentDescriptor) {
   if (descriptor.base64 == null && descriptor.mediaUrl == null && descriptor.mediaPath == null) {
     ChatUnsupportedAttachmentCard(
       descriptor = descriptor,
-      title = "File unavailable",
-      detail = "Attachment content missing",
+      title = tr("File unavailable", "文件不可用"),
+      detail = tr("Attachment content is missing", "附件内容缺失"),
       iconTint = mobileTextSecondary,
     )
     return
@@ -158,15 +160,15 @@ private fun ChatFileAttachment(descriptor: ChatAttachmentDescriptor) {
     fileState.loading ->
       ChatLoadingAttachmentCard(
         descriptor = descriptor,
-        title = "Loading file",
-        detail = descriptor.mimeType ?: "Fetching remote file",
+        title = tr("Loading file", "正在加载文件"),
+        detail = descriptor.mimeType ?: tr("Fetching remote file", "正在获取远程文件"),
       )
 
     fileState.file != null ->
       ChatAttachmentCard(
         descriptor = descriptor,
-        title = "File attachment",
-        subtitle = descriptor.mimeType ?: "Generic file",
+        title = tr("File attachment", "文件附件"),
+        subtitle = descriptor.mimeType ?: tr("Generic file", "通用文件"),
         leadingIcon = {
           Icon(
             imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
@@ -187,8 +189,8 @@ private fun ChatFileAttachment(descriptor: ChatAttachmentDescriptor) {
     else ->
       ChatUnsupportedAttachmentCard(
         descriptor = descriptor,
-        title = "File unavailable",
-        detail = fileState.errorText ?: "Could not fetch file attachment",
+        title = tr("File unavailable", "文件不可用"),
+        detail = fileState.errorText ?: tr("Could not fetch file attachment", "无法获取该文件附件"),
         iconTint = mobileTextSecondary,
       )
   }
@@ -222,15 +224,15 @@ private fun ChatImageAttachment(descriptor: ChatAttachmentDescriptor) {
         fileState.loading ->
           ChatLoadingAttachmentCard(
             descriptor = descriptor,
-            title = "Loading image",
-            detail = descriptor.mimeType ?: "Fetching remote media",
+            title = tr("Loading image", "正在加载图片"),
+            detail = descriptor.mimeType ?: tr("Fetching remote media", "正在获取远程媒体"),
           )
 
         else ->
           ChatUnsupportedAttachmentCard(
             descriptor = descriptor,
-            title = "Image unavailable",
-            detail = fileState.errorText ?: "Could not fetch image attachment",
+            title = tr("Image unavailable", "图片不可用"),
+            detail = fileState.errorText ?: tr("Could not fetch image attachment", "无法获取该图片附件"),
             iconTint = mobileTextSecondary,
           )
       }
@@ -239,8 +241,8 @@ private fun ChatImageAttachment(descriptor: ChatAttachmentDescriptor) {
     else -> {
       ChatUnsupportedAttachmentCard(
         descriptor = descriptor,
-        title = "Image unavailable",
-        detail = "Attachment content missing",
+        title = tr("Image unavailable", "图片不可用"),
+        detail = tr("Attachment content is missing", "附件内容缺失"),
         iconTint = mobileTextSecondary,
       )
     }
@@ -263,8 +265,8 @@ private fun ChatAudioAttachment(descriptor: ChatAttachmentDescriptor) {
   if (descriptor.base64 == null && descriptor.mediaUrl == null && descriptor.mediaPath == null) {
     ChatUnsupportedAttachmentCard(
       descriptor = descriptor,
-      title = "Audio unavailable",
-      detail = "Attachment content missing",
+      title = tr("Audio unavailable", "音频不可用"),
+      detail = tr("Attachment content is missing", "附件内容缺失"),
       iconTint = mobileTextSecondary,
     )
     return
@@ -275,14 +277,14 @@ private fun ChatAudioAttachment(descriptor: ChatAttachmentDescriptor) {
     if (fileState.loading) {
       ChatLoadingAttachmentCard(
         descriptor = descriptor,
-        title = "Loading audio",
-        detail = descriptor.mimeType ?: "Fetching remote media",
+        title = tr("Loading audio", "正在加载音频"),
+        detail = descriptor.mimeType ?: tr("Fetching remote media", "正在获取远程媒体"),
       )
     } else {
       ChatUnsupportedAttachmentCard(
         descriptor = descriptor,
-        title = "Audio unavailable",
-        detail = fileState.errorText ?: "Could not decode audio attachment",
+        title = tr("Audio unavailable", "音频不可用"),
+        detail = fileState.errorText ?: tr("Could not decode audio attachment", "无法解析该音频附件"),
         iconTint = mobileTextSecondary,
       )
     }
@@ -297,6 +299,7 @@ private fun ChatAudioAttachment(descriptor: ChatAttachmentDescriptor) {
   var durationMs by remember(file.absolutePath) { mutableStateOf<Long?>(null) }
   var positionMs by remember(file.absolutePath) { mutableStateOf(0L) }
   var errorText by remember(file.absolutePath) { mutableStateOf<String?>(null) }
+  val playbackFailedText = tr("Playback failed", "播放失败")
 
   DisposableEffect(file.absolutePath) {
     onDispose {
@@ -317,13 +320,13 @@ private fun ChatAudioAttachment(descriptor: ChatAttachmentDescriptor) {
 
   ChatAttachmentCard(
     descriptor = descriptor,
-    title = "Audio",
+    title = tr("Audio", "音频"),
     subtitle =
       listOfNotNull(
         descriptor.mimeType,
         durationMs?.takeIf { it > 0L }?.let(::formatMediaDuration),
         errorText,
-      ).joinToString(" · ").ifBlank { "Tap to play" },
+      ).joinToString(" · ").ifBlank { tr("Tap to play", "点按播放") },
     leadingIcon = {
       Icon(
         imageVector = Icons.Default.Audiotrack,
@@ -367,7 +370,7 @@ private fun ChatAudioAttachment(descriptor: ChatAttachmentDescriptor) {
                 preparedPlayer.start()
                 isPlaying = true
               } catch (err: Throwable) {
-                errorText = err.message ?: "Playback failed"
+                errorText = err.message ?: playbackFailedText
                 isPlaying = false
               } finally {
                 isPreparing = false
@@ -381,14 +384,14 @@ private fun ChatAudioAttachment(descriptor: ChatAttachmentDescriptor) {
           isPlaying ->
             Icon(
               imageVector = Icons.Default.Pause,
-              contentDescription = "Pause audio",
+              contentDescription = tr("Pause audio", "暂停音频"),
               tint = mobileAccent,
             )
 
           else ->
             Icon(
               imageVector = Icons.Default.PlayArrow,
-              contentDescription = "Play audio",
+              contentDescription = tr("Play audio", "播放音频"),
               tint = mobileAccent,
             )
         }
@@ -428,8 +431,8 @@ private fun ChatVideoAttachment(descriptor: ChatAttachmentDescriptor) {
   if (descriptor.base64 == null && descriptor.mediaUrl == null && descriptor.mediaPath == null) {
     ChatUnsupportedAttachmentCard(
       descriptor = descriptor,
-      title = "Video unavailable",
-      detail = "Attachment content missing",
+      title = tr("Video unavailable", "视频不可用"),
+      detail = tr("Attachment content is missing", "附件内容缺失"),
       iconTint = mobileTextSecondary,
     )
     return
@@ -498,17 +501,17 @@ private fun ChatVideoAttachment(descriptor: ChatAttachmentDescriptor) {
 
   ChatAttachmentCard(
     descriptor = descriptor,
-    title = "Video",
+    title = tr("Video", "视频"),
     subtitle =
       listOfNotNull(
         descriptor.mimeType,
         previewState?.durationMs?.takeIf { it > 0L }?.let(::formatMediaDuration),
         when {
-          streamUrl != null -> "Tap to stream"
-          fallbackFileState?.loading == true -> "Preparing video"
+          streamUrl != null -> tr("Tap to stream", "点按串流播放")
+          fallbackFileState?.loading == true -> tr("Preparing video", "正在准备视频")
           else -> null
         },
-      ).joinToString(" · ").ifBlank { if (playbackSource != null) "Tap to play" else "Video unavailable" },
+      ).joinToString(" · ").ifBlank { if (playbackSource != null) tr("Tap to play", "点按播放") else tr("Video unavailable", "视频不可用") },
     leadingIcon = {
       Icon(
         imageVector = Icons.Default.Videocam,
@@ -521,7 +524,7 @@ private fun ChatVideoAttachment(descriptor: ChatAttachmentDescriptor) {
       IconButton(onClick = openFullscreenVideo) {
         Icon(
           imageVector = Icons.Default.PlayArrow,
-          contentDescription = "Play video",
+          contentDescription = tr("Play video", "播放视频"),
           tint = mobileAccent,
         )
       }
@@ -535,16 +538,16 @@ private fun ChatVideoAttachment(descriptor: ChatAttachmentDescriptor) {
         )
       } else if (streamUrl != null) {
         VideoPlaceholderTile(
-          message = "Tap to stream full screen",
+          message = tr("Tap to stream full screen", "点按全屏串流播放"),
           onClick = openFullscreenVideo,
         )
       } else if (previewState?.failed == true) {
-        Text("Preview unavailable", style = mobileCaption1, color = mobileTextSecondary)
+        Text(tr("Preview unavailable", "预览不可用"), style = mobileCaption1, color = mobileTextSecondary)
       } else if (fallbackFileState?.loading == true) {
-        Text("Preparing preview", style = mobileCaption1, color = mobileTextSecondary)
+        Text(tr("Preparing preview", "正在准备预览"), style = mobileCaption1, color = mobileTextSecondary)
       } else {
         Text(
-          fallbackFileState?.errorText ?: "Could not prepare video attachment",
+          fallbackFileState?.errorText ?: tr("Could not prepare video attachment", "无法准备该视频附件"),
           style = mobileCaption1,
           color = mobileTextSecondary,
         )
@@ -560,10 +563,10 @@ private fun ChatVideoAttachment(descriptor: ChatAttachmentDescriptor) {
       isPreparing = activePlaybackSource == null && fallbackFileState?.loading == true,
       statusText =
         when {
-          activePlaybackSource == null && fallbackFileState?.loading == true -> "Preparing video..."
+          activePlaybackSource == null && fallbackFileState?.loading == true -> tr("Preparing video…", "正在准备视频…")
           activePlaybackSource == null && fallbackFileState?.failed == true ->
-            fallbackFileState.errorText ?: "Could not prepare video attachment"
-          activePlaybackSource == null -> "Video unavailable"
+            fallbackFileState.errorText ?: tr("Could not prepare video attachment", "无法准备该视频附件")
+          activePlaybackSource == null -> tr("Video unavailable", "视频不可用")
           else -> null
         },
       onDismiss = {
@@ -644,20 +647,13 @@ private fun ChatFileImage(file: File, mimeType: String?, onClick: () -> Unit) {
   val image = imageState.image
 
   if (image != null) {
-    Surface(
-      shape = RoundedCornerShape(5.dp),
-      color = Color.Transparent,
-      modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-    ) {
-      Image(
-        bitmap = image,
-        contentDescription = mimeType ?: "attachment",
-        contentScale = ContentScale.Fit,
-        modifier = Modifier.fillMaxWidth(),
-      )
-    }
+    BubbleImage(
+      image = image,
+      contentDescription = mimeType ?: "attachment",
+      onClick = onClick,
+    )
   } else if (imageState.failed) {
-    Text("Unsupported attachment", style = mobileCaption1, color = mobileTextSecondary)
+    Text(tr("Unsupported attachment", "暂不支持的附件"), style = mobileCaption1, color = mobileTextSecondary)
   } else {
     ChatLoadingAttachmentCard(
       descriptor =
@@ -672,8 +668,8 @@ private fun ChatFileImage(file: File, mimeType: String?, onClick: () -> Unit) {
           mediaSha256 = null,
           sizeBytes = null,
         ),
-      title = "Loading image",
-      detail = mimeType ?: "Decoding image",
+      title = tr("Loading image", "正在加载图片"),
+      detail = mimeType ?: tr("Decoding image", "正在解析图片"),
     )
   }
 }
@@ -799,6 +795,9 @@ private fun FullscreenImageDialog(
               Modifier
                 .fillMaxSize()
                 .pointerInput(image) {
+                  detectTapGestures(onTap = { onDismiss() })
+                }
+                .pointerInput(image) {
                   detectTransformGestures { _, pan, zoom, _ ->
                     val nextScale = (scale * zoom).coerceIn(1f, 4f)
                     if (nextScale <= 1f) {
@@ -820,7 +819,7 @@ private fun FullscreenImageDialog(
           )
         } else if (failed) {
           Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Image unavailable", style = mobileCallout, color = Color.White)
+            Text(tr("Image unavailable", "图片不可用"), style = mobileCallout, color = Color.White)
           }
         } else {
           Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -842,7 +841,7 @@ private fun FullscreenImageDialog(
               overflow = TextOverflow.Ellipsis,
             )
             Text(
-              text = mimeType ?: "image",
+              text = mimeType ?: tr("image", "图片"),
               style = mobileCaption1,
               color = Color.White.copy(alpha = 0.72f),
               maxLines = 1,
@@ -852,7 +851,7 @@ private fun FullscreenImageDialog(
           IconButton(onClick = onDismiss) {
             Icon(
               imageVector = Icons.Default.Close,
-              contentDescription = "Close image",
+              contentDescription = tr("Close image", "关闭图片"),
               tint = Color.White,
             )
           }
@@ -873,6 +872,7 @@ private fun FullscreenVideoDialog(
 ) {
   ApplyRequestedOrientation(preferredOrientation = preferredOrientation)
   val context = LocalContext.current
+  val playbackErrorText = tr("Playback error", "播放错误")
   var playerStatusText by remember(playbackSource) { mutableStateOf<String?>(null) }
   var playerReady by remember(playbackSource) { mutableStateOf(false) }
   var playerBuffering by remember(playbackSource) { mutableStateOf(false) }
@@ -908,7 +908,7 @@ private fun FullscreenVideoDialog(
 
           override fun onPlayerError(error: PlaybackException) {
             playerBuffering = false
-            playerStatusText = error.localizedMessage ?: "Playback error"
+            playerStatusText = error.localizedMessage ?: playbackErrorText
           }
         }
       player.addListener(listener)
@@ -1048,7 +1048,7 @@ private fun FullscreenVideoDialog(
             IconButton(onClick = onDismiss) {
               Icon(
                 imageVector = Icons.Default.Close,
-                contentDescription = "Close video",
+                contentDescription = tr("Close video", "关闭视频"),
                 tint = Color.White,
               )
             }

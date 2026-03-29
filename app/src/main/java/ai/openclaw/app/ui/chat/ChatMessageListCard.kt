@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,6 +31,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import ai.openclaw.app.chat.ChatMessage
 import ai.openclaw.app.chat.ChatPendingToolCall
+import ai.openclaw.app.ui.mobileAccent
 import ai.openclaw.app.ui.mobileBackground
 import ai.openclaw.app.ui.mobileBorder
 import ai.openclaw.app.ui.mobileCallout
@@ -37,6 +39,7 @@ import ai.openclaw.app.ui.mobileHeadline
 import ai.openclaw.app.ui.mobileSurface
 import ai.openclaw.app.ui.mobileText
 import ai.openclaw.app.ui.mobileTextSecondary
+import ai.openclaw.app.ui.tr
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
@@ -72,6 +75,7 @@ fun ChatMessageListCard(
   assistantLabel: String = "assistant",
   userLabel: String = "我",
   onPullDown: () -> Unit = {},
+  onRetryUnavailable: (() -> Unit)? = null,
   modifier: Modifier = Modifier,
 ) {
   val listState = rememberLazyListState()
@@ -139,7 +143,7 @@ fun ChatMessageListCard(
           .nestedScroll(dismissImeOnPullDown),
       state = listState,
       verticalArrangement = Arrangement.spacedBy(10.dp),
-      contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 8.dp),
+      contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 8.dp),
     ) {
       itemsIndexed(items = timelineEntries, key = { _, entry -> entry.key }) { index, entry ->
         when (entry) {
@@ -156,7 +160,7 @@ fun ChatMessageListCard(
     }
 
     if (messages.isEmpty() && pendingRunCount == 0 && pendingToolCalls.isEmpty() && streamingAssistantText.isNullOrBlank()) {
-      EmptyChatHint(modifier = Modifier.align(Alignment.Center), healthOk = healthOk)
+      EmptyChatHint(modifier = Modifier.align(Alignment.Center), healthOk = healthOk, onRetryUnavailable = onRetryUnavailable)
     }
   }
 }
@@ -184,28 +188,33 @@ private suspend fun LazyListState.settleConversationBottom() {
 }
 
 @Composable
-private fun EmptyChatHint(modifier: Modifier = Modifier, healthOk: Boolean) {
+private fun EmptyChatHint(modifier: Modifier = Modifier, healthOk: Boolean, onRetryUnavailable: (() -> Unit)?) {
   Surface(
     modifier = modifier.fillMaxWidth(),
-    shape = RoundedCornerShape(6.dp),
+    shape = RoundedCornerShape(16.dp),
     color = mobileSurface,
     border = androidx.compose.foundation.BorderStroke(1.dp, mobileBorder),
   ) {
     androidx.compose.foundation.layout.Column(
-      modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
-      verticalArrangement = Arrangement.spacedBy(6.dp),
+      modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
+      verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-      Text("No messages yet", style = mobileHeadline, color = mobileText)
+      Text(tr("No messages yet", "还没有消息"), style = mobileHeadline, color = mobileText)
       Text(
         text =
           if (healthOk) {
-            "Send the first prompt to start this session."
+            tr("Send a message or add an attachment to start this conversation.", "发送一条消息或添加附件，开始这段对话。")
           } else {
-            "Connect gateway first, then return to chat."
+            tr("Chat is temporarily unavailable. Check the gateway connection, then try again.", "聊天暂时不可用。检查网关连接后再试。")
           },
         style = mobileCallout,
         color = mobileTextSecondary,
       )
+      if (!healthOk && onRetryUnavailable != null) {
+        TextButton(onClick = onRetryUnavailable) {
+          Text(tr("Retry", "重试"), color = mobileAccent, style = mobileCallout)
+        }
+      }
     }
   }
 }

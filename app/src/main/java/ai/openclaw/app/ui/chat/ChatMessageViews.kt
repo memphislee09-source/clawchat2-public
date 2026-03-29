@@ -11,11 +11,14 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -26,9 +29,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -42,6 +47,7 @@ import ai.openclaw.app.chat.formatAgentContactTitle
 import ai.openclaw.app.tools.ToolDisplayRegistry
 import ai.openclaw.app.ui.mobileAccent
 import ai.openclaw.app.ui.mobileAccentSoft
+import ai.openclaw.app.ui.mobileBorder
 import ai.openclaw.app.ui.mobileBorderStrong
 import ai.openclaw.app.ui.mobileCallout
 import ai.openclaw.app.ui.mobileCaption1
@@ -54,7 +60,9 @@ import ai.openclaw.app.ui.mobileText
 import ai.openclaw.app.ui.mobileTextSecondary
 import ai.openclaw.app.ui.mobileWarning
 import ai.openclaw.app.ui.mobileWarningSoft
+import ai.openclaw.app.ui.tr
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -62,6 +70,8 @@ import java.util.Locale
 private data class ChatBubbleStyle(
   val containerColor: Color,
   val roleColor: Color,
+  val borderColor: Color,
+  val textColor: Color,
 )
 
 @Composable
@@ -89,7 +99,7 @@ fun ChatMessageBubble(message: ChatMessage, assistantLabel: String = "assistant"
     roleLabel = roleLabel(role = role, assistantLabel = assistantLabel, userLabel = userLabel),
     timestampLabel = formatBubbleTimestamp(message.timestampMs),
   ) {
-    ChatMessageBody(content = displayableContent, textColor = mobileText)
+    ChatMessageBody(content = displayableContent, textColor = style.textColor)
   }
 }
 
@@ -103,34 +113,44 @@ private fun ChatBubbleContainer(
 ) {
   Row(
     modifier = modifier.fillMaxWidth(),
-    horizontalArrangement = Arrangement.End,
+    horizontalArrangement = Arrangement.Start,
   ) {
     Surface(
-      shape = RoundedCornerShape(6.dp),
+      shape = RoundedCornerShape(14.dp),
       color = style.containerColor,
       tonalElevation = 0.dp,
       shadowElevation = 0.dp,
+      border = BorderStroke(1.dp, style.borderColor),
       modifier = Modifier.fillMaxWidth(),
     ) {
       Column(
-        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.Start,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp),
       ) {
-        Text(
-          text =
-            if (timestampLabel.isNullOrBlank()) {
-              roleLabel
-            } else {
-              "$roleLabel  $timestampLabel"
-            },
-          modifier = Modifier.fillMaxWidth(),
-          style = mobileCaption2.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp),
-          color = style.roleColor,
-          textAlign = TextAlign.Start,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-        )
+        Row(
+          modifier = Modifier.padding(start = 11.dp, end = 11.dp, top = 9.dp),
+          horizontalArrangement = Arrangement.spacedBy(6.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Text(
+            text = roleLabel,
+            style = mobileCaption2.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp),
+            color = style.roleColor,
+            textAlign = TextAlign.Start,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+          )
+          if (!timestampLabel.isNullOrBlank()) {
+            Text(
+              text = timestampLabel,
+              style = mobileCaption2,
+              color = style.roleColor.copy(alpha = 0.78f),
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+            )
+          }
+        }
         content()
       }
     }
@@ -144,11 +164,19 @@ private fun ChatMessageBody(content: List<ChatMessageContent>, textColor: Color)
     horizontalAlignment = Alignment.Start,
     verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
-    for (part in content) {
+    content.forEachIndexed { index, part ->
       when (part.type) {
         "text" -> {
-          val text = part.text ?: continue
-          Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+          val text = part.text ?: return@forEachIndexed
+          Box(
+            modifier =
+              Modifier.fillMaxWidth().padding(
+                start = 11.dp,
+                end = 11.dp,
+                bottom = if (index == content.lastIndex) 11.dp else 0.dp,
+              ),
+            contentAlignment = Alignment.CenterStart,
+          ) {
             SelectionContainer {
               ChatMarkdown(text = text, textColor = textColor)
             }
@@ -171,11 +199,12 @@ fun ChatTypingIndicatorBubble(assistantLabel: String = "assistant") {
     roleLabel = roleLabel(role = "assistant", assistantLabel = assistantLabel, userLabel = "我"),
   ) {
     Row(
+      modifier = Modifier.padding(horizontal = 11.dp, vertical = 10.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       DotPulse(color = mobileTextSecondary)
-      Text("处理中...", style = mobileCallout, color = mobileTextSecondary)
+      Text(tr("Working…", "处理中…"), style = mobileCallout, color = mobileTextSecondary)
     }
   }
 }
@@ -192,8 +221,11 @@ fun ChatPendingToolsBubble(toolCalls: List<ChatPendingToolCall>, assistantLabel:
     style = bubbleStyle("assistant"),
     roleLabel = "$assistantLabel · tools",
   ) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-      Text("Running tools...", style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold), color = mobileTextSecondary)
+    Column(
+      modifier = Modifier.padding(horizontal = 11.dp, vertical = 10.dp),
+      verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+      Text(tr("Running tools…", "正在调用工具…"), style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold), color = mobileTextSecondary)
       for (display in displays.take(6)) {
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
           Text(
@@ -214,7 +246,7 @@ fun ChatPendingToolsBubble(toolCalls: List<ChatPendingToolCall>, assistantLabel:
       }
       if (toolCalls.size > 6) {
         Text(
-          text = "... +${toolCalls.size - 6} more",
+          text = tr("… +${toolCalls.size - 6} more", "… 还有 ${toolCalls.size - 6} 项"),
           style = mobileCaption1,
           color = mobileTextSecondary,
         )
@@ -229,7 +261,9 @@ fun ChatStreamingAssistantBubble(text: String, assistantLabel: String = "assista
     style = bubbleStyle("assistant"),
     roleLabel = "$assistantLabel · live",
   ) {
-    ChatMarkdown(text = text, textColor = mobileText)
+    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 10.dp), contentAlignment = Alignment.CenterStart) {
+      ChatMarkdown(text = text, textColor = mobileText)
+    }
   }
 }
 
@@ -239,18 +273,24 @@ private fun bubbleStyle(role: String): ChatBubbleStyle {
       ChatBubbleStyle(
         containerColor = mobileAccentSoft,
         roleColor = mobileAccent,
+        borderColor = mobileAccent.copy(alpha = 0.36f),
+        textColor = mobileText,
       )
 
     "system" ->
       ChatBubbleStyle(
         containerColor = mobileWarningSoft,
         roleColor = mobileWarning,
+        borderColor = mobileWarning.copy(alpha = 0.34f),
+        textColor = mobileText,
       )
 
     else ->
       ChatBubbleStyle(
-        containerColor = mobileSurface,
+        containerColor = Color.White,
         roleColor = mobileTextSecondary,
+        borderColor = mobileBorder.copy(alpha = 0.95f),
+        textColor = mobileText,
       )
   }
 }
@@ -270,20 +310,47 @@ internal fun ChatBase64Image(base64: String, mimeType: String?, onClick: (() -> 
   val image = imageState.image
 
   if (image != null) {
+    BubbleImage(
+      image = image,
+      contentDescription = mimeType ?: "attachment",
+      onClick = onClick,
+    )
+  } else if (imageState.failed) {
+    Text(tr("Unsupported attachment", "暂不支持的附件"), style = mobileCaption1, color = mobileTextSecondary)
+  }
+}
+
+@Composable
+internal fun BubbleImage(
+  image: ImageBitmap,
+  contentDescription: String,
+  onClick: (() -> Unit)? = null,
+) {
+  val density = LocalDensity.current
+  val aspectRatio = remember(image) { image.width.toFloat() / image.height.coerceAtLeast(1).toFloat() }
+
+  BoxWithConstraints(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+    val maxDisplayWidth = maxWidth
+    val intrinsicWidth = remember(image, density) { with(density) { image.width.toDp() } }
+    val displayWidth = remember(intrinsicWidth, maxDisplayWidth) { minOf(intrinsicWidth, maxDisplayWidth) }
+    val imageModifier =
+      Modifier
+        .width(displayWidth)
+        .aspectRatio(aspectRatio)
+        .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+
     Surface(
       shape = RoundedCornerShape(5.dp),
       color = Color.Transparent,
-      modifier = if (onClick != null) Modifier.fillMaxWidth().clickable(onClick = onClick) else Modifier.fillMaxWidth(),
+      modifier = imageModifier,
     ) {
       Image(
         bitmap = image,
-        contentDescription = mimeType ?: "attachment",
+        contentDescription = contentDescription,
         contentScale = ContentScale.Fit,
         modifier = Modifier.fillMaxWidth(),
       )
     }
-  } else if (imageState.failed) {
-    Text("Unsupported attachment", style = mobileCaption1, color = mobileTextSecondary)
   }
 }
 
@@ -364,8 +431,12 @@ fun ChatCodeBlock(code: String, language: String?) {
 private fun formatBubbleTimestamp(timestampMs: Long?): String? {
   val value = timestampMs ?: return null
   return runCatching {
-    DateTimeFormatter.ofPattern("HH:mm")
-      .withZone(ZoneId.systemDefault())
-      .format(Instant.ofEpochMilli(value))
+    val zoneId = ZoneId.systemDefault()
+    val instant = Instant.ofEpochMilli(value).atZone(zoneId)
+    if (instant.toLocalDate() == LocalDate.now(zoneId)) {
+      DateTimeFormatter.ofPattern("HH:mm").format(instant)
+    } else {
+      DateTimeFormatter.ofPattern("yyyy.M.d HH:mm").format(instant)
+    }
   }.getOrNull()
 }

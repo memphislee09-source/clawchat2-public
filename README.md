@@ -28,6 +28,9 @@ Compared with the upstream Android client, this fork currently emphasizes:
 - continuous chat-message presentation with simplified spacing-first styling and synced user display name
 - optional chat reply readout with a lightweight speaker toggle in the composer action row
 - quick composer controls for send/stop, `/new`, model switch, and thinking switch directly under the input box
+- denser chat transcript layout with left-aligned bubbles, smaller symmetric side padding, and clearer color separation between user, agent, and system messages
+- edge-to-edge large chat images with fullscreen tap-to-open / tap-to-close viewing, while smaller images keep their natural size instead of being upscaled
+- borderless icon-only composer quick controls that keep attachment, new-chat, model, thinking, readout, and send/stop visible in one row
 - enhanced agent-to-client media handling
 - generic user attachment upload for images, audio, video, and regular files
 - practical Android playback stability improvements for fullscreen image/video viewing
@@ -141,6 +144,7 @@ Current local verification:
 - a real Huawei Mate60 (`BRA-AL00`, Android 12 / SDK 31) also verified chat reply readout successfully on 2026-03-28 after adding Android 11+ TTS package visibility and moving the readout toggle into the composer action row
 - a real Huawei Mate60 (`BRA-AL00`, Android 12 / SDK 31) also verified generic attachment upload successfully on 2026-03-28 by sending a Markdown file through the chat attachment button
 - a real Redmi K20 (`c2f22adf`) also verified the new composer-side `/new` shortcut successfully on 2026-03-29 after adding the `N` action next to send
+- a real Redmi K20 (`c2f22adf`) also verified the 2026-03-29 public-release chat visual polish build after the denser bubble pass, borderless icon row, white agent bubbles, and fullscreen image tap-to-dismiss refinements
 
 ### Releases
 
@@ -183,6 +187,9 @@ ClawChat2 是一个基于官方 OpenClaw Android 客户端 `openclaw/openclaw ->
 - 支持可切换的应用主题模式与深色模式
 - 更强的 agent 到客户端媒体处理能力
 - 输入框下方现在也提供轻量快捷控制，包括 send/stop、`/new`、模型切换和 thinking 切换
+- 对话记录区域进一步收敛为左对齐、左右留白更小且对称的高密度气泡布局，并通过颜色区分用户、agent 与 system 消息
+- 大图会尽量铺满气泡内容区，小图则保持原始显示尺寸不过度放大，同时支持单击进入全屏、全屏内再单击返回
+- 输入框下方的快捷操作现已收敛为无外框的纯图标按钮，一行内同时显示附件、新会话、模型、thinking、朗读与发送/停止
 - 支持用户侧上传图片、音频、视频和普通文件给 agent
 - 更稳定的 Android 图片/视频全屏播放体验
 - 更贴近实际使用的网关接入方式，包括对 Tailscale 场景的友好支持

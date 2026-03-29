@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -40,11 +41,13 @@ import ai.openclaw.app.ui.mobileCaption2
 import ai.openclaw.app.ui.mobileDanger
 import ai.openclaw.app.ui.mobileDangerSoft
 import ai.openclaw.app.ui.mobileText
+import ai.openclaw.app.ui.mobileAccent
 import java.io.ByteArrayOutputStream
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import ai.openclaw.app.ui.tr
 
 @Composable
 fun ChatSheetContent(viewModel: MainViewModel) {
@@ -93,7 +96,7 @@ fun ChatSheetContent(viewModel: MainViewModel) {
   val assistantLabel =
     agentContacts.firstOrNull { it.directSessionKey == chatSessionKey }?.let { contact ->
       formatAgentContactTitle(displayName = contact.displayName, emoji = contact.emoji)
-    } ?: "assistant"
+    } ?: tr("assistant", "助手")
 
   val pickAttachments =
     rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
@@ -123,7 +126,13 @@ fun ChatSheetContent(viewModel: MainViewModel) {
     verticalArrangement = Arrangement.spacedBy(10.dp),
   ) {
     if (!errorText.isNullOrBlank()) {
-      ChatErrorRail(errorText = errorText!!)
+      ChatErrorRail(
+        errorText = errorText!!,
+        onRetry = {
+          viewModel.refreshChat()
+          viewModel.refreshChatSessions(limit = 200)
+        },
+      )
     }
 
     ChatMessageListCard(
@@ -138,6 +147,10 @@ fun ChatSheetContent(viewModel: MainViewModel) {
       onPullDown = {
         focusManager.clearFocus(force = true)
         keyboardController?.hide()
+      },
+      onRetryUnavailable = {
+        viewModel.refreshChat()
+        viewModel.refreshChatSessions(limit = 200)
       },
       modifier = Modifier.weight(1f, fill = true),
     )
@@ -193,20 +206,23 @@ fun ChatSheetContent(viewModel: MainViewModel) {
 }
 
 @Composable
-private fun ChatErrorRail(errorText: String) {
+private fun ChatErrorRail(errorText: String, onRetry: () -> Unit) {
   Surface(
     modifier = Modifier.fillMaxWidth(),
     color = mobileDangerSoft,
-    shape = RoundedCornerShape(6.dp),
+    shape = RoundedCornerShape(16.dp),
     border = androidx.compose.foundation.BorderStroke(1.dp, mobileDanger.copy(alpha = 0.35f)),
   ) {
-    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
       Text(
-        text = "CHAT ERROR",
+        text = tr("Chat issue", "聊天异常"),
         style = mobileCaption2.copy(letterSpacing = 0.6.sp),
         color = mobileDanger,
       )
       Text(text = errorText, style = mobileCallout, color = mobileText)
+      TextButton(onClick = onRetry) {
+        Text(tr("Retry", "重试"), color = mobileAccent, style = mobileCallout)
+      }
     }
   }
 }

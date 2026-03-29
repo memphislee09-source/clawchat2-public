@@ -16,6 +16,9 @@ Highlights in this build:
 - chat replies can now be read aloud through a lightweight speaker toggle in the composer action row, with Android system TTS verified on a real Huawei Mate60
 - the chat attachment button can now upload images, audio, video, and regular files, with generic file cards rendered directly in the transcript
 - the composer action row now also exposes direct send/stop, `/new`, model, and thinking controls so common WebChat chat actions do not require manual slash-command entry
+- the chat transcript now uses a denser left-aligned bubble layout with clearer color separation, including white agent bubbles for stronger visual distinction
+- large chat images now render flush inside the bubble body when space allows, smaller images keep their natural size, and fullscreen viewing now supports tap-to-open plus tap-to-dismiss
+- the composer quick controls are now borderless icon-only actions so attachment, new chat, model, thinking, readout, and send/stop all stay visible in one row
 
 Important notes:
 
@@ -45,6 +48,9 @@ ClawChat2 仍然是一个非官方 OpenClaw Android 分叉，目标是在 Androi
 - 聊天回复现在可以通过输入框下方操作按钮行里的喇叭开关直接朗读，并且已在真实 Huawei Mate60 上验证 Android 系统 TTS 可正常工作
 - 聊天附件按钮现在已经支持上传图片、音频、视频和普通文件，普通文件也会直接在聊天记录里显示为文件卡片
 - 输入框下方的操作按钮行现在也直接提供 send/stop、`/new`、模型和 thinking 控制，常用 WebChat 聊天操作不再需要手动输入 slash 命令
+- 聊天气泡现在进一步收敛为左对齐的高密度布局，并通过更明确的底色区分用户、agent 与 system 消息，其中 agent 气泡改为白色底
+- 大图现在会尽量贴合气泡内容区边缘显示，小图保持自然尺寸不过度放大；图片同时支持单击进入全屏、全屏内再单击直接返回
+- 输入框下方的快捷操作现已改为无外框的纯图标按钮，附件、新会话、模型、thinking、朗读和发送/停止都能在一行内完整显示
 
 重要说明：
 

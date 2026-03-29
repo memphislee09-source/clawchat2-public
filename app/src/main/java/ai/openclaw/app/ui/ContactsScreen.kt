@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -31,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,6 +43,9 @@ import ai.openclaw.app.MainViewModel
 import ai.openclaw.app.chat.AgentContactEntry
 import ai.openclaw.app.chat.formatAgentContactTitle
 import coil.compose.SubcomposeAsyncImage
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -149,22 +156,47 @@ private fun ContactListItem(
           .fillMaxWidth()
           .background(if (active) mobileAccentSoft.copy(alpha = 0.55f) else Color.Transparent)
           .clickable(onClick = onClick)
-          .padding(horizontal = 14.dp, vertical = 11.dp),
+          .padding(horizontal = 12.dp, vertical = 11.dp),
       horizontalArrangement = Arrangement.spacedBy(10.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
+      Box(
+        modifier =
+          Modifier
+            .width(4.dp)
+            .height(46.dp)
+            .clip(RoundedCornerShape(999.dp))
+            .background(if (active) mobileAccent else Color.Transparent),
+      )
       ContactLeadingAvatar(entry = entry, active = active)
       Column(
         modifier = Modifier.weight(1f),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
       ) {
-        Text(
-          text = formatAgentContactTitle(displayName = entry.displayName, emoji = entry.emoji),
-          style = mobileHeadline.copy(fontWeight = FontWeight.Bold),
-          color = mobileText,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+          Text(
+            text = formatAgentContactTitle(displayName = entry.displayName, emoji = entry.emoji),
+            style = mobileHeadline.copy(fontWeight = FontWeight.Bold),
+            color = mobileText,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
+          )
+          if (active) {
+            Surface(
+              shape = RoundedCornerShape(999.dp),
+              color = mobileAccentSoft,
+              border = BorderStroke(1.dp, mobileAccent.copy(alpha = 0.18f)),
+            ) {
+              Text(
+                text = tr("Active", "当前"),
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                style = mobileCaption2.copy(fontWeight = FontWeight.SemiBold),
+                color = mobileAccent,
+              )
+            }
+          }
+        }
         Text(
           text = entry.previewText ?: tr("No messages yet", "暂无消息"),
           style = mobileCallout,
@@ -173,7 +205,16 @@ private fun ContactListItem(
           overflow = TextOverflow.Ellipsis,
         )
       }
-      Box(modifier = Modifier.size(14.dp), contentAlignment = Alignment.Center) {
+      Column(
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+      ) {
+        Text(
+          text = formatContactRecency(entry.directSessionUpdatedAtMs),
+          style = mobileCaption2,
+          color = if (active) mobileAccent else mobileTextSecondary,
+          maxLines = 1,
+        )
         if (unread) {
           Surface(
             modifier = Modifier.size(8.dp),
@@ -187,7 +228,7 @@ private fun ContactListItem(
     }
     if (showDivider) {
       HorizontalDivider(
-        modifier = Modifier.padding(start = 74.dp),
+        modifier = Modifier.padding(start = 88.dp),
         color = mobileBorder.copy(alpha = 0.28f),
       )
     }
@@ -272,4 +313,40 @@ private fun contactFallbackLabel(entry: AgentContactEntry): String? {
       ?.firstOrNull()
       ?.uppercaseChar()
   return first?.toString()
+}
+
+@Composable
+private fun formatContactRecency(timestampMs: Long?): String {
+  val timestamp = timestampMs ?: return tr("New", "新会话")
+  val nowMs = remember { System.currentTimeMillis() }
+  val deltaMs = (nowMs - timestamp).coerceAtLeast(0L)
+  val locale = LocalConfiguration.current.locales[0] ?: java.util.Locale.getDefault()
+  val zoneId = remember(locale) {
+    runCatching { ZoneId.systemDefault() }.getOrDefault(ZoneId.of("UTC"))
+  }
+
+  return when {
+    deltaMs < 60_000L -> tr("Now", "刚刚")
+    deltaMs < 3_600_000L -> {
+      val minutes = (deltaMs / 60_000L).coerceAtLeast(1L)
+      tr("${minutes}m", "${minutes}分")
+    }
+    deltaMs < 86_400_000L -> {
+      val hours = (deltaMs / 3_600_000L).coerceAtLeast(1L)
+      tr("${hours}h", "${hours}小时")
+    }
+    deltaMs < 7 * 86_400_000L -> {
+      val days = (deltaMs / 86_400_000L).coerceAtLeast(1L)
+      tr("${days}d", "${days}天")
+    }
+    else -> {
+      val formatter =
+        if ((locale.language ?: "").startsWith("zh")) {
+          DateTimeFormatter.ofPattern("M月d日", locale)
+        } else {
+          DateTimeFormatter.ofPattern("MMM d", locale)
+        }
+      runCatching { formatter.format(Instant.ofEpochMilli(timestamp).atZone(zoneId)) }.getOrDefault("")
+    }
+  }
 }

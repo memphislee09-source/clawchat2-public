@@ -238,7 +238,97 @@
 - Current ClawChat2 chat still uses the older HTTP-only WebChat path in `WebChatController`: `POST /sessions/{sessionKey}/send`, polling-based refresh, and no SSE consumption yet. The controller still contains a stale comment saying WebChat has no abort API.
 - ClawChat2 already has a reusable local reply-TTS layer in `NodeRuntime` + `TalkModeManager`, including persisted speaker enablement, system-TTS fallback, and immediate stop/mute behavior.
 - Recommended decision for the current feature: do not call the new WebChat voice endpoints just to add chat reply readout. Implement reply readout locally off the existing chat message flow, using current WebChat message/history state as the trigger and the existing Android TTS layer as the output path.
+
+## Public Release UI Polish Plan
+
+- [x] Rework the chat composer controls so send/stop remains primary while model, thinking, new-chat, attachment, and readout controls are more self-explanatory and accessible.
+- [x] Refine chat bubble layout and metadata so user/assistant messages read more like a public-release messaging UI without changing system/tool event treatment.
+- [x] Improve contacts list scanning with stronger active-state treatment and lightweight recency context.
+- [x] Replace remaining chat-facing mixed-language/error/empty-state copy with consistent release-ready wording and retry affordances.
+- [x] Rebuild, test, package, and install the updated Android build onto device `c2f22adf`.
+
+## Public Release UI Polish Review
+
+- The chat composer now keeps send/stop as the dominant primary action while moving attachment, new chat, model, thinking, and reply readout into clearer labeled chips that remain below the input box as lightweight quick controls.
+- The composer quick controls now expose their current state more directly, and the primary send/stop button has an explicit accessibility label instead of relying on a silent custom icon branch.
+- Chat bubbles now separate assistant/user alignment more clearly, use bounded bubble widths, and split sender/timestamp metadata into a cleaner header row so the transcript reads more like a public-release messaging UI.
+- Contacts now show a stronger current-session treatment with a leading accent rail, an `Active` / `当前` pill, and a lightweight recency label to make scanning the list easier once the device has many agents.
+- Chat-facing empty/error states now use release-ready wording and include a retry affordance instead of only engineering-style status copy.
+- Remaining chat attachment surfaces that were still English-only now use bilingual UI copy for loading, unavailable, preview, and playback states.
+- Fresh verification completed on 2026-03-29 with:
+- `./gradlew --stop`
+- `./gradlew :app:compilePlayDebugKotlin`
+- `./gradlew :app:testPlayDebugUnitTest`
+- `./gradlew :app:assemblePlayDebug`
+- `adb -s c2f22adf install -r app/build/outputs/apk/play/debug/openclaw-0.2.4-play-debug.apk`
+- `adb -s c2f22adf shell am start -n ai.openclaw.app/.MainActivity`
+- `adb -s c2f22adf shell dumpsys window windows | rg "ai.openclaw.app|mCurrentFocus|mFocusedApp"`
+- `adb -s c2f22adf shell pidof ai.openclaw.app`
+- Updated artifact installed for device QA: `app/build/outputs/apk/play/debug/openclaw-0.2.4-play-debug.apk` built on `2026-03-29 08:13 +0800`.
+- Real-device manual visual QA is still pending from the user after install; this pass verified build/test/install/launch readiness, not a full human interaction review.
+
+## Session Density Polish Plan
+
+- [x] Make chat bubbles left-aligned with tighter, symmetrical horizontal margins to maximize transcript area.
+- [x] Distinguish user, agent, and system messages primarily through color while keeping the transcript visually compact.
+- [x] Replace the bottom quick controls with compact icon-only actions that all fit without horizontal scrolling.
+- [x] Rebuild, package, install to device `c2f22adf`, and update review notes with the verification result.
+
+## Session Density Polish Review
+
+- Chat bubbles are now left-aligned for all roles, and the timeline uses tighter symmetrical horizontal padding so more transcript width is given to the conversation itself.
+- User, agent, and system messages are now separated primarily by bubble color: user stays on the accent tint, agent moves to the stronger neutral surface tint, and system keeps the warning tint.
+- The bottom quick controls are back to compact icon-only actions so attachment, new chat, model, thinking, readout, and send/stop all fit in one visible row without horizontal scrolling.
+- Model and thinking still keep their existing popup menus, but their triggers are now icon buttons instead of letter chips.
+- Fresh verification completed on 2026-03-29 with:
+- `./gradlew :app:compilePlayDebugKotlin`
+- `./gradlew :app:testPlayDebugUnitTest`
+- `./gradlew :app:assemblePlayDebug`
+- `adb -s c2f22adf install -r app/build/outputs/apk/play/debug/openclaw-0.2.4-play-debug.apk`
+- `adb -s c2f22adf shell am start -n ai.openclaw.app/.MainActivity`
+- `adb -s c2f22adf shell dumpsys activity activities | rg "mResumedActivity|topResumedActivity|ai.openclaw.app|MainActivity"`
+- `adb -s c2f22adf shell dumpsys window | rg "mCurrentFocus|mFocusedApp|ai.openclaw.app|MainActivity"`
+- `adb -s c2f22adf shell pidof ai.openclaw.app`
+- Real-device install and launch verification passed; manual visual QA on the updated session density/layout is now ready for the user.
+
+## Session Bubble Visual Pass Plan
+
+- [x] Make image attachments flush to the left, right, and bottom edges of the chat bubble when large, while keeping smaller images at natural size without forced upscaling.
+- [x] Set agent bubbles to a white background and move timestamp formatting/placement to follow the sender label with same-day vs historical formatting.
+- [x] Simplify the bottom action row further by removing button chrome, rotating the attachment icon, and swapping the model icon to a cleaner visual.
+- [x] Update fullscreen image interaction so a single tap opens and a single tap in fullscreen dismisses.
+- [x] Rebuild, package, install to device `c2f22adf`, and update review notes with verification.
+
+## Session Bubble Visual Pass Review
+
+- Large image attachments now render edge-to-edge inside the bubble body without extra left, right, or bottom padding, while smaller images keep their natural pixel width and sit centered instead of being forcibly stretched.
+- Assistant bubbles now use a white background, and sender/time metadata sits on one left-aligned line with same-day messages shown as `HH:mm` and historical messages shown as `yyyy.M.d HH:mm`.
+- The bottom quick-control row keeps every action visible in one line but drops the button chrome entirely; the attachment glyph is rotated for a lighter paperclip feel, and the model trigger now uses a cleaner sparkle-style icon instead of the robot glyph.
+- Fullscreen image viewing still opens on tap from the chat bubble, and a single tap on the fullscreen image now dismisses the viewer directly without reaching for the close button.
+- Fresh verification completed on 2026-03-29 with:
+- `./gradlew :app:compilePlayDebugKotlin`
+- `./gradlew :app:testPlayDebugUnitTest`
+- `./gradlew :app:assemblePlayDebug`
+- `adb -s c2f22adf install -r app/build/outputs/apk/play/debug/openclaw-0.2.4-play-debug.apk`
+- `adb -s c2f22adf shell am start -n ai.openclaw.app/.MainActivity`
+- `adb -s c2f22adf shell pidof ai.openclaw.app`
+- `adb -s c2f22adf shell dumpsys activity activities | rg "mResumedActivity|topResumedActivity|ai.openclaw.app|MainActivity"`
+- `adb -s c2f22adf shell dumpsys window | rg "mCurrentFocus|mFocusedApp|ai.openclaw.app|MainActivity"`
+- Real-device install and launch verification passed on Redmi K20 (`c2f22adf`); the updated session visual pass is ready for manual QA.
 - Separate follow-up decision: if the project later resumes true Android voice conversation work, then the Android client should migrate that voice path onto the new WebChat `/events` + `/turns` + `/abort` interfaces and retire the remaining gateway-direct voice plumbing.
+
+## Release Docs Sync Plan
+
+- [x] Review release-facing docs that should mention the latest chat visual polish.
+- [x] Update `README.md`, `status.md`, and `RELEASE_NOTES_v0.2.4.md` to reflect the verified session UI baseline.
+- [x] Stage only the intended tracked changes, commit them on `main`, and push to `origin/main`.
+
+## Release Docs Sync Review
+
+- `README.md` now reflects the denser chat transcript layout, edge-to-edge large image treatment, natural-size small image rendering, fullscreen image tap behavior, and the new borderless icon-only composer row in both English and Chinese.
+- `status.md` now records the same release-facing chat UI baseline and adds the 2026-03-29 Redmi K20 install-and-launch verification for the public-release visual polish pass.
+- `RELEASE_NOTES_v0.2.4.md` now includes the final chat-UI release highlights: white agent bubbles, denser left-aligned transcript styling, refined image presentation, and the simplified one-row icon composer controls.
+- This sync pass keeps the repo-root screenshots, XML dumps, and temporary logs untracked and excluded from Git history, while the verified tracked chat UI and doc changes are prepared for commit on `main` and push to `origin/main`.
 
 ## Chat Reply Readout Implementation Plan
 
