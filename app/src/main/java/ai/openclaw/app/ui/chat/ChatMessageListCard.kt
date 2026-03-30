@@ -37,6 +37,7 @@ import ai.openclaw.app.ui.mobileBorder
 import ai.openclaw.app.ui.mobileCallout
 import ai.openclaw.app.ui.mobileHeadline
 import ai.openclaw.app.ui.mobileSurface
+import ai.openclaw.app.ui.mobileSurfaceStrong
 import ai.openclaw.app.ui.mobileText
 import ai.openclaw.app.ui.mobileTextSecondary
 import ai.openclaw.app.ui.tr
@@ -192,8 +193,8 @@ private fun EmptyChatHint(modifier: Modifier = Modifier, healthOk: Boolean, onRe
   Surface(
     modifier = modifier.fillMaxWidth(),
     shape = RoundedCornerShape(16.dp),
-    color = mobileSurface,
-    border = androidx.compose.foundation.BorderStroke(1.dp, mobileBorder),
+    color = mobileSurfaceStrong,
+    border = androidx.compose.foundation.BorderStroke(1.dp, mobileBorder.copy(alpha = 0.28f)),
   ) {
     androidx.compose.foundation.layout.Column(
       modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),

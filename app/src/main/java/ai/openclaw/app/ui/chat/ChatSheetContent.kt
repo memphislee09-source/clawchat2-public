@@ -42,6 +42,7 @@ import ai.openclaw.app.ui.mobileDanger
 import ai.openclaw.app.ui.mobileDangerSoft
 import ai.openclaw.app.ui.mobileText
 import ai.openclaw.app.ui.mobileAccent
+import ai.openclaw.app.ui.mobileSurfaceStrong
 import java.io.ByteArrayOutputStream
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -209,9 +210,9 @@ fun ChatSheetContent(viewModel: MainViewModel) {
 private fun ChatErrorRail(errorText: String, onRetry: () -> Unit) {
   Surface(
     modifier = Modifier.fillMaxWidth(),
-    color = mobileDangerSoft,
+    color = mobileSurfaceStrong,
     shape = RoundedCornerShape(16.dp),
-    border = androidx.compose.foundation.BorderStroke(1.dp, mobileDanger.copy(alpha = 0.35f)),
+    border = androidx.compose.foundation.BorderStroke(1.dp, mobileDanger.copy(alpha = 0.20f)),
   ) {
     Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
       Text(

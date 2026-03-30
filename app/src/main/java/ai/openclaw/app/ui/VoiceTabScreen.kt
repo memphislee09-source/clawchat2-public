@@ -398,8 +398,8 @@ private fun VoiceTurnBubble(entry: VoiceConversationEntry) {
     Surface(
       modifier = Modifier.fillMaxWidth(0.90f),
       shape = RoundedCornerShape(5.dp),
-      color = if (isUser) mobileAccentSoft else Color.White,
-      border = BorderStroke(1.dp, if (isUser) mobileAccent else mobileBorderStrong),
+      color = if (isUser) mobileAccent else mobileSurfaceStrong,
+      border = BorderStroke(1.dp, if (isUser) mobileAccent.copy(alpha = 0.20f) else mobileBorder.copy(alpha = 0.28f)),
     ) {
       Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 8.dp),
@@ -408,12 +408,12 @@ private fun VoiceTurnBubble(entry: VoiceConversationEntry) {
         Text(
           if (isUser) "You" else "OpenClaw",
           style = mobileCaption2.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp),
-          color = if (isUser) mobileAccent else mobileTextSecondary,
+          color = if (isUser) Color(0xFF18211C).copy(alpha = 0.82f) else mobileTextSecondary,
         )
         Text(
           if (entry.isStreaming && entry.text.isBlank()) "Listening response…" else entry.text,
           style = mobileCallout,
-          color = mobileText,
+          color = if (isUser) Color(0xFF18211C) else mobileText,
         )
       }
     }
@@ -426,8 +426,8 @@ private fun VoiceThinkingBubble() {
     Surface(
       modifier = Modifier.fillMaxWidth(0.68f),
       shape = RoundedCornerShape(5.dp),
-      color = Color.White,
-      border = BorderStroke(1.dp, mobileBorderStrong),
+      color = mobileSurfaceStrong,
+      border = BorderStroke(1.dp, mobileBorder.copy(alpha = 0.28f)),
     ) {
       Row(
         modifier = Modifier.padding(horizontal = 11.dp, vertical = 8.dp),

@@ -46,7 +46,6 @@ import ai.openclaw.app.chat.ChatPendingToolCall
 import ai.openclaw.app.chat.formatAgentContactTitle
 import ai.openclaw.app.tools.ToolDisplayRegistry
 import ai.openclaw.app.ui.mobileAccent
-import ai.openclaw.app.ui.mobileAccentSoft
 import ai.openclaw.app.ui.mobileBorder
 import ai.openclaw.app.ui.mobileBorderStrong
 import ai.openclaw.app.ui.mobileCallout
@@ -55,7 +54,7 @@ import ai.openclaw.app.ui.mobileCaption2
 import ai.openclaw.app.ui.mobileCodeBg
 import ai.openclaw.app.ui.mobileCodeText
 import ai.openclaw.app.ui.mobileHeadline
-import ai.openclaw.app.ui.mobileSurface
+import ai.openclaw.app.ui.mobileSurfaceStrong
 import ai.openclaw.app.ui.mobileText
 import ai.openclaw.app.ui.mobileTextSecondary
 import ai.openclaw.app.ui.mobileWarning
@@ -66,6 +65,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import androidx.compose.foundation.isSystemInDarkTheme
 
 private data class ChatBubbleStyle(
   val containerColor: Color,
@@ -267,29 +267,31 @@ fun ChatStreamingAssistantBubble(text: String, assistantLabel: String = "assista
   }
 }
 
+@Composable
 private fun bubbleStyle(role: String): ChatBubbleStyle {
+  val darkMode = isSystemInDarkTheme()
   return when (role) {
     "user" ->
       ChatBubbleStyle(
-        containerColor = mobileAccentSoft,
-        roleColor = mobileAccent,
-        borderColor = mobileAccent.copy(alpha = 0.36f),
-        textColor = mobileText,
+        containerColor = mobileAccent,
+        roleColor = Color(0xFF18211C).copy(alpha = 0.82f),
+        borderColor = mobileAccent.copy(alpha = if (darkMode) 0.22f else 0.12f),
+        textColor = Color(0xFF18211C),
       )
 
     "system" ->
       ChatBubbleStyle(
         containerColor = mobileWarningSoft,
         roleColor = mobileWarning,
-        borderColor = mobileWarning.copy(alpha = 0.34f),
+        borderColor = mobileWarning.copy(alpha = if (darkMode) 0.16f else 0.10f),
         textColor = mobileText,
       )
 
     else ->
       ChatBubbleStyle(
-        containerColor = Color.White,
+        containerColor = mobileSurfaceStrong,
         roleColor = mobileTextSecondary,
-        borderColor = mobileBorder.copy(alpha = 0.95f),
+        borderColor = mobileBorder.copy(alpha = if (darkMode) 0.22f else 0.16f),
         textColor = mobileText,
       )
   }
@@ -407,7 +409,7 @@ fun ChatCodeBlock(code: String, language: String?) {
   Surface(
     shape = RoundedCornerShape(5.dp),
     color = mobileCodeBg,
-    border = BorderStroke(1.dp, mobileBorderStrong.copy(alpha = 0.4f)),
+    border = BorderStroke(1.dp, mobileBorderStrong.copy(alpha = 0.24f)),
     modifier = Modifier.fillMaxWidth(),
   ) {
     Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {

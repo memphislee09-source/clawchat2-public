@@ -28,7 +28,8 @@ Compared with the upstream Android client, this fork currently emphasizes:
 - continuous chat-message presentation with simplified spacing-first styling and synced user display name
 - optional chat reply readout with a lightweight speaker toggle in the composer action row
 - quick composer controls for send/stop, `/new`, model switch, and thinking switch directly under the input box
-- denser chat transcript layout with left-aligned bubbles, smaller symmetric side padding, and clearer color separation between user, agent, and system messages
+- denser chat transcript layout with left-aligned bubbles, smaller symmetric side padding, screenshot-aligned light/dark surfaces, and clearer color separation between user, agent, and system messages
+- solid green user bubbles now use dark text in both light and dark mode for stronger readability against the brighter reply fill
 - edge-to-edge large chat images with fullscreen tap-to-open / tap-to-close viewing, while smaller images keep their natural size instead of being upscaled
 - borderless icon-only composer quick controls that keep attachment, new-chat, model, thinking, readout, and send/stop visible in one row
 - enhanced agent-to-client media handling
@@ -144,7 +145,7 @@ Current local verification:
 - a real Huawei Mate60 (`BRA-AL00`, Android 12 / SDK 31) also verified chat reply readout successfully on 2026-03-28 after adding Android 11+ TTS package visibility and moving the readout toggle into the composer action row
 - a real Huawei Mate60 (`BRA-AL00`, Android 12 / SDK 31) also verified generic attachment upload successfully on 2026-03-28 by sending a Markdown file through the chat attachment button
 - a real Redmi K20 (`c2f22adf`) also verified the new composer-side `/new` shortcut successfully on 2026-03-29 after adding the `N` action next to send
-- a real Redmi K20 (`c2f22adf`) also verified the 2026-03-29 public-release chat visual polish build after the denser bubble pass, borderless icon row, white agent bubbles, and fullscreen image tap-to-dismiss refinements
+- a real Redmi K20 (`c2f22adf`) also verified the 2026-03-29 public-release chat visual polish build after the denser bubble pass, screenshot-aligned light/dark chat palette, dark-text user reply bubbles, and fullscreen image tap-to-dismiss refinements
 
 ### Releases
 
@@ -187,7 +188,8 @@ ClawChat2 是一个基于官方 OpenClaw Android 客户端 `openclaw/openclaw ->
 - 支持可切换的应用主题模式与深色模式
 - 更强的 agent 到客户端媒体处理能力
 - 输入框下方现在也提供轻量快捷控制，包括 send/stop、`/new`、模型切换和 thinking 切换
-- 对话记录区域进一步收敛为左对齐、左右留白更小且对称的高密度气泡布局，并通过颜色区分用户、agent 与 system 消息
+- 对话记录区域进一步收敛为左对齐、左右留白更小且对称的高密度气泡布局，并按参考稿收紧浅色/深色表层关系，通过颜色区分用户、agent 与 system 消息
+- 用户回复气泡现在在浅色和深色模式下都统一使用实心绿色底配深色文字，提升亮色气泡上的可读性
 - 大图会尽量铺满气泡内容区，小图则保持原始显示尺寸不过度放大，同时支持单击进入全屏、全屏内再单击返回
 - 输入框下方的快捷操作现已收敛为无外框的纯图标按钮，一行内同时显示附件、新会话、模型、thinking、朗读与发送/停止
 - 支持用户侧上传图片、音频、视频和普通文件给 agent
@@ -287,6 +289,7 @@ adb shell am start -n ai.openclaw.app/.MainActivity
 - 当前 `main` 工作区已于 2026-03-24 在本地 Android 15 模拟器 `clawchat2_api35` 上成功编译、安装并启动
 - 当前 `main` 工作区也已于 2026-03-28 在 Huawei Mate60（`BRA-AL00`，Android 12 / SDK 31）上完成通用附件上传验证，测试文件为 Markdown，验证结果通过
 - 当前 `main` 工作区也已于 2026-03-29 在 Redmi K20（设备 `c2f22adf`）上完成聊天页 `N` 按钮验证，确认该按钮会执行 `/new`
+- 当前 `codex/ui-palette-pass` 工作区也已于 2026-03-29 在 Redmi K20（设备 `c2f22adf`）上完成聊天配色参考图对齐与用户气泡深色文字版本的编译、安装与前台启动验证
 
 操作文档：
 

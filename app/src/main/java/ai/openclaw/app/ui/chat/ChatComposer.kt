@@ -58,12 +58,10 @@ import ai.openclaw.app.chat.ChatModelOption
 import ai.openclaw.app.ui.mobileAccent
 import ai.openclaw.app.ui.mobileAccentSoft
 import ai.openclaw.app.ui.mobileBorder
-import ai.openclaw.app.ui.mobileBorderStrong
 import ai.openclaw.app.ui.mobileCallout
 import ai.openclaw.app.ui.mobileCaption1
 import ai.openclaw.app.ui.mobileDanger
-import ai.openclaw.app.ui.mobileHeadline
-import ai.openclaw.app.ui.mobileSurface
+import ai.openclaw.app.ui.mobileSurfaceStrong
 import ai.openclaw.app.ui.mobileText
 import ai.openclaw.app.ui.mobileTextSecondary
 import ai.openclaw.app.ui.mobileTextTertiary
@@ -204,10 +202,10 @@ fun ChatComposer(
           onDismissRequest = { showModelMenu = false },
           modifier = Modifier.width(280.dp),
           shape = RoundedCornerShape(12.dp),
-          containerColor = mobileSurface,
+          containerColor = mobileSurfaceStrong,
           tonalElevation = 0.dp,
           shadowElevation = 6.dp,
-          border = androidx.compose.foundation.BorderStroke(1.dp, mobileBorder),
+          border = androidx.compose.foundation.BorderStroke(1.dp, mobileBorder.copy(alpha = 0.32f)),
         ) {
           ModelMenuStatus(
             loading = modelOptionsLoading,
@@ -253,10 +251,10 @@ fun ChatComposer(
           onDismissRequest = { showThinkingMenu = false },
           modifier = Modifier.width(240.dp),
           shape = RoundedCornerShape(12.dp),
-          containerColor = mobileSurface,
+          containerColor = mobileSurfaceStrong,
           tonalElevation = 0.dp,
           shadowElevation = 6.dp,
-          border = androidx.compose.foundation.BorderStroke(1.dp, mobileBorder),
+          border = androidx.compose.foundation.BorderStroke(1.dp, mobileBorder.copy(alpha = 0.32f)),
         ) {
           ThinkingMenuHeader(
             currentLevel = thinkingLevel,
@@ -535,8 +533,8 @@ private fun AttachmentsStrip(
 private fun AttachmentChip(type: String, fileName: String, onRemove: () -> Unit) {
   Surface(
     shape = RoundedCornerShape(999.dp),
-    color = mobileAccentSoft,
-    border = BorderStroke(1.dp, mobileBorderStrong),
+    color = mobileSurfaceStrong,
+    border = BorderStroke(1.dp, mobileBorder.copy(alpha = 0.24f)),
   ) {
     Row(
       modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -565,8 +563,8 @@ private fun AttachmentChip(type: String, fileName: String, onRemove: () -> Unit)
       Surface(
         onClick = onRemove,
         shape = RoundedCornerShape(999.dp),
-        color = mobileSurface,
-        border = BorderStroke(1.dp, mobileBorderStrong),
+        color = mobileAccentSoft.copy(alpha = 0.72f),
+        border = BorderStroke(1.dp, mobileBorder.copy(alpha = 0.18f)),
       ) {
         Text(
           text = "×",
@@ -582,10 +580,10 @@ private fun AttachmentChip(type: String, fileName: String, onRemove: () -> Unit)
 @Composable
 private fun chatTextFieldColors() =
   OutlinedTextFieldDefaults.colors(
-    focusedContainerColor = mobileSurface,
-    unfocusedContainerColor = mobileSurface,
-    focusedBorderColor = mobileBorderStrong,
-    unfocusedBorderColor = mobileBorder,
+    focusedContainerColor = mobileSurfaceStrong,
+    unfocusedContainerColor = mobileSurfaceStrong,
+    focusedBorderColor = mobileAccent.copy(alpha = 0.30f),
+    unfocusedBorderColor = mobileBorder.copy(alpha = 0.18f),
     focusedTextColor = mobileText,
     unfocusedTextColor = mobileText,
     cursorColor = mobileAccent,
