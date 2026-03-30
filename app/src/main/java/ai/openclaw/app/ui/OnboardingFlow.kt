@@ -122,8 +122,8 @@ private enum class SpecialAccessToggle {
   NotificationListener,
 }
 
-private const val openClawAgentSetupGuideUrl =
-  "https://github.com/memphislee09-source/clawchat2-public/blob/main/OPENCLAW_AGENT_SETUP.md"
+private const val clawWebchatAgentInstallGuideUrl =
+  "https://github.com/memphislee09-source/claw-webchat/blob/main/docs/AGENT_INSTALL_NETWORK.md"
 
 private val onboardingBackgroundGradient =
   listOf(
@@ -976,15 +976,15 @@ private fun WelcomeStep() {
     Bullet("Enable only the permissions and capabilities you want.")
     Bullet("Finish with a real connection check before entering the app.")
 
-    GuideBlock(title = "OpenClaw-side setup") {
+    GuideBlock(title = "claw-webchat setup") {
       Text(
-        "Before continuing, send the guide below to your OpenClaw agent or operator. It explains the required OpenClaw-side install and setup steps for ClawChat2.",
+        "Before continuing, ask your agent or operator to install claw-webchat for this gateway. Send them the guide below and have them follow it on the server side first.",
         style = onboardingCalloutStyle,
         color = onboardingTextSecondary,
       )
-      CommandBlock(openClawAgentSetupGuideUrl)
+      CommandBlock(clawWebchatAgentInstallGuideUrl)
       Button(
-        onClick = { openExternalUrl(context, openClawAgentSetupGuideUrl) },
+        onClick = { openExternalUrl(context, clawWebchatAgentInstallGuideUrl) },
         modifier = Modifier.fillMaxWidth().height(48.dp),
         shape = RoundedCornerShape(12.dp),
         colors =
@@ -993,10 +993,10 @@ private fun WelcomeStep() {
             contentColor = Color.White,
           ),
       ) {
-        Text("Open OpenClaw setup guide", style = onboardingHeadlineStyle.copy(fontWeight = FontWeight.Bold))
+        Text("Open claw-webchat install guide", style = onboardingHeadlineStyle.copy(fontWeight = FontWeight.Bold))
       }
       Text(
-        "If the user chooses manual or Tailscale setup later, they should also fill in the gateway token so the device can appear in `openclaw devices list`.",
+        "Tell the agent to use that exact guide on the server side. After claw-webchat is ready, continue here with setup code, manual, or Tailscale connection. If the user chooses manual or Tailscale setup later, they should also fill in the gateway token so the device can appear in `openclaw devices list`.",
         style = onboardingCalloutStyle,
         color = onboardingTextSecondary,
       )

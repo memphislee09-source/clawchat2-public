@@ -606,3 +606,19 @@
 - `adb -s c2f22adf shell pidof ai.openclaw.app`
 - `adb -s c2f22adf shell dumpsys activity activities | rg "mResumedActivity|topResumedActivity|ai.openclaw.app|MainActivity"`
 - Follow-up tweak on 2026-03-29: user-bubble text was switched from white to dark text in both light and dark mode, and the same dark-text treatment was synced to `VoiceTabScreen`. Rebuilt `playDebug`, reinstalled on `c2f22adf`, and reverified foreground launch after the tweak.
+
+## Release 0.2.5 Promotion Plan
+
+- [x] Merge `codex/ui-palette-pass` into `main` so the screenshot-aligned chat palette becomes the new long-term baseline.
+- [x] Bump Android app version to `0.2.5` / `versionCode 7`.
+- [x] Update README, release notes, status docs, and onboarding home copy so users are told to first give the `claw-webchat` install guide to their agent: `https://github.com/memphislee09-source/claw-webchat/blob/main/docs/AGENT_INSTALL_NETWORK.md`
+- [x] Run merged-baseline verification, build the public APK artifact, and install the verification build on device `c2f22adf`.
+- [ ] Push the new `main` baseline to the private GitHub repo, sync the same baseline to `clawchat2-public`, and publish the GitHub Release with APK + checksum.
+
+## Release 0.2.5 Promotion Review
+
+- Promoted `codex/ui-palette-pass` into `main` inside a clean release worktree so the screenshot-aligned palette pass becomes the new baseline without disturbing the user's other in-progress branch work.
+- Bumped the Android app to `versionName 0.2.5` / `versionCode 7`, added `RELEASE_NOTES_v0.2.5.md`, and updated `README.md`, `status.md`, `RELEASING.md`, and `OnboardingFlow.kt` so both the repository homepage and the first-run in-app home screen tell users to first hand the `claw-webchat` install guide to their agent/operator.
+- Sequential release verification completed successfully with `./gradlew :app:compilePlayDebugKotlin`, `./gradlew :app:testPlayDebugUnitTest`, `./gradlew :app:assemblePlayDebug`, and `./gradlew :app:assemblePlayRelease`.
+- Installed `app/build/outputs/apk/play/debug/openclaw-0.2.5-play-debug.apk` onto the required Redmi K20 (`c2f22adf`), relaunched `ai.openclaw.app/.MainActivity`, and confirmed the app process was resumed in the foreground.
+- Built public release artifact `app/build/outputs/apk/play/release/openclaw-0.2.5-play-release.apk` with SHA-256 `69258095f6651462158a199c5c375ae81d957e6590ff3250c8956036a76e5cea`; final GitHub sync and public release publishing are the only remaining release-promotion steps.

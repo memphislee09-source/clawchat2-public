@@ -10,7 +10,7 @@ The short rationale for the fork is documented in [WHY_THIS_FORK.md](WHY_THIS_FO
 
 ### Project Status
 
-- Baseline version: `0.2.4`
+- Baseline version: `0.2.5`
 - Android compatibility baseline: `minSdk 30` (Android 11+)
 - Stage: early, experimental, not release-hardened
 - Scope: independent community fork, not an official OpenClaw distribution
@@ -53,7 +53,7 @@ Related docs:
 - [OPENCLAW_AGENT_SETUP.md](OPENCLAW_AGENT_SETUP.md)
 - [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md)
 - [RELEASING.md](RELEASING.md)
-- [RELEASE_NOTES_v0.2.4.md](RELEASE_NOTES_v0.2.4.md)
+- [RELEASE_NOTES_v0.2.5.md](RELEASE_NOTES_v0.2.5.md)
 - [WHY_THIS_FORK.md](WHY_THIS_FORK.md)
 
 ### Screenshots
@@ -68,7 +68,9 @@ Chat view with media:
 
 ### OpenClaw-Side Setup
 
-If you want an OpenClaw-side agent or operator to prepare a gateway specifically for ClawChat2, start with [OPENCLAW_AGENT_SETUP.md](OPENCLAW_AGENT_SETUP.md).
+Before a user continues with ClawChat2 setup, they should first ask their agent or operator to install `claw-webchat` on the server side by following [AGENT_INSTALL_NETWORK.md](https://github.com/memphislee09-source/claw-webchat/blob/main/docs/AGENT_INSTALL_NETWORK.md).
+
+If you want an OpenClaw-side agent or operator to prepare a gateway specifically for ClawChat2, start with that `claw-webchat` guide first, then use [OPENCLAW_AGENT_SETUP.md](OPENCLAW_AGENT_SETUP.md) as the app-specific companion guide.
 
 Important:
 
@@ -146,6 +148,7 @@ Current local verification:
 - a real Huawei Mate60 (`BRA-AL00`, Android 12 / SDK 31) also verified generic attachment upload successfully on 2026-03-28 by sending a Markdown file through the chat attachment button
 - a real Redmi K20 (`c2f22adf`) also verified the new composer-side `/new` shortcut successfully on 2026-03-29 after adding the `N` action next to send
 - a real Redmi K20 (`c2f22adf`) also verified the 2026-03-29 public-release chat visual polish build after the denser bubble pass, screenshot-aligned light/dark chat palette, dark-text user reply bubbles, and fullscreen image tap-to-dismiss refinements
+- the promoted `main` release baseline was rebuilt again on 2026-03-30 after merging `codex/ui-palette-pass`, and this release line now includes the screenshot-aligned palette plus onboarding guidance that explicitly tells users to give the `claw-webchat` install guide to their agent first
 
 ### Releases
 
@@ -154,7 +157,7 @@ Current local verification:
 - Public APKs should be signed with the fork maintainer's own release key.
 - Release notes should clearly state that this is an unofficial OpenClaw fork.
 
-Current release guidance is documented in [RELEASING.md](RELEASING.md) and [RELEASE_NOTES_v0.2.4.md](RELEASE_NOTES_v0.2.4.md).
+Current release guidance is documented in [RELEASING.md](RELEASING.md) and [RELEASE_NOTES_v0.2.5.md](RELEASE_NOTES_v0.2.5.md).
 
 ### Development Notes
 
@@ -173,7 +176,7 @@ ClawChat2 是一个基于官方 OpenClaw Android 客户端 `openclaw/openclaw ->
 
 ### 项目状态
 
-- 当前基线版本：`0.2.4`
+- 当前基线版本：`0.2.5`
 - Android 兼容基线：`minSdk 30`（Android 11+）
 - 当前阶段：早期、实验性、尚未达到发布级稳定
 - 项目定位：独立社区分叉，不是官方 OpenClaw 发布版本
@@ -211,7 +214,7 @@ ClawChat2 是一个基于官方 OpenClaw Android 客户端 `openclaw/openclaw ->
 - [OPENCLAW_AGENT_SETUP.md](OPENCLAW_AGENT_SETUP.md)
 - [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md)
 - [RELEASING.md](RELEASING.md)
-- [RELEASE_NOTES_v0.2.4.md](RELEASE_NOTES_v0.2.4.md)
+- [RELEASE_NOTES_v0.2.5.md](RELEASE_NOTES_v0.2.5.md)
 - [WHY_THIS_FORK.md](WHY_THIS_FORK.md)
 
 ### 截图
@@ -226,7 +229,10 @@ ClawChat2 是一个基于官方 OpenClaw Android 客户端 `openclaw/openclaw ->
 
 ### OpenClaw 侧准备
 
-如果你希望让 OpenClaw 侧的 agent 或操作者为 ClawChat2 准备 gateway，请从 [OPENCLAW_AGENT_SETUP.md](OPENCLAW_AGENT_SETUP.md) 开始。
+在用户继续 ClawChat2 安装前，应先让 agent 或 operator 按照这个服务端文档安装 `claw-webchat`：
+[AGENT_INSTALL_NETWORK.md](https://github.com/memphislee09-source/claw-webchat/blob/main/docs/AGENT_INSTALL_NETWORK.md)
+
+如果你希望让 OpenClaw 侧的 agent 或操作者为 ClawChat2 准备 gateway，请先完成上面的 `claw-webchat` 服务端安装，再参考 [OPENCLAW_AGENT_SETUP.md](OPENCLAW_AGENT_SETUP.md) 完成面向 ClawChat2 的补充说明。
 
 重要说明：
 
@@ -290,6 +296,7 @@ adb shell am start -n ai.openclaw.app/.MainActivity
 - 当前 `main` 工作区也已于 2026-03-28 在 Huawei Mate60（`BRA-AL00`，Android 12 / SDK 31）上完成通用附件上传验证，测试文件为 Markdown，验证结果通过
 - 当前 `main` 工作区也已于 2026-03-29 在 Redmi K20（设备 `c2f22adf`）上完成聊天页 `N` 按钮验证，确认该按钮会执行 `/new`
 - 当前 `codex/ui-palette-pass` 工作区也已于 2026-03-29 在 Redmi K20（设备 `c2f22adf`）上完成聊天配色参考图对齐与用户气泡深色文字版本的编译、安装与前台启动验证
+- 已提升为新主线的 `main` 工作区又已于 2026-03-30 完成 `codex/ui-palette-pass` 合并后的公开发布准备，并补上 onboarding 首页提示，明确要求用户先把 `claw-webchat` 安装文档发给 agent
 
 操作文档：
 
@@ -318,7 +325,7 @@ adb shell am start -n ai.openclaw.app/.MainActivity
 - 对外发布的 APK 应使用分叉维护者自己的 release key 签名。
 - Release 说明中应明确写明这是非官方 OpenClaw 分叉。
 
-当前发行流程与首版说明见 [RELEASING.md](RELEASING.md) 和 [RELEASE_NOTES_v0.2.4.md](RELEASE_NOTES_v0.2.4.md)。
+当前发行流程与首版说明见 [RELEASING.md](RELEASING.md) 和 [RELEASE_NOTES_v0.2.5.md](RELEASE_NOTES_v0.2.5.md)。
 
 ### 开发说明
 
