@@ -753,7 +753,7 @@
 - [x] Fast-forward the tested `codex/chat-attachment-downloads` branch into `main` and bump the Android app to `0.2.7` / `versionCode 9`.
 - [x] Update release-facing docs to describe the new attachment download support and point release metadata at `0.2.7`.
 - [x] Build and verify fresh `playDebug` / `playRelease` artifacts for `0.2.7`, including a real-device install of the release-signed APK.
-- [ ] Push the updated `main` baseline to the private and public GitHub repos, then publish the new public GitHub Release with the `0.2.7` APK and checksum.
+- [x] Push the updated `main` baseline to the private and public GitHub repos, then publish the new public GitHub Release with the `0.2.7` APK and checksum.
 
 ## Release 0.2.7 Review
 
@@ -769,3 +769,4 @@
 - `adb -s c2f22adf shell dumpsys window | rg "mCurrentFocus|mFocusedApp|ai.openclaw.app|MainActivity"`
 - `adb -s c2f22adf shell pidof ai.openclaw.app`
 - Verified release artifact for this pass: `app/build/outputs/apk/play/release/openclaw-0.2.7-play-release.apk`, built at `2026-03-31 12:13:39 +0800`, SHA-256 `39d90b1ce627ec52b2e93a63b854dcb87a8706b81018d98a438431cad6e5bdcd`.
+- Pushed the updated `main` baseline to both the private and public GitHub repositories, then published the public release at `https://github.com/memphislee09-source/clawchat2-public/releases/tag/v0.2.7` with the APK asset `openclaw-0.2.7-play-release.apk`.
