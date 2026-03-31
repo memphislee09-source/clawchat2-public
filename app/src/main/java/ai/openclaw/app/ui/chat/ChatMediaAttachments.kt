@@ -1,18 +1,23 @@
 package ai.openclaw.app.ui.chat
 
 import android.app.Activity
-import android.graphics.drawable.ColorDrawable
+import android.content.ContentValues
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.media.AudioAttributes
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.net.Uri
+import android.graphics.drawable.ColorDrawable
+import android.os.Environment
+import android.provider.MediaStore
 import android.util.Base64
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -33,9 +38,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Videocam
@@ -121,6 +128,24 @@ private data class MediaPreviewState(
   val failed: Boolean,
 )
 
+private data class SavedAttachmentResult(
+  val uri: Uri,
+  val destination: SavedAttachmentDestination,
+)
+
+private enum class SavedAttachmentDestination {
+  Pictures,
+  Movies,
+  Music,
+  Downloads,
+}
+
+private data class AttachmentDownloadState(
+  val isDownloading: Boolean,
+  val startDownload: () -> Unit,
+  val openSaved: (() -> Unit)?,
+)
+
 private val mediaHttpClient: OkHttpClient by lazy {
   OkHttpClient.Builder().build()
 }
@@ -155,6 +180,7 @@ private fun ChatFileAttachment(descriptor: ChatAttachmentDescriptor) {
     return
   }
 
+  val downloadState = rememberAttachmentDownloadState(descriptor)
   val fileState = rememberResolvedMediaFileState(descriptor = descriptor)
   when {
     fileState.loading ->
@@ -178,11 +204,7 @@ private fun ChatFileAttachment(descriptor: ChatAttachmentDescriptor) {
           )
         },
         action = {
-          Icon(
-            imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
-            contentDescription = null,
-            tint = mobileTextSecondary,
-          )
+          AttachmentDownloadButtons(downloadState = downloadState)
         },
       )
 
@@ -199,6 +221,7 @@ private fun ChatFileAttachment(descriptor: ChatAttachmentDescriptor) {
 @Composable
 private fun ChatImageAttachment(descriptor: ChatAttachmentDescriptor) {
   val attachmentStateKey = stableAttachmentStateKey(descriptor)
+  val downloadState = rememberAttachmentDownloadState(descriptor)
   var showViewer by remember(attachmentStateKey) {
     mutableStateOf(false)
   }
@@ -255,6 +278,7 @@ private fun ChatImageAttachment(descriptor: ChatAttachmentDescriptor) {
       mimeType = descriptor.mimeType,
       file = fileState?.file,
       base64 = descriptor.base64,
+      downloadState = downloadState,
       onDismiss = { showViewer = false },
     )
   }
@@ -300,6 +324,7 @@ private fun ChatAudioAttachment(descriptor: ChatAttachmentDescriptor) {
   var positionMs by remember(file.absolutePath) { mutableStateOf(0L) }
   var errorText by remember(file.absolutePath) { mutableStateOf<String?>(null) }
   val playbackFailedText = tr("Playback failed", "播放失败")
+  val downloadState = rememberAttachmentDownloadState(descriptor)
 
   DisposableEffect(file.absolutePath) {
     onDispose {
@@ -336,64 +361,70 @@ private fun ChatAudioAttachment(descriptor: ChatAttachmentDescriptor) {
       )
     },
     action = {
-      IconButton(
-        enabled = !isPreparing,
-        onClick = {
-          if (isPlaying) {
-            runCatching { player?.pause() }
-            isPlaying = false
-          } else {
-            scope.launch {
-              try {
-                errorText = null
-                isPreparing = true
-                val preparedPlayer =
-                  player ?: prepareAudioPlayer(
-                    file = file,
-                    onCompleted = {
-                      isPlaying = false
-                      positionMs = 0L
-                    },
-                    onFailed = { message ->
-                      isPlaying = false
-                      errorText = message
-                    },
-                  ).also { next ->
-                  player = next
-                  durationMs = next.duration.toLong().takeIf { it > 0L }
+      Row(
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        AttachmentDownloadButtons(downloadState = downloadState)
+        IconButton(
+          enabled = !isPreparing,
+          onClick = {
+            if (isPlaying) {
+              runCatching { player?.pause() }
+              isPlaying = false
+            } else {
+              scope.launch {
+                try {
+                  errorText = null
+                  isPreparing = true
+                  val preparedPlayer =
+                    player ?: prepareAudioPlayer(
+                      file = file,
+                      onCompleted = {
+                        isPlaying = false
+                        positionMs = 0L
+                      },
+                      onFailed = { message ->
+                        isPlaying = false
+                        errorText = message
+                      },
+                    ).also { next ->
+                      player = next
+                      durationMs = next.duration.toLong().takeIf { it > 0L }
+                    }
+                  val duration = preparedPlayer.duration.toLong().takeIf { it > 0L }
+                  if (duration != null && preparedPlayer.currentPosition.toLong() >= duration) {
+                    preparedPlayer.seekTo(0)
+                    positionMs = 0L
                   }
-                val duration = preparedPlayer.duration.toLong().takeIf { it > 0L }
-                if (duration != null && preparedPlayer.currentPosition.toLong() >= duration) {
-                  preparedPlayer.seekTo(0)
-                  positionMs = 0L
+                  preparedPlayer.start()
+                  isPlaying = true
+                } catch (err: Throwable) {
+                  errorText = err.message ?: playbackFailedText
+                  isPlaying = false
+                } finally {
+                  isPreparing = false
                 }
-                preparedPlayer.start()
-                isPlaying = true
-              } catch (err: Throwable) {
-                errorText = err.message ?: playbackFailedText
-                isPlaying = false
-              } finally {
-                isPreparing = false
               }
             }
-          }
-        },
-      ) {
-        when {
-          isPreparing -> CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = mobileAccent)
-          isPlaying ->
-            Icon(
-              imageVector = Icons.Default.Pause,
-              contentDescription = tr("Pause audio", "暂停音频"),
-              tint = mobileAccent,
-            )
+          },
+        ) {
+          when {
+            isPreparing -> CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = mobileAccent)
+            isPlaying ->
+              Icon(
+                imageVector = Icons.Default.Pause,
+                contentDescription = tr("Pause audio", "暂停音频"),
+                tint = mobileAccent,
+              )
 
-          else ->
-            Icon(
-              imageVector = Icons.Default.PlayArrow,
-              contentDescription = tr("Play audio", "播放音频"),
-              tint = mobileAccent,
-            )
+            else ->
+              Icon(
+                imageVector = Icons.Default.PlayArrow,
+                contentDescription = tr("Play audio", "播放音频"),
+                tint = mobileAccent,
+              )
+          }
         }
       }
     },
@@ -471,6 +502,7 @@ private fun ChatVideoAttachment(descriptor: ChatAttachmentDescriptor) {
   val playbackSource = streamUrl ?: fallbackFile?.absolutePath
   val preferredOrientation = preferredVideoFullscreenOrientation(previewState)
   val displayAspectRatio = previewState?.let(::mediaDisplayAspectRatio)
+  val downloadState = rememberAttachmentDownloadState(descriptor)
   var showPlayer by
     remember(attachmentStateKey) {
       mutableStateOf(false)
@@ -522,12 +554,18 @@ private fun ChatVideoAttachment(descriptor: ChatAttachmentDescriptor) {
       )
     },
     action = {
-      IconButton(onClick = openFullscreenVideo) {
-        Icon(
-          imageVector = Icons.Default.PlayArrow,
-          contentDescription = tr("Play video", "播放视频"),
-          tint = mobileAccent,
-        )
+      Row(
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        AttachmentDownloadButtons(downloadState = downloadState)
+        IconButton(onClick = openFullscreenVideo) {
+          Icon(
+            imageVector = Icons.Default.PlayArrow,
+            contentDescription = tr("Play video", "播放视频"),
+            tint = mobileAccent,
+          )
+        }
       }
     },
     footer = {
@@ -637,6 +675,48 @@ private fun ChatAttachmentCard(
         action()
       }
       footer?.invoke()
+    }
+  }
+}
+
+@Composable
+private fun AttachmentDownloadButtons(downloadState: AttachmentDownloadState) {
+  AttachmentDownloadButtons(
+    downloadState = downloadState,
+    primaryTint = mobileAccent,
+    secondaryTint = mobileTextSecondary,
+  )
+}
+
+@Composable
+private fun AttachmentDownloadButtons(
+  downloadState: AttachmentDownloadState,
+  primaryTint: Color,
+  secondaryTint: Color,
+) {
+  Row(
+    horizontalArrangement = Arrangement.spacedBy(2.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    downloadState.openSaved?.let { openSaved ->
+      IconButton(onClick = openSaved) {
+        Icon(
+          imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+          contentDescription = tr("Open saved file", "打开已保存文件"),
+          tint = secondaryTint,
+        )
+      }
+    }
+    IconButton(enabled = !downloadState.isDownloading, onClick = downloadState.startDownload) {
+      if (downloadState.isDownloading) {
+        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = primaryTint)
+      } else {
+        Icon(
+          imageVector = Icons.Default.FileDownload,
+          contentDescription = tr("Download attachment", "下载附件"),
+          tint = primaryTint,
+        )
+      }
     }
   }
 }
@@ -759,6 +839,7 @@ private fun FullscreenImageDialog(
   mimeType: String?,
   file: File?,
   base64: String?,
+  downloadState: AttachmentDownloadState,
   onDismiss: () -> Unit,
 ) {
   val decodeRequest = rememberViewportImageDecodeRequest(preferLowMemory = false)
@@ -849,12 +930,22 @@ private fun FullscreenImageDialog(
               overflow = TextOverflow.Ellipsis,
             )
           }
-          IconButton(onClick = onDismiss) {
-            Icon(
-              imageVector = Icons.Default.Close,
-              contentDescription = tr("Close image", "关闭图片"),
-              tint = Color.White,
+          Row(
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            AttachmentDownloadButtons(
+              downloadState = downloadState,
+              primaryTint = Color.White,
+              secondaryTint = Color.White,
             )
+            IconButton(onClick = onDismiss) {
+              Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = tr("Close image", "关闭图片"),
+                tint = Color.White,
+              )
+            }
           }
         }
       }
@@ -1481,6 +1572,198 @@ private fun loadScaledVideoPreviewFrame(
 }
 
 private const val DEFAULT_MEDIA_BUFFER_SIZE = 64 * 1024
+
+@Composable
+private fun rememberAttachmentDownloadState(descriptor: ChatAttachmentDescriptor): AttachmentDownloadState {
+  val context = LocalContext.current
+  val appContext = context.applicationContext
+  val prefs = remember(appContext) { SecurePrefs(appContext) }
+  val scope = rememberCoroutineScope()
+  val attachmentStateKey = stableAttachmentStateKey(descriptor)
+  val saveFailedText = tr("Could not save attachment", "无法保存附件")
+  val savedPrefixText = tr("Saved to", "已保存到")
+  val openFailedText = tr("No app is available to open this file", "当前没有可打开该文件的应用")
+  val picturesLabel = tr("Pictures", "图片")
+  val moviesLabel = tr("Movies", "视频")
+  val musicLabel = tr("Music", "音频")
+  val downloadsLabel = tr("Downloads", "下载")
+
+  var isDownloading by remember(attachmentStateKey) { mutableStateOf(false) }
+  var savedUri by remember(attachmentStateKey) { mutableStateOf<Uri?>(null) }
+
+  val startDownload: () -> Unit = startDownload@{
+    if (isDownloading) return@startDownload
+    scope.launch {
+      try {
+        isDownloading = true
+        val result =
+          withContext(Dispatchers.IO) {
+            saveAttachmentToPublicStorage(
+              context = appContext,
+              descriptor = descriptor,
+              gatewayRemoteAddress = prefs.lastGatewayRemoteAddress.value,
+              manualHost = prefs.manualHost.value,
+              tailscaleHost = prefs.tailscaleHost.value,
+            )
+          }
+        savedUri = result.uri
+        val destinationLabel =
+          when (result.destination) {
+            SavedAttachmentDestination.Pictures -> picturesLabel
+            SavedAttachmentDestination.Movies -> moviesLabel
+            SavedAttachmentDestination.Music -> musicLabel
+            SavedAttachmentDestination.Downloads -> downloadsLabel
+          }
+        Toast.makeText(appContext, "$savedPrefixText $destinationLabel", Toast.LENGTH_SHORT).show()
+      } catch (err: Throwable) {
+        Toast.makeText(appContext, err.message ?: saveFailedText, Toast.LENGTH_LONG).show()
+      } finally {
+        isDownloading = false
+      }
+    }
+  }
+
+  val openSaved =
+    savedUri?.let { uri ->
+      {
+        val opened = openSavedAttachment(context = context, uri = uri, mimeType = descriptor.mimeType)
+        if (!opened) {
+          Toast.makeText(appContext, openFailedText, Toast.LENGTH_SHORT).show()
+        }
+      }
+    }
+
+  return AttachmentDownloadState(
+    isDownloading = isDownloading,
+    startDownload = startDownload,
+    openSaved = openSaved,
+  )
+}
+
+private fun saveAttachmentToPublicStorage(
+  context: Context,
+  descriptor: ChatAttachmentDescriptor,
+  gatewayRemoteAddress: String,
+  manualHost: String,
+  tailscaleHost: String,
+): SavedAttachmentResult {
+  val sourceFile =
+    resolveAttachmentFile(
+      cacheDir = context.cacheDir,
+      descriptor = descriptor,
+      gatewayRemoteAddress = gatewayRemoteAddress,
+      manualHost = manualHost,
+      tailscaleHost = tailscaleHost,
+    )
+  val displayName = downloadDisplayName(descriptor = descriptor, resolvedFile = sourceFile)
+  val mimeType = descriptor.mimeType ?: downloadMimeType(descriptor = descriptor, resolvedFile = sourceFile)
+  val (collectionUri, destination, relativePath) = resolvePublicMediaCollection(descriptor.kind)
+  val resolver = context.contentResolver
+  val values =
+    ContentValues().apply {
+      put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+      put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+      put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
+      put(MediaStore.MediaColumns.IS_PENDING, 1)
+    }
+  val insertedUri = resolver.insert(collectionUri, values) ?: error("Could not create download entry")
+
+  try {
+    resolver.openOutputStream(insertedUri)?.use { output ->
+      sourceFile.inputStream().use { input ->
+        input.copyTo(output, DEFAULT_MEDIA_BUFFER_SIZE)
+      }
+    } ?: error("Could not open download destination")
+
+    resolver.update(
+      insertedUri,
+      ContentValues().apply {
+        put(MediaStore.MediaColumns.IS_PENDING, 0)
+      },
+      null,
+      null,
+    )
+    return SavedAttachmentResult(uri = insertedUri, destination = destination)
+  } catch (err: Throwable) {
+    runCatching { resolver.delete(insertedUri, null, null) }
+    throw err
+  }
+}
+
+private fun resolvePublicMediaCollection(
+  kind: ChatAttachmentKind,
+): Triple<Uri, SavedAttachmentDestination, String> {
+  return when (kind) {
+    ChatAttachmentKind.Image ->
+      Triple(
+        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+        SavedAttachmentDestination.Pictures,
+        "${Environment.DIRECTORY_PICTURES}/ClawChat2",
+      )
+    ChatAttachmentKind.Video ->
+      Triple(
+        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+        SavedAttachmentDestination.Movies,
+        "${Environment.DIRECTORY_MOVIES}/ClawChat2",
+      )
+    ChatAttachmentKind.Audio ->
+      Triple(
+        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+        SavedAttachmentDestination.Music,
+        "${Environment.DIRECTORY_MUSIC}/ClawChat2",
+      )
+    ChatAttachmentKind.File, ChatAttachmentKind.Unknown ->
+      Triple(
+        MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+        SavedAttachmentDestination.Downloads,
+        "${Environment.DIRECTORY_DOWNLOADS}/ClawChat2",
+      )
+  }
+}
+
+private fun downloadDisplayName(descriptor: ChatAttachmentDescriptor, resolvedFile: File): String {
+  val baseName =
+    descriptor.fileName?.trim()?.takeIf { it.isNotEmpty() }
+      ?: attachmentDisplayName(descriptor)
+  if (baseName.substringAfterLast('.', "").isNotEmpty()) return baseName
+
+  val extension =
+    resolveAttachmentExtension(
+      kind = descriptor.kind,
+      mimeType = descriptor.mimeType,
+      fileName = resolvedFile.name,
+    )
+  return if (extension.isNotEmpty()) "$baseName.$extension" else baseName
+}
+
+private fun downloadMimeType(descriptor: ChatAttachmentDescriptor, resolvedFile: File): String {
+  return descriptor.mimeType
+    ?: when (descriptor.kind) {
+      ChatAttachmentKind.Image -> "image/*"
+      ChatAttachmentKind.Audio -> "audio/*"
+      ChatAttachmentKind.Video -> "video/*"
+      ChatAttachmentKind.File, ChatAttachmentKind.Unknown -> {
+        val extension = resolvedFile.name.substringAfterLast('.', "").trim().lowercase(Locale.US)
+        when (extension) {
+          "pdf" -> "application/pdf"
+          "md" -> "text/markdown"
+          "txt" -> "text/plain"
+          "json" -> "application/json"
+          else -> "application/octet-stream"
+        }
+      }
+    }
+}
+
+private fun openSavedAttachment(context: Context, uri: Uri, mimeType: String?): Boolean {
+  val intent =
+    Intent(Intent.ACTION_VIEW)
+      .setDataAndType(uri, mimeType ?: "*/*")
+      .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+  return runCatching {
+    context.startActivity(intent)
+  }.isSuccess
+}
 
 private fun stableAttachmentStateKey(descriptor: ChatAttachmentDescriptor): String {
   descriptor.mediaSha256?.trim()?.takeIf { it.isNotEmpty() }?.let { return "sha256:$it" }

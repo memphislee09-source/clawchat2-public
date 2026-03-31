@@ -718,3 +718,32 @@
 - `adb -s c2f22adf shell pidof ai.openclaw.app`
 - Verified install artifact for the Redmi K20 (`c2f22adf`): `app/build/outputs/apk/play/release/openclaw-0.2.6-play-release.apk` built at `2026-03-31 11:32:46 +0800`.
 - User confirmed on 2026-03-31 that the chat video card now shows the expected first frame instead of the previous black placeholder.
+
+## Chat Attachment Download Plan
+
+- [x] Inspect the current image/audio/video/file attachment actions and add a download entry point without breaking playback/viewing flows.
+- [x] Implement a shared save-to-device path that writes agent-sent images, audio, videos, and files into Android public storage.
+- [x] Build and verify the new download flow, then capture exact user test steps for branch QA before merge.
+
+## Chat Attachment Download Review
+
+- Added a shared attachment-download path on branch `codex/chat-attachment-downloads` so agent-sent images, audio, videos, and generic files can be saved out of the app cache into Android public storage instead of remaining app-private.
+- The implementation stays on top of the existing attachment resolution pipeline: it reuses `resolveAttachmentFile(...)` for base64, `mediaPath/mediaPort`, and legacy `mediaUrl` inputs, then copies the resolved file into `MediaStore.Images`, `MediaStore.Video`, `MediaStore.Audio`, or `MediaStore.Downloads` under a `ClawChat2` subfolder.
+- UI entry points are now wired where users already act on attachments:
+- image: download/open actions in the fullscreen image toolbar
+- audio: download/open actions beside play/pause
+- video: download/open actions beside fullscreen play
+- file/document: download/open actions on the file card
+- Fresh verification completed on 2026-03-31 with:
+- `./gradlew :app:compilePlayDebugKotlin :app:assemblePlayDebug`
+- `./gradlew :app:assemblePlayRelease`
+- `adb -s c2f22adf install -r /Users/memphis/.openclaw/workspace-mira/clawchat2/app/build/outputs/apk/play/release/openclaw-0.2.6-play-release.apk`
+- `adb -s c2f22adf shell am start -W -n ai.openclaw.app/.MainActivity`
+- `adb -s c2f22adf shell dumpsys window | rg "mCurrentFocus|mFocusedApp|ai.openclaw.app|MainActivity"`
+- `adb -s c2f22adf shell pidof ai.openclaw.app`
+- Verified test artifact for branch QA: `app/build/outputs/apk/play/release/openclaw-0.2.6-play-release.apk` built at `2026-03-31 11:55:47 +0800`.
+- Recommended branch QA on the Redmi K20:
+- open one chat containing an agent-sent image, audio clip, video, and document/file
+- image: tap to fullscreen, then tap download, then verify the image appears in the gallery/photos app
+- audio/video/file: tap the download icon on the attachment card, then use the new open action or the system file app to confirm the saved copy opens
+- confirm the saved files land under the expected public collections (`Pictures/ClawChat2`, `Movies/ClawChat2`, `Music/ClawChat2`, `Download/ClawChat2`) and that repeated downloads remain stable
