@@ -776,10 +776,11 @@
 - [x] Confirm the failing public GitHub Actions run and identify the exact Gradle task mismatch causing `android-checks` to exit with code 1.
 - [x] Update the shared Android CI workflow to use the current `play` flavor task names instead of the now-ambiguous generic debug tasks.
 - [x] Re-run the matching local verification commands and confirm they pass against the updated workflow task set.
-- [ ] Push the workflow fix to both private and public `main`, then confirm the public `Android CI` run succeeds.
+- [x] Push the workflow fix to both private and public `main`, then confirm the public `Android CI` run succeeds.
 
 ## Android CI Fix Review
 
 - Investigated public run `23780255248` (`docs: close 0.2.7 release review`) and confirmed `android-checks` failed in the `Compile Debug Kotlin` step because `:app:compileDebugKotlin` is now ambiguous after adding the `play` and `thirdParty` flavors.
 - Updated `.github/workflows/android-ci.yml` to run the flavor-specific tasks `:app:compilePlayDebugKotlin` and `:app:testPlayDebugUnitTest`, which match the public Android build variant actually shipped and already used in local verification.
 - Fresh local verification completed on 2026-03-31 with `./gradlew :app:compilePlayDebugKotlin :app:testPlayDebugUnitTest`, and the workflow-matching command set now exits successfully instead of failing during task resolution.
+- Pushed the workflow fix to both private and public `main`, and the public GitHub Actions run `23782763953` (`ci: fix android checks flavor tasks`) completed successfully with the `android-checks` job green in 3m30s.
