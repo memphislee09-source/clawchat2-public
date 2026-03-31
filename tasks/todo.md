@@ -770,3 +770,16 @@
 - `adb -s c2f22adf shell pidof ai.openclaw.app`
 - Verified release artifact for this pass: `app/build/outputs/apk/play/release/openclaw-0.2.7-play-release.apk`, built at `2026-03-31 12:13:39 +0800`, SHA-256 `39d90b1ce627ec52b2e93a63b854dcb87a8706b81018d98a438431cad6e5bdcd`.
 - Pushed the updated `main` baseline to both the private and public GitHub repositories, then published the public release at `https://github.com/memphislee09-source/clawchat2-public/releases/tag/v0.2.7` with the APK asset `openclaw-0.2.7-play-release.apk`.
+
+## Android CI Fix Plan
+
+- [x] Confirm the failing public GitHub Actions run and identify the exact Gradle task mismatch causing `android-checks` to exit with code 1.
+- [x] Update the shared Android CI workflow to use the current `play` flavor task names instead of the now-ambiguous generic debug tasks.
+- [x] Re-run the matching local verification commands and confirm they pass against the updated workflow task set.
+- [ ] Push the workflow fix to both private and public `main`, then confirm the public `Android CI` run succeeds.
+
+## Android CI Fix Review
+
+- Investigated public run `23780255248` (`docs: close 0.2.7 release review`) and confirmed `android-checks` failed in the `Compile Debug Kotlin` step because `:app:compileDebugKotlin` is now ambiguous after adding the `play` and `thirdParty` flavors.
+- Updated `.github/workflows/android-ci.yml` to run the flavor-specific tasks `:app:compilePlayDebugKotlin` and `:app:testPlayDebugUnitTest`, which match the public Android build variant actually shipped and already used in local verification.
+- Fresh local verification completed on 2026-03-31 with `./gradlew :app:compilePlayDebugKotlin :app:testPlayDebugUnitTest`, and the workflow-matching command set now exits successfully instead of failing during task resolution.
