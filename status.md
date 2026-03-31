@@ -8,12 +8,12 @@ Last updated: 2026-03-31
 
 - Baseline version: `0.2.6`
 - Android compatibility baseline: `minSdk 30` (Android 11+)
-- Stage: early public pre-release
+- Stage: early public release
 - Upstream origin: `openclaw/openclaw -> apps/android`
 - Repository role: independent Android fork focused on direct agent chat UX
 - Chat backend baseline: `openclaw-webchat` for contacts and conversations
 - Public repository: `memphislee09-source/clawchat2-public`
-- Public pre-release: `v0.2.6`
+- Public release: `v0.2.6`
 
 ### What This Fork Is Trying To Do
 
@@ -112,12 +112,12 @@ The broader intent is to make everyday Android agent chat feel more direct and l
 
 - 当前基线版本：`0.2.6`
 - Android 兼容基线：`minSdk 30`（Android 11+）
-- 当前阶段：早期公开预发布
+- 当前阶段：早期公开发行
 - 上游来源：`openclaw/openclaw -> apps/android`
 - 仓库定位：面向直接 agent 聊天体验的独立 Android 分叉
 - 聊天后端基线：联系人与对话以 `openclaw-webchat` 为准
 - 公开仓库：`memphislee09-source/clawchat2-public`
-- 当前公开预发布：`v0.2.6`
+- 当前公开发行版：`v0.2.6`
 
 ### 这个分叉想解决什么问题
 

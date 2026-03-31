@@ -15,7 +15,7 @@ Highlights in this build:
 
 Important notes:
 
-- this is still an early `Pre-release`
+- this is now the current public release
 - this is not an official OpenClaw build
 - `openclaw-webchat` remains the source of truth for contacts and chat history
 - before setup, users should ask their agent/operator to follow `https://github.com/memphislee09-source/claw-webchat/blob/main/docs/AGENT_INSTALL_NETWORK.md`
@@ -41,7 +41,7 @@ ClawChat2 仍然是一个非官方 OpenClaw Android 分叉，目标是在 Androi
 
 重要说明：
 
-- 当前版本仍属于早期 `Pre-release`
+- 当前版本现已作为当前公开发行版
 - 这不是官方 OpenClaw 构建版本
 - 联系人与聊天历史的服务端真源仍然是 `openclaw-webchat`
 - 开始设置前，应先让 agent/operator 按照这个文档完成 `claw-webchat` 服务端安装：
