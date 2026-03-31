@@ -47,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -97,6 +98,7 @@ fun ChatComposer(
   onToggleReadout: (Boolean) -> Unit,
   onNew: () -> Unit,
   onAbort: () -> Unit,
+  onInputFocusChanged: (Boolean) -> Unit = {},
   onSend: (text: String) -> Unit,
 ) {
   var input by rememberSaveable { mutableStateOf("") }
@@ -123,7 +125,11 @@ fun ChatComposer(
     OutlinedTextField(
       value = input,
       onValueChange = { input = it },
-      modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp, max = 156.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .heightIn(min = 56.dp, max = 156.dp)
+          .onFocusChanged { state -> onInputFocusChanged(state.isFocused) },
       placeholder = { Text(tr("Type a message", "输入消息"), style = mobileBodyStyle(), color = mobileTextTertiary) },
       minLines = 1,
       maxLines = 6,

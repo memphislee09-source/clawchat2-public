@@ -1,5 +1,24 @@
 # Task Plan
 
+- [x] Create and keep work on `codex/chat-thread-header-polish` until this round is verified.
+- [x] Move each chat message's speaker label and timestamp together to the outside top-left of the message bubble.
+- [x] Add the active agent avatar/icon to the left side of the chat sheet header title.
+- [x] Keep the composer/last message visible above the keyboard only when the user is already parked at the conversation bottom.
+- [x] Rebuild and run targeted verification for the updated chat thread behavior.
+
+- [x] Review: chat thread polish pass completed on branch `codex/chat-thread-header-polish`.
+- [x] Chat bubbles now render speaker label and timestamp together above the bubble instead of inside the bubble body, which leaves more vertical space for message content.
+- [x] The chat top bar now shows the active agent avatar to the left of the agent name, reusing the existing avatar URL/fallback behavior.
+- [x] Composer focus now reports into the chat sheet, and the list re-anchors to the conversation bottom only when the user was already following the latest message before the IME inset appeared.
+- [x] Fresh verification completed on 2026-03-31 with:
+- [x] `./gradlew :app:compilePlayDebugKotlin`
+- [x] `./gradlew :app:assemblePlayDebug`
+- [x] `./gradlew :app:assemblePlayRelease`
+- [x] `adb -s c2f22adf install -r app/build/outputs/apk/play/release/openclaw-0.2.7-play-release.apk`
+- [x] `adb -s c2f22adf shell am start -W -n ai.openclaw.app/.MainActivity`
+- [x] `adb -s c2f22adf shell dumpsys activity activities | rg "ai.openclaw.app/.MainActivity|ResumedActivity"`
+- [x] Device-side evidence captured at `tmp-chat-thread-polish-current.png` and `tmp-chat-thread-polish-keyboard.png`; the current screenshot confirms the new title avatar on K20, while the keyboard-follow path was build-verified and code-inspected but not fully asserted by automated tap because the IME did not open from adb tap on this device.
+
 - [x] Create an experimental branch for upstream absorption work.
 - [x] Re-scope the branch to selective upstream absorption only.
 - [x] Add gateway diagnostics helpers and wire them into connection surfaces.

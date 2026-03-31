@@ -73,9 +73,11 @@ fun ChatMessageListCard(
   pendingToolCalls: List<ChatPendingToolCall>,
   streamingAssistantText: String?,
   healthOk: Boolean,
+  bottomVisibilityOffsetPx: Int = 0,
   assistantLabel: String = "assistant",
   userLabel: String = "我",
   onPullDown: () -> Unit = {},
+  onFollowBottomChanged: (Boolean) -> Unit = {},
   onRetryUnavailable: (() -> Unit)? = null,
   modifier: Modifier = Modifier,
 ) {
@@ -110,6 +112,7 @@ fun ChatMessageListCard(
       .distinctUntilChanged()
       .collect { isNearBottom ->
         followBottom = isNearBottom
+        onFollowBottomChanged(isNearBottom)
       }
   }
 
@@ -132,6 +135,12 @@ fun ChatMessageListCard(
       } else if (followBottom) {
         listState.animateToConversationBottom(timelineEntries.lastIndex)
       }
+    }
+  }
+
+  LaunchedEffect(sessionKey, bottomVisibilityOffsetPx, timelineEntries.size) {
+    if (bottomVisibilityOffsetPx > 0 && timelineEntries.isNotEmpty()) {
+      listState.animateToConversationBottom(timelineEntries.lastIndex)
     }
   }
 

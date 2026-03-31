@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.AlertDialog
@@ -47,8 +48,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -57,9 +60,11 @@ import androidx.compose.ui.unit.dp
 import ai.openclaw.app.MainViewModel
 import ai.openclaw.app.R
 import ai.openclaw.app.BuildConfig
+import ai.openclaw.app.chat.AgentContactEntry
 import ai.openclaw.app.chat.formatAgentContactTitle
 import ai.openclaw.app.ui.chat.friendlySessionName
 import ai.openclaw.app.ui.chat.resolveSessionChoices
+import coil.compose.SubcomposeAsyncImage
 
 private enum class HomeTab(
   val labelEn: String,
@@ -131,6 +136,10 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
       val currentLabel = sessionChoices.firstOrNull { it.key == chatSessionKey }?.displayName ?: chatSessionKey
       friendlySessionName(currentLabel).ifBlank { "Conversation" }
     }
+  val activeChatContact =
+    remember(chatSessionKey, agentContacts) {
+      agentContacts.firstOrNull { it.directSessionKey == chatSessionKey }
+    }
 
   BackHandler(enabled = true) {
     when {
@@ -163,6 +172,12 @@ fun PostOnboardingTabs(viewModel: MainViewModel, modifier: Modifier = Modifier) 
           }
         },
         onOpenAppInfo = { aboutDialogOpen = true },
+        titleLeadingContent =
+          if (activeTab == HomeTab.Chat && activeChatContact != null) {
+            { ChatTopBarAvatar(contact = activeChatContact) }
+          } else {
+            null
+          },
       )
     },
   ) { innerPadding ->
@@ -278,6 +293,7 @@ private fun TopStatusBar(
   onSelectTab: (HomeTab) -> Unit,
   onBack: () -> Unit,
   onOpenAppInfo: () -> Unit,
+  titleLeadingContent: (@Composable () -> Unit)? = null,
 ) {
   val safeInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
   var menuExpanded by remember { mutableStateOf(false) }
@@ -289,15 +305,22 @@ private fun TopStatusBar(
     shadowElevation = 0.dp,
   ) {
     Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
-      Text(
-        text = title,
+      Row(
         modifier = Modifier.fillMaxWidth().align(Alignment.Center).padding(horizontal = 56.dp),
-        style = if (activeTab == HomeTab.Contacts) mobileTitle2 else mobileHeadline,
-        color = mobileText,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        textAlign = TextAlign.Center,
-      )
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        titleLeadingContent?.invoke()
+        Text(
+          text = title,
+          modifier = Modifier.padding(start = if (titleLeadingContent != null) 8.dp else 0.dp),
+          style = if (activeTab == HomeTab.Contacts) mobileTitle2 else mobileHeadline,
+          color = mobileText,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+          textAlign = TextAlign.Center,
+        )
+      }
       Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -368,6 +391,68 @@ private fun TopStatusBar(
       }
     }
   }
+}
+
+@Composable
+private fun ChatTopBarAvatar(contact: AgentContactEntry) {
+  val avatarShape = RoundedCornerShape(10.dp)
+  val avatarUrl = contact.avatarUrl?.trim().takeUnless { it.isNullOrEmpty() }
+
+  Surface(
+    modifier = Modifier.size(28.dp),
+    shape = avatarShape,
+    color = mobileSurfaceStrong,
+    border = BorderStroke(1.dp, mobileBorder.copy(alpha = 0.9f)),
+  ) {
+    if (avatarUrl != null) {
+      SubcomposeAsyncImage(
+        model = avatarUrl,
+        contentDescription = null,
+        modifier = Modifier.fillMaxSize().clip(avatarShape),
+        contentScale = ContentScale.Crop,
+        loading = { ChatTopBarAvatarFallback(contact = contact) },
+        error = { ChatTopBarAvatarFallback(contact = contact) },
+      )
+    } else {
+      ChatTopBarAvatarFallback(contact = contact)
+    }
+  }
+}
+
+@Composable
+private fun ChatTopBarAvatarFallback(contact: AgentContactEntry) {
+  val avatarShape = RoundedCornerShape(10.dp)
+  val label = contactTopBarFallbackLabel(contact)
+
+  Box(
+    modifier =
+      Modifier
+        .fillMaxSize()
+        .clip(avatarShape)
+        .background(mobileSurface),
+    contentAlignment = Alignment.Center,
+  ) {
+    if (label != null) {
+      Text(
+        text = label,
+        style = mobileCaption1.copy(fontWeight = FontWeight.Bold),
+        color = mobileText,
+        maxLines = 1,
+      )
+    } else {
+      Icon(
+        imageVector = Icons.Default.SmartToy,
+        contentDescription = null,
+        modifier = Modifier.size(15.dp),
+        tint = mobileTextSecondary,
+      )
+    }
+  }
+}
+
+private fun contactTopBarFallbackLabel(contact: AgentContactEntry): String? {
+  contact.emoji?.trim()?.takeIf { it.isNotEmpty() }?.let { return it }
+  return contact.displayName.trim().firstOrNull()?.uppercaseChar()?.toString()
 }
 
 @Composable

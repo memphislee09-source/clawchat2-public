@@ -10,8 +10,10 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,11 +25,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
@@ -92,12 +97,17 @@ fun ChatSheetContent(viewModel: MainViewModel) {
   val scope = rememberCoroutineScope()
   val focusManager = LocalFocusManager.current
   val keyboardController = LocalSoftwareKeyboardController.current
+  val density = LocalDensity.current
 
   val attachments = remember { mutableStateListOf<PendingAttachment>() }
+  val activeContact = agentContacts.firstOrNull { it.directSessionKey == chatSessionKey }
   val assistantLabel =
-    agentContacts.firstOrNull { it.directSessionKey == chatSessionKey }?.let { contact ->
+    activeContact?.let { contact ->
       formatAgentContactTitle(displayName = contact.displayName, emoji = contact.emoji)
     } ?: tr("assistant", "助手")
+  var composerFocused by remember(chatSessionKey) { mutableStateOf(false) }
+  var conversationAtBottom by remember(chatSessionKey) { mutableStateOf(true) }
+  val imeBottomPx = WindowInsets.ime.getBottom(density)
 
   val pickAttachments =
     rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
@@ -143,12 +153,14 @@ fun ChatSheetContent(viewModel: MainViewModel) {
       pendingToolCalls = pendingToolCalls,
       streamingAssistantText = streamingAssistantText,
       healthOk = healthOk,
+      bottomVisibilityOffsetPx = if (composerFocused && conversationAtBottom) imeBottomPx else 0,
       assistantLabel = assistantLabel,
       userLabel = userLabel,
       onPullDown = {
         focusManager.clearFocus(force = true)
         keyboardController?.hide()
       },
+      onFollowBottomChanged = { atBottom -> conversationAtBottom = atBottom },
       onRetryUnavailable = {
         viewModel.refreshChat()
         viewModel.refreshChatSessions(limit = 200)
@@ -188,6 +200,7 @@ fun ChatSheetContent(viewModel: MainViewModel) {
           viewModel.sendChat(message = "/new", thinking = thinkingLevel, attachments = emptyList())
         },
         onAbort = { viewModel.abortChat() },
+        onInputFocusChanged = { focused -> composerFocused = focused },
         onSend = { text ->
           val outgoing =
             attachments.map { att ->
