@@ -466,7 +466,8 @@ private fun ChatVideoAttachment(descriptor: ChatAttachmentDescriptor) {
       null
     }
   val fallbackFile = fallbackFileState?.file
-  val previewState = fallbackFile?.let { rememberMediaPreviewState(file = it, includeFrame = true) }
+  val previewSource = streamUrl ?: fallbackFile?.absolutePath
+  val previewState = previewSource?.let { rememberMediaPreviewState(source = it, includeFrame = true) }
   val playbackSource = streamUrl ?: fallbackFile?.absolutePath
   val preferredOrientation = preferredVideoFullscreenOrientation(previewState)
   val displayAspectRatio = previewState?.let(::mediaDisplayAspectRatio)
@@ -1193,8 +1194,8 @@ internal fun rememberResolvedMediaFileState(
 }
 
 @Composable
-private fun rememberMediaPreviewState(file: File, includeFrame: Boolean): MediaPreviewState {
-  var state by remember(file.absolutePath, includeFrame) {
+private fun rememberMediaPreviewState(source: String, includeFrame: Boolean): MediaPreviewState {
+  var state by remember(source, includeFrame) {
     mutableStateOf(
       MediaPreviewState(
         durationMs = null,
@@ -1207,10 +1208,10 @@ private fun rememberMediaPreviewState(file: File, includeFrame: Boolean): MediaP
     )
   }
 
-  LaunchedEffect(file.absolutePath, includeFrame) {
+  LaunchedEffect(source, includeFrame) {
     state =
       withContext(Dispatchers.IO) {
-        loadMediaPreviewState(source = file.absolutePath, includeFrame = includeFrame)
+        loadMediaPreviewState(source = source, includeFrame = includeFrame)
       }
   }
 

@@ -34,6 +34,7 @@ Compared with the upstream Android client, this fork currently emphasizes:
 - borderless icon-only composer quick controls that keep attachment, new-chat, model, thinking, readout, and send/stop visible in one row
 - enhanced agent-to-client media handling
 - generic user attachment upload for images, audio, video, and regular files
+- inline chat videos now show a first-frame preview before fullscreen playback opens
 - practical Android playback stability improvements for fullscreen image/video viewing
 - streamed fullscreen video playback for large remote files
 - practical gateway access patterns including Tailscale-friendly usage
@@ -90,6 +91,7 @@ ClawChat2 currently supports structured agent-sent media attachments and user-or
 - image receive and fullscreen viewing
 - audio receive and playback
 - video receive, preview, and fullscreen playback
+- inline chat video cards now try to show the first video frame instead of a generic black placeholder
 - streamed remote video playback without requiring a full pre-download
 - chat-side upload of images, audio, video, and regular files to `openclaw-webchat`
 
@@ -117,6 +119,7 @@ Notes:
 - `mediaUrl` is retained as a compatibility fallback
 - the current user-originated picker flow now supports `image`, `audio`, `video`, and generic `file` uploads through the same `openclaw-webchat` upload path
 - generic files now appear in the transcript as file cards instead of being treated as unsupported attachments
+- inline chat video cards now reuse the playable video source to show a first-frame preview before fullscreen playback
 - fullscreen video playback now prefers streamed playback via Android Media3/ExoPlayer, with local-file fallback only when needed
 
 Operational guides:
@@ -198,6 +201,7 @@ ClawChat2 是一个基于官方 OpenClaw Android 客户端 `openclaw/openclaw ->
 - 大图会尽量铺满气泡内容区，小图则保持原始显示尺寸不过度放大，同时支持单击进入全屏、全屏内再单击返回
 - 输入框下方的快捷操作现已收敛为无外框的纯图标按钮，一行内同时显示附件、新会话、模型、thinking、朗读与发送/停止
 - 支持用户侧上传图片、音频、视频和普通文件给 agent
+- 聊天中的视频卡片现在会尽量显示视频首帧预览，而不是统一黑色占位块
 - 更稳定的 Android 图片/视频全屏播放体验
 - 更贴近实际使用的网关接入方式，包括对 Tailscale 场景的友好支持
 
@@ -275,6 +279,7 @@ ClawChat2 当前支持 agent 发送的结构化媒体消息，也支持用户从
 - `mediaUrl` 保留作为兼容性 fallback
 - 当前用户侧附件选择器已经支持 `image`、`audio`、`video` 和通用 `file`
 - 普通文件现在会在聊天记录中显示为文件卡片，而不是被当成不支持的附件
+- 聊天中的视频卡片现在会复用可播放视频源提取首帧预览，再进入全屏播放
 - 视频全屏当前优先走 Android Media3/ExoPlayer 的流式播放，必要时再回退到本地文件路径
 
 ### 构建

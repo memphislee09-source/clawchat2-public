@@ -699,3 +699,22 @@
 - `adb -s c2f22adf shell pidof ai.openclaw.app`
 - Verified public release artifact: `app/build/outputs/apk/play/release/openclaw-0.2.6-play-release.apk`, built at `2026-03-31 09:13:22 +0800`, SHA-256 `b300097f352e75993ccf65fe569266a0e02d9cd0a69b5bcae1dbb6d84d158af9`.
 - Pushed the same `main` baseline to both the private and public GitHub repositories, then published the public release at `https://github.com/memphislee09-source/clawchat2-public/releases/tag/v0.2.6`.
+
+## Chat Video First-Frame Preview Plan
+
+- [x] Inspect the current inline video attachment preview path and confirm why streamed chat videos fall back to a black placeholder.
+- [x] Add first-frame preview support for the same streamed video source that already works in fullscreen playback.
+- [x] Rebuild and verify the updated chat attachment rendering path, then record the result here.
+
+## Chat Video First-Frame Preview Review
+
+- Root cause was in `ChatVideoAttachment`: inline preview extraction only ran when the video had already been materialized as a local fallback file. For the normal streaming path, `streamUrl` skipped `rememberResolvedMediaFileState`, which left `previewState` null and forced the card into the black placeholder branch even though fullscreen playback could already open the same video URL.
+- The fix keeps fullscreen playback unchanged and only widens the preview source. `previewState` now derives from `streamUrl ?: fallbackFile?.absolutePath`, and `rememberMediaPreviewState` now accepts a generic source string instead of only a local `File`, so the existing `MediaMetadataRetriever` preview path can decode the first frame from the streamed video source as well.
+- Fresh verification completed on 2026-03-31 with:
+- `./gradlew :app:compilePlayDebugKotlin :app:assemblePlayDebug`
+- `./gradlew :app:assemblePlayRelease`
+- `adb -s c2f22adf install -r /Users/memphis/.openclaw/workspace-mira/clawchat2/app/build/outputs/apk/play/release/openclaw-0.2.6-play-release.apk`
+- `adb -s c2f22adf shell dumpsys activity activities | rg "mResumedActivity|topResumedActivity|ai.openclaw.app|MainActivity"`
+- `adb -s c2f22adf shell pidof ai.openclaw.app`
+- Verified install artifact for the Redmi K20 (`c2f22adf`): `app/build/outputs/apk/play/release/openclaw-0.2.6-play-release.apk` built at `2026-03-31 11:32:46 +0800`.
+- User confirmed on 2026-03-31 that the chat video card now shows the expected first frame instead of the previous black placeholder.
