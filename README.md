@@ -10,7 +10,7 @@ The short rationale for the fork is documented in [WHY_THIS_FORK.md](WHY_THIS_FO
 
 ### Project Status
 
-- Baseline version: `0.2.5`
+- Baseline version: `0.2.6`
 - Android compatibility baseline: `minSdk 30` (Android 11+)
 - Stage: early, experimental, not release-hardened
 - Scope: independent community fork, not an official OpenClaw distribution
@@ -53,18 +53,18 @@ Related docs:
 - [OPENCLAW_AGENT_SETUP.md](OPENCLAW_AGENT_SETUP.md)
 - [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md)
 - [RELEASING.md](RELEASING.md)
-- [RELEASE_NOTES_v0.2.5.md](RELEASE_NOTES_v0.2.5.md)
+- [RELEASE_NOTES_v0.2.6.md](RELEASE_NOTES_v0.2.6.md)
 - [WHY_THIS_FORK.md](WHY_THIS_FORK.md)
 
-### Screenshots
+### Demo And Preview
 
-Chat list:
+Intro video:
 
-![ClawChat2 chat list](docs/images/chat-list.png)
+[Watch on Bilibili](https://www.bilibili.com/video/BV1giXBBoEB1/?vd_source=024893da89cf9e9ffd2f4ff6e1929372)
 
-Chat view with media:
+Current app preview:
 
-![ClawChat2 chat view](docs/images/chat-view-media.png)
+![ClawChat2 preview](docs/images/home-preview-v0.2.6.png)
 
 ### OpenClaw-Side Setup
 
@@ -149,6 +149,8 @@ Current local verification:
 - a real Redmi K20 (`c2f22adf`) also verified the new composer-side `/new` shortcut successfully on 2026-03-29 after adding the `N` action next to send
 - a real Redmi K20 (`c2f22adf`) also verified the 2026-03-29 public-release chat visual polish build after the denser bubble pass, screenshot-aligned light/dark chat palette, dark-text user reply bubbles, and fullscreen image tap-to-dismiss refinements
 - the promoted `main` release baseline was rebuilt again on 2026-03-30 after merging `codex/ui-palette-pass`, and this release line now includes the screenshot-aligned palette plus onboarding guidance that explicitly tells users to give the `claw-webchat` install guide to their agent first
+- the current release line now also suppresses automatic pairing-request churn while approval is pending, so `openclaw devices approve --latest` no longer races against repeated Android reconnect attempts during setup-code onboarding
+- the onboarding welcome page now starts with an explicit app-language choice, so users can pick Chinese, English, or follow-system before the rest of the setup flow continues
 
 ### Releases
 
@@ -157,7 +159,7 @@ Current local verification:
 - Public APKs should be signed with the fork maintainer's own release key.
 - Release notes should clearly state that this is an unofficial OpenClaw fork.
 
-Current release guidance is documented in [RELEASING.md](RELEASING.md) and [RELEASE_NOTES_v0.2.5.md](RELEASE_NOTES_v0.2.5.md).
+Current release guidance is documented in [RELEASING.md](RELEASING.md) and [RELEASE_NOTES_v0.2.6.md](RELEASE_NOTES_v0.2.6.md).
 
 ### Development Notes
 
@@ -176,7 +178,7 @@ ClawChat2 是一个基于官方 OpenClaw Android 客户端 `openclaw/openclaw ->
 
 ### 项目状态
 
-- 当前基线版本：`0.2.5`
+- 当前基线版本：`0.2.6`
 - Android 兼容基线：`minSdk 30`（Android 11+）
 - 当前阶段：早期、实验性、尚未达到发布级稳定
 - 项目定位：独立社区分叉，不是官方 OpenClaw 发布版本
@@ -214,18 +216,18 @@ ClawChat2 是一个基于官方 OpenClaw Android 客户端 `openclaw/openclaw ->
 - [OPENCLAW_AGENT_SETUP.md](OPENCLAW_AGENT_SETUP.md)
 - [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md)
 - [RELEASING.md](RELEASING.md)
-- [RELEASE_NOTES_v0.2.5.md](RELEASE_NOTES_v0.2.5.md)
+- [RELEASE_NOTES_v0.2.6.md](RELEASE_NOTES_v0.2.6.md)
 - [WHY_THIS_FORK.md](WHY_THIS_FORK.md)
 
-### 截图
+### 视频与预览
 
-聊天列表：
+介绍视频：
 
-![ClawChat2 聊天列表](docs/images/chat-list.png)
+[Bilibili 观看链接](https://www.bilibili.com/video/BV1giXBBoEB1/?vd_source=024893da89cf9e9ffd2f4ff6e1929372)
 
-聊天页与媒体展示：
+当前应用预览：
 
-![ClawChat2 聊天页](docs/images/chat-view-media.png)
+![ClawChat2 预览](docs/images/home-preview-v0.2.6.png)
 
 ### OpenClaw 侧准备
 
@@ -278,15 +280,15 @@ ClawChat2 当前支持 agent 发送的结构化媒体消息，也支持用户从
 ### 构建
 
 ```bash
-./gradlew :app:assembleDebug
-./gradlew :app:compileDebugKotlin
-./gradlew :app:testDebugUnitTest
+./gradlew :app:assemblePlayDebug
+./gradlew :app:compilePlayDebugKotlin
+./gradlew :app:testPlayDebugUnitTest
 ```
 
 安装并启动：
 
 ```bash
-./gradlew :app:installDebug
+./gradlew :app:installPlayDebug
 adb shell am start -n ai.openclaw.app/.MainActivity
 ```
 
@@ -325,7 +327,7 @@ adb shell am start -n ai.openclaw.app/.MainActivity
 - 对外发布的 APK 应使用分叉维护者自己的 release key 签名。
 - Release 说明中应明确写明这是非官方 OpenClaw 分叉。
 
-当前发行流程与首版说明见 [RELEASING.md](RELEASING.md) 和 [RELEASE_NOTES_v0.2.5.md](RELEASE_NOTES_v0.2.5.md)。
+当前发行流程与首版说明见 [RELEASING.md](RELEASING.md) 和 [RELEASE_NOTES_v0.2.6.md](RELEASE_NOTES_v0.2.6.md)。
 
 ### 开发说明
 

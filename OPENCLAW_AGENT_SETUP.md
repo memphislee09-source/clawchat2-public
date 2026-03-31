@@ -111,8 +111,10 @@ If ClawChat2 shows a pairing or approval state, run:
 
 ```bash
 openclaw devices list
-openclaw devices approve <requestId>
+openclaw devices approve --latest
 ```
+
+If request IDs are visibly rotating while the phone retries, prefer `--latest` over copying an older `requestId`.
 
 Then ask the user to tap Connect again.
 

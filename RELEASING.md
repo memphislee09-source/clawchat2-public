@@ -18,18 +18,18 @@ For now, public binaries should follow these rules:
    - Review [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md).
    - Confirm no private endpoints, tokens, or personal paths are present.
 2. Run the validation steps.
-   - `./gradlew :app:compileDebugKotlin`
-   - `./gradlew :app:testDebugUnitTest`
-   - `./gradlew :app:assembleRelease`
+   - `./gradlew :app:compilePlayDebugKotlin`
+   - `./gradlew :app:testPlayDebugUnitTest`
+   - `./gradlew :app:assemblePlayRelease`
 3. Collect the output APK.
-   - Expected path: `app/build/outputs/apk/release/openclaw-<version>-release.apk`
+   - Expected path: `app/build/outputs/apk/play/release/openclaw-<version>-play-release.apk`
 4. Generate checksum material.
-   - `sha256sum app/build/outputs/apk/release/openclaw-<version>-release.apk`
+   - `shasum -a 256 app/build/outputs/apk/play/release/openclaw-<version>-play-release.apk`
 5. Create a GitHub Release.
-   - Title example: `ClawChat2 v0.2.5`
+   - Title example: `ClawChat2 v0.2.6`
    - Mark as `Pre-release` while the fork is still early.
    - Attach the APK.
-   - Paste bilingual notes from [RELEASE_NOTES_v0.2.5.md](RELEASE_NOTES_v0.2.5.md).
+   - Paste bilingual notes from [RELEASE_NOTES_v0.2.6.md](RELEASE_NOTES_v0.2.6.md).
 6. Smoke test the final signed APK.
    - install on emulator
    - install on at least one real Android 11+ device when practical
@@ -62,18 +62,18 @@ For now, public binaries should follow these rules:
    - 阅读 [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md)。
    - 确认没有私有 endpoint、token 或个人路径。
 2. 执行验证。
-   - `./gradlew :app:compileDebugKotlin`
-   - `./gradlew :app:testDebugUnitTest`
-   - `./gradlew :app:assembleRelease`
+   - `./gradlew :app:compilePlayDebugKotlin`
+   - `./gradlew :app:testPlayDebugUnitTest`
+   - `./gradlew :app:assemblePlayRelease`
 3. 收集输出 APK。
-   - 预期路径：`app/build/outputs/apk/release/openclaw-<version>-release.apk`
+   - 预期路径：`app/build/outputs/apk/play/release/openclaw-<version>-play-release.apk`
 4. 生成校验信息。
-   - `sha256sum app/build/outputs/apk/release/openclaw-<version>-release.apk`
+   - `shasum -a 256 app/build/outputs/apk/play/release/openclaw-<version>-play-release.apk`
 5. 创建 GitHub Release。
-   - 标题示例：`ClawChat2 v0.2.5`
+   - 标题示例：`ClawChat2 v0.2.6`
    - 项目仍处于早期时请勾选 `Pre-release`
    - 上传 APK
-   - 使用 [RELEASE_NOTES_v0.2.5.md](RELEASE_NOTES_v0.2.5.md) 中的双语说明
+   - 使用 [RELEASE_NOTES_v0.2.6.md](RELEASE_NOTES_v0.2.6.md) 中的双语说明
 6. 对最终签名 APK 做冒烟验证。
    - 在模拟器安装
    - 条件允许时，在至少一台 Android 11+ 真机安装

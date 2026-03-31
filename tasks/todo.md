@@ -623,3 +623,79 @@
 - Installed `app/build/outputs/apk/play/debug/openclaw-0.2.5-play-debug.apk` onto the required Redmi K20 (`c2f22adf`), relaunched `ai.openclaw.app/.MainActivity`, and confirmed the app process was resumed in the foreground.
 - Built public release artifact `app/build/outputs/apk/play/release/openclaw-0.2.5-play-release.apk` with SHA-256 `69258095f6651462158a199c5c375ae81d957e6590ff3250c8956036a76e5cea`, pushed `main` to both `origin` and `public`, and published the GitHub pre-release at `https://github.com/memphislee09-source/clawchat2-public/releases/tag/v0.2.5`.
 - Because `clawchat2-public` had an older independent history, its previous `main` was preserved first as `archive/public-main-before-v0.2.5` before `public/main` was force-updated to the new shared baseline.
+
+## K20 QR Pairing Failure Plan
+
+- [x] Reconstruct the exact failure path for K20 QR pairing and collect the relevant existing pairing guidance from docs and task history.
+- [x] Trace the Android setup-code / QR connection flow and identify why the approval `requestId` becomes invalid before `openclaw devices approve` succeeds.
+- [x] Implement the narrowest fix or user-path correction based on evidence, without disturbing unrelated onboarding/chat behavior.
+- [x] Re-run the most relevant verification for the failing pairing path and record the result here.
+
+## K20 QR Pairing Failure Review
+
+- Root-cause hypothesis was confirmed by code-path inspection and focused regression coverage: `GatewaySession.runLoop()` kept auto-retrying bootstrap-token connects after pairing-required failures, which could rotate pending pairing requests before the operator finished `openclaw devices approve <requestId>`.
+- The old onboarding UI also amplified that failure mode by always telling the host-side operator to copy a literal `requestId`, even though the project docs already noted that rotating requests should be approved with `openclaw devices approve --latest`.
+- `GatewaySession` now treats pairing-required connect failures as a pause point instead of a normal transient transport error. When the gateway says the device is awaiting approval, Android stops spinning new connect attempts until the user explicitly reconnects, which prevents the app from continuously invalidating the just-listed pending request.
+- Added `GatewaySessionPairingTest` to prove the new behavior: a mocked `PAIRING_REQUIRED` connect response now yields exactly one connect attempt until `reconnect()` is called, after which the next connect attempt is allowed through.
+- Updated onboarding and `OPENCLAW_AGENT_SETUP.md` to recommend `openclaw devices approve --latest` for the host-side recovery path, which matches the known request-rotation failure mode.
+- Fresh verification completed on 2026-03-31 with:
+- `./gradlew --stop`
+- `./gradlew :app:testPlayDebugUnitTest --tests ai.openclaw.app.gateway.GatewaySessionPairingTest --tests ai.openclaw.app.node.ConnectionManagerTest`
+- `./gradlew :app:compilePlayDebugKotlin`
+- `./gradlew :app:assemblePlayDebug`
+- `./gradlew :app:assemblePlayRelease`
+- `adb -s c2f22adf install -r /Users/memphis/.openclaw/workspace-mira/clawchat2/app/build/outputs/apk/play/release/openclaw-0.2.5-play-release.apk`
+- `adb -s c2f22adf shell am start -n ai.openclaw.app/.MainActivity`
+- `adb -s c2f22adf shell monkey -p ai.openclaw.app -c android.intent.category.LAUNCHER 1`
+- `adb -s c2f22adf shell dumpsys activity activities | rg "mResumedActivity|topResumedActivity|ai.openclaw.app|MainActivity"`
+- `adb -s c2f22adf shell dumpsys window | rg "mCurrentFocus|mFocusedApp|ai.openclaw.app|MainActivity"`
+- Device-install note: `playDebug` could not overwrite the existing K20 install because the phone was already running a release-signed package, so the verified on-device retest artifact for this pass is the freshly rebuilt release-signed APK `app/build/outputs/apk/play/release/openclaw-0.2.5-play-release.apk`.
+- Manual end-to-end QR pairing on the real gateway is still pending from the user after install; this pass verified the retry suppression behavior in unit tests plus release build/install/launch readiness on device.
+
+## First-Launch Language Picker Plan
+
+- [x] Inspect the current app-wide translation mechanism and onboarding entry path.
+- [x] Add a first-page language choice on fresh install and persist the selected app language for later screens.
+- [x] Verify the updated onboarding/language path with focused build checks and record the result here.
+
+## First-Launch Language Picker Review
+
+- ClawChat2 already had persistent app-language support through `AppLanguageManager` and `SecurePrefs`, but the entry point was buried in Settings. The first-run path now surfaces language choice immediately on the welcome page.
+- The first onboarding page now opens with a dedicated language section offering `Follow system`, `English`, and `Chinese`. Choosing an option saves `app.language` and immediately recreates the activity so later onboarding pages and the rest of the app switch to the selected language without waiting for a manual restart.
+- To avoid a half-finished experience where the user picks a language and the next onboarding page stays English, the main onboarding chrome and core step copy were also moved onto `tr(...)` bilingual rendering for the welcome, gateway, permissions, and final-check path.
+- Fresh verification completed on 2026-03-31 with:
+- `./gradlew :app:compilePlayDebugKotlin`
+- `./gradlew :app:assemblePlayRelease`
+- `adb -s c2f22adf install -r /Users/memphis/.openclaw/workspace-mira/clawchat2/app/build/outputs/apk/play/release/openclaw-0.2.5-play-release.apk`
+- `adb -s c2f22adf shell am start -n ai.openclaw.app/.MainActivity`
+- `adb -s c2f22adf shell monkey -p ai.openclaw.app -c android.intent.category.LAUNCHER 1`
+- `adb -s c2f22adf shell dumpsys window | rg "mCurrentFocus|mFocusedApp|ai.openclaw.app|MainActivity"`
+- `adb -s c2f22adf shell pidof ai.openclaw.app`
+- Installed verification artifact for the Redmi K20 (`c2f22adf`): `app/build/outputs/apk/play/release/openclaw-0.2.5-play-release.apk` built at `2026-03-31 08:52:25 +0800`.
+
+## Release 0.2.6 Plan
+
+- [x] Bump the Android app and release-facing docs from `0.2.5` to `0.2.6`.
+- [x] Update the private/public repo homepage content with the provided Bilibili intro video link and replace the old screenshots with the provided single composite screenshot.
+- [x] Document the pairing retry suppression and first-launch language picker in the new release notes and project status docs.
+- [x] Build and verify fresh `playDebug` / `playRelease` artifacts for `0.2.6`, including a real-device install of the release-signed APK.
+- [x] Commit the release changes, push `main` to the private repo, sync the same baseline to the public repo, and publish/update the public GitHub Release with the new APK and checksum.
+
+## Release 0.2.6 Review
+
+- Bumped the Android app to `versionName 0.2.6` / `versionCode 8`, added `RELEASE_NOTES_v0.2.6.md`, refreshed `README.md`, `status.md`, `RELEASING.md`, and synced the promo-copy files so the release-facing docs all point at the same `0.2.6` baseline.
+- The private/public homepage now includes the requested Bilibili intro video link, and the old two-screenshot homepage set was replaced by the provided single composite preview image at `docs/images/home-preview-v0.2.6.png`.
+- The new public release line explicitly documents both release-facing functional changes from this pass: pairing-request retry suppression while approval is pending, and the first-launch app-language choice on the onboarding welcome screen.
+- Fresh verification completed on 2026-03-31 with:
+- `./gradlew --stop`
+- `./gradlew :app:testPlayDebugUnitTest --tests ai.openclaw.app.gateway.GatewaySessionPairingTest --tests ai.openclaw.app.node.ConnectionManagerTest`
+- `./gradlew :app:compilePlayDebugKotlin :app:assemblePlayRelease`
+- `./gradlew :app:assemblePlayDebug`
+- `shasum -a 256 /Users/memphis/.openclaw/workspace-mira/clawchat2/app/build/outputs/apk/play/release/openclaw-0.2.6-play-release.apk`
+- `adb -s c2f22adf install -r /Users/memphis/.openclaw/workspace-mira/clawchat2/app/build/outputs/apk/play/release/openclaw-0.2.6-play-release.apk`
+- `adb -s c2f22adf shell am start -W -n ai.openclaw.app/.MainActivity`
+- `adb -s c2f22adf shell monkey -p ai.openclaw.app -c android.intent.category.LAUNCHER 1`
+- `adb -s c2f22adf shell dumpsys activity activities | rg "mResumedActivity|topResumedActivity|ai.openclaw.app|MainActivity"`
+- `adb -s c2f22adf shell pidof ai.openclaw.app`
+- Verified public release artifact: `app/build/outputs/apk/play/release/openclaw-0.2.6-play-release.apk`, built at `2026-03-31 09:13:22 +0800`, SHA-256 `b300097f352e75993ccf65fe569266a0e02d9cd0a69b5bcae1dbb6d84d158af9`.
+- The release publication target for this pass is `https://github.com/memphislee09-source/clawchat2-public/releases/tag/v0.2.6`, with the same `main` baseline pushed to both the private and public GitHub repositories.

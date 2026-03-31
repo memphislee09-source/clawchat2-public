@@ -5,6 +5,7 @@ import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -88,6 +89,7 @@ class GatewaySession(
   private val json = Json { ignoreUnknownKeys = true }
   private val writeLock = Mutex()
   private val pending = ConcurrentHashMap<String, CompletableDeferred<RpcResponse>>()
+  private val reconnectGeneration = AtomicLong(0)
 
   @Volatile private var canvasHostUrl: String? = null
   @Volatile private var mainSessionKey: String? = null
@@ -114,6 +116,7 @@ class GatewaySession(
     tls: GatewayTlsParams? = null,
   ) {
     desired = DesiredConnection(endpoint, token, bootstrapToken, password, options, tls)
+    reconnectGeneration.incrementAndGet()
     if (job == null) {
       job = scope.launch(Dispatchers.IO) { runLoop() }
     }
@@ -121,6 +124,7 @@ class GatewaySession(
 
   fun disconnect() {
     desired = null
+    reconnectGeneration.incrementAndGet()
     currentConnection?.closeQuietly()
     scope.launch(Dispatchers.IO) {
       job?.cancelAndJoin()
@@ -132,7 +136,11 @@ class GatewaySession(
   }
 
   fun reconnect() {
+    reconnectGeneration.incrementAndGet()
     currentConnection?.closeQuietly()
+    if (job == null && desired != null) {
+      job = scope.launch(Dispatchers.IO) { runLoop() }
+    }
   }
 
   fun currentCanvasHostUrl(): String? = canvasHostUrl
@@ -628,11 +636,28 @@ class GatewaySession(
         connectOnce(target)
         attempt = 0
       } catch (err: Throwable) {
+        val message = err.message ?: err::class.java.simpleName
+        if (looksLikePairingRequired(message)) {
+          attempt = 0
+          onDisconnected("Gateway error: $message")
+          waitForReconnectSignal(target)
+          continue
+        }
         attempt += 1
-        onDisconnected("Gateway error: ${err.message ?: err::class.java.simpleName}")
+        onDisconnected("Gateway error: $message")
         val sleepMs = minOf(8_000L, (350.0 * Math.pow(1.7, attempt.toDouble())).toLong())
         delay(sleepMs)
       }
+    }
+  }
+
+  private suspend fun waitForReconnectSignal(target: DesiredConnection) {
+    val pausedGeneration = reconnectGeneration.get()
+    while (scope.isActive) {
+      if (desired == null) return
+      if (desired != target) return
+      if (reconnectGeneration.get() != pausedGeneration) return
+      delay(250)
     }
   }
 
@@ -713,6 +738,19 @@ class GatewaySession(
     if (host == "0.0.0.0" || host == "::") return true
     return host.startsWith("127.")
   }
+}
+
+internal fun looksLikePairingRequired(message: String?): Boolean {
+  val lower = message?.trim()?.lowercase(Locale.US).orEmpty()
+  if (lower.isEmpty()) return false
+  return (
+    lower.contains("pairing required") ||
+      lower.contains("pairing_required") ||
+      lower.contains("approval required") ||
+      lower.contains("awaiting approval") ||
+      lower.contains("pending approval") ||
+      lower.contains("not approved")
+  )
 }
 
 private fun JsonElement?.asObjectOrNull(): JsonObject? = this as? JsonObject
