@@ -14,6 +14,10 @@
 - [x] `adb -s c2f22adf shell am start -W -n ai.openclaw.app/.MainActivity`
 - [x] `adb -s c2f22adf shell dumpsys window windows | rg "ai.openclaw.app|MainActivity"`
 - [x] `adb -s c2f22adf shell pidof ai.openclaw.app`
+- [x] Follow-up refinement: remove the extra vertical row gap so adjacent contacts are separated by only one divider line.
+- [x] `./gradlew :app:compilePlayDebugKotlin`
+- [x] `./gradlew :app:assemblePlayRelease`
+- [x] Reinstall the latest branch build on K20 after the device reconnected; `adb -s c2f22adf install -r app/build/outputs/apk/play/release/openclaw-0.2.7-play-release.apk` succeeded on 2026-03-31 and the running top-most app instance accepted a fresh `am start` delivery for `ai.openclaw.app/.MainActivity`.
 
 - [x] Create and keep work on `codex/chat-thread-header-polish` until this round is verified.
 - [x] Move each chat message's speaker label and timestamp together to the outside top-left of the message bubble.

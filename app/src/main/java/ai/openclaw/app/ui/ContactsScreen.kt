@@ -74,7 +74,6 @@ fun ContactsScreen(
           .fillMaxSize()
           .background(mobileBackground),
       contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-      verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       if (!errorText.isNullOrBlank()) {
         item {

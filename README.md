@@ -24,8 +24,8 @@ Compared with the upstream Android client, this fork currently emphasizes:
 - `openclaw-webchat` as the source of truth for contacts and chat history
 - simplified chat-first navigation
 - selectable app theme mode with dark-mode support
-- WeChat-style continuous contacts list with larger avatars and lighter separators
-- continuous chat-message presentation with simplified spacing-first styling and synced user display name
+- WeChat-style continuous contacts list with larger avatars and a single subtle divider between adjacent rows
+- continuous chat-message presentation with in-bubble speaker/time headers and synced user display name
 - optional chat reply readout with a lightweight speaker toggle in the composer action row
 - quick composer controls for send/stop, `/new`, model switch, and thinking switch directly under the input box
 - denser chat transcript layout with left-aligned bubbles, smaller symmetric side padding, screenshot-aligned light/dark surfaces, and clearer color separation between user, agent, and system messages
@@ -195,8 +195,9 @@ ClawChat2 是一个基于官方 OpenClaw Android 客户端 `openclaw/openclaw ->
 - 更简化、聊天优先的导航方式
 - 支持可切换的应用主题模式与深色模式
 - 更强的 agent 到客户端媒体处理能力
+- 联系人页采用连续列表布局，相邻联系人之间只保留一条浅分隔线
 - 输入框下方现在也提供轻量快捷控制，包括 send/stop、`/new`、模型切换和 thinking 切换
-- 对话记录区域进一步收敛为左对齐、左右留白更小且对称的高密度气泡布局，并按参考稿收紧浅色/深色表层关系，通过颜色区分用户、agent 与 system 消息
+- 对话记录区域进一步收敛为左对齐、左右留白更小且对称的高密度气泡布局，并将发言人和时间收回到气泡首行，通过颜色区分用户、agent 与 system 消息
 - 用户回复气泡现在在浅色和深色模式下都统一使用实心绿色底配深色文字，提升亮色气泡上的可读性
 - 大图会尽量铺满气泡内容区，小图则保持原始显示尺寸不过度放大，同时支持单击进入全屏、全屏内再单击返回
 - 输入框下方的快捷操作现已收敛为无外框的纯图标按钮，一行内同时显示附件、新会话、模型、thinking、朗读与发送/停止
