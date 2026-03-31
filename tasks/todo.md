@@ -747,3 +747,25 @@
 - image: tap to fullscreen, then tap download, then verify the image appears in the gallery/photos app
 - audio/video/file: tap the download icon on the attachment card, then use the new open action or the system file app to confirm the saved copy opens
 - confirm the saved files land under the expected public collections (`Pictures/ClawChat2`, `Movies/ClawChat2`, `Music/ClawChat2`, `Download/ClawChat2`) and that repeated downloads remain stable
+
+## Release 0.2.7 Plan
+
+- [x] Fast-forward the tested `codex/chat-attachment-downloads` branch into `main` and bump the Android app to `0.2.7` / `versionCode 9`.
+- [x] Update release-facing docs to describe the new attachment download support and point release metadata at `0.2.7`.
+- [x] Build and verify fresh `playDebug` / `playRelease` artifacts for `0.2.7`, including a real-device install of the release-signed APK.
+- [ ] Push the updated `main` baseline to the private and public GitHub repos, then publish the new public GitHub Release with the `0.2.7` APK and checksum.
+
+## Release 0.2.7 Review
+
+- Fast-forwarded the tested `codex/chat-attachment-downloads` branch into `main`, then bumped the Android app to `versionName 0.2.7` / `versionCode 9`.
+- Added `RELEASE_NOTES_v0.2.7.md` and updated `README.md`, `RELEASING.md`, and `status.md` so the release-facing docs now describe attachment downloads as a first-class part of the public Android build.
+- This release promotes verified attachment download support for agent-sent images, audio, videos, and generic files, saving them into Android public folders under `ClawChat2` instead of leaving them in app-private cache only.
+- Fresh verification completed on 2026-03-31 with:
+- `./gradlew --stop`
+- `./gradlew :app:compilePlayDebugKotlin :app:assemblePlayDebug :app:assemblePlayRelease`
+- `shasum -a 256 /Users/memphis/.openclaw/workspace-mira/clawchat2/app/build/outputs/apk/play/release/openclaw-0.2.7-play-release.apk`
+- `adb -s c2f22adf install -r /Users/memphis/.openclaw/workspace-mira/clawchat2/app/build/outputs/apk/play/release/openclaw-0.2.7-play-release.apk`
+- `adb -s c2f22adf shell am start -W -n ai.openclaw.app/.MainActivity`
+- `adb -s c2f22adf shell dumpsys window | rg "mCurrentFocus|mFocusedApp|ai.openclaw.app|MainActivity"`
+- `adb -s c2f22adf shell pidof ai.openclaw.app`
+- Verified release artifact for this pass: `app/build/outputs/apk/play/release/openclaw-0.2.7-play-release.apk`, built at `2026-03-31 12:13:39 +0800`, SHA-256 `39d90b1ce627ec52b2e93a63b854dcb87a8706b81018d98a438431cad6e5bdcd`.
