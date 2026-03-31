@@ -1,5 +1,20 @@
 # Task Plan
 
+- [x] Create and keep work on `codex/chat-bubble-and-contacts-simplify`; do not merge back to `main` without explicit user approval after testing.
+- [x] Move speaker and timestamp back into the first line inside each chat bubble.
+- [x] Remove per-contact card borders and switch the contacts list to subtle horizontal separators between rows.
+- [x] Rebuild and run targeted verification for the updated chat bubble and contacts list UI.
+- [x] Review: this follow-up UI pass remains on branch `codex/chat-bubble-and-contacts-simplify` and must not be merged back to `main` until the user explicitly approves it after testing.
+- [x] Chat bubbles now place speaker and timestamp back on the first row inside the bubble header, restoring the denser in-bubble metadata layout.
+- [x] Contacts now render as flatter rows without per-item card borders; rows are separated by a light horizontal divider to keep the page visually simpler.
+- [x] Fresh verification completed on 2026-03-31 with:
+- [x] `./gradlew :app:compilePlayDebugKotlin`
+- [x] `./gradlew :app:assemblePlayRelease`
+- [x] `adb -s c2f22adf install -r app/build/outputs/apk/play/release/openclaw-0.2.7-play-release.apk`
+- [x] `adb -s c2f22adf shell am start -W -n ai.openclaw.app/.MainActivity`
+- [x] `adb -s c2f22adf shell dumpsys window windows | rg "ai.openclaw.app|MainActivity"`
+- [x] `adb -s c2f22adf shell pidof ai.openclaw.app`
+
 - [x] Create and keep work on `codex/chat-thread-header-polish` until this round is verified.
 - [x] Move each chat message's speaker label and timestamp together to the outside top-left of the message bubble.
 - [x] Add the active agent avatar/icon to the left side of the chat sheet header title.

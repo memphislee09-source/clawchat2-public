@@ -111,35 +111,10 @@ private fun ChatBubbleContainer(
   timestampLabel: String? = null,
   content: @Composable () -> Unit,
 ) {
-  Column(
+  Row(
     modifier = modifier.fillMaxWidth(),
-    verticalArrangement = Arrangement.spacedBy(5.dp),
+    horizontalArrangement = Arrangement.Start,
   ) {
-    Row(
-      modifier = Modifier.fillMaxWidth().padding(start = 2.dp),
-      horizontalArrangement = Arrangement.Start,
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      Text(
-        text = roleLabel,
-        style = mobileCaption2.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp),
-        color = style.roleColor,
-        textAlign = TextAlign.Start,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-      )
-      if (!timestampLabel.isNullOrBlank()) {
-        Text(
-          text = timestampLabel,
-          modifier = Modifier.padding(start = 6.dp),
-          style = mobileCaption2,
-          color = style.roleColor.copy(alpha = 0.78f),
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-        )
-      }
-    }
-
     Surface(
       shape = RoundedCornerShape(14.dp),
       color = style.containerColor,
@@ -148,10 +123,34 @@ private fun ChatBubbleContainer(
       border = BorderStroke(1.dp, style.borderColor),
       modifier = Modifier.fillMaxWidth(),
     ) {
-      Box(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 11.dp),
-        contentAlignment = Alignment.CenterStart,
+      Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.spacedBy(5.dp),
       ) {
+        Row(
+          modifier = Modifier.padding(start = 11.dp, end = 11.dp, top = 9.dp),
+          horizontalArrangement = Arrangement.spacedBy(6.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Text(
+            text = roleLabel,
+            style = mobileCaption2.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp),
+            color = style.roleColor,
+            textAlign = TextAlign.Start,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+          )
+          if (!timestampLabel.isNullOrBlank()) {
+            Text(
+              text = timestampLabel,
+              style = mobileCaption2,
+              color = style.roleColor.copy(alpha = 0.78f),
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+            )
+          }
+        }
         content()
       }
     }
@@ -171,7 +170,11 @@ private fun ChatMessageBody(content: List<ChatMessageContent>, textColor: Color)
           val text = part.text ?: return@forEachIndexed
           Box(
             modifier =
-              Modifier.fillMaxWidth(),
+              Modifier.fillMaxWidth().padding(
+                start = 11.dp,
+                end = 11.dp,
+                bottom = if (index == content.lastIndex) 11.dp else 0.dp,
+              ),
             contentAlignment = Alignment.CenterStart,
           ) {
             SelectionContainer {
@@ -196,7 +199,7 @@ fun ChatTypingIndicatorBubble(assistantLabel: String = "assistant") {
     roleLabel = roleLabel(role = "assistant", assistantLabel = assistantLabel, userLabel = "我"),
   ) {
     Row(
-      modifier = Modifier,
+      modifier = Modifier.padding(horizontal = 11.dp, vertical = 10.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -219,7 +222,7 @@ fun ChatPendingToolsBubble(toolCalls: List<ChatPendingToolCall>, assistantLabel:
     roleLabel = "$assistantLabel · tools",
   ) {
     Column(
-      modifier = Modifier,
+      modifier = Modifier.padding(horizontal = 11.dp, vertical = 10.dp),
       verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
       Text(tr("Running tools…", "正在调用工具…"), style = mobileCaption1.copy(fontWeight = FontWeight.SemiBold), color = mobileTextSecondary)
@@ -258,7 +261,7 @@ fun ChatStreamingAssistantBubble(text: String, assistantLabel: String = "assista
     style = bubbleStyle("assistant"),
     roleLabel = "$assistantLabel · live",
   ) {
-    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 10.dp), contentAlignment = Alignment.CenterStart) {
       ChatMarkdown(text = text, textColor = mobileText)
     }
   }

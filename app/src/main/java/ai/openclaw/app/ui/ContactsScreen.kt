@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -128,11 +129,12 @@ fun ContactsScreen(
           }
         }
       } else {
-        itemsIndexed(items = agentContacts, key = { _, it -> it.agentId }) { _, entry ->
+        itemsIndexed(items = agentContacts, key = { _, it -> it.agentId }) { index, entry ->
           ContactListItem(
             entry = entry,
             active = entry.directSessionKey == chatSessionKey,
             unread = isContactUnread(entry = entry, lastReadAtMs = chatLastReadAtMs[entry.directSessionKey]),
+            showDivider = index < agentContacts.lastIndex,
             onClick = { onOpenChat(entry.agentId) },
           )
         }
@@ -146,21 +148,20 @@ private fun ContactListItem(
   entry: AgentContactEntry,
   active: Boolean,
   unread: Boolean,
+  showDivider: Boolean,
   onClick: () -> Unit,
 ) {
-  val cardColor = if (active) mobileSurfaceStrong else mobileSurface
-  val cardBorder = if (active) mobileAccent.copy(alpha = 0.22f) else mobileBorder.copy(alpha = 0.24f)
-  Surface(
+  Column(
     modifier = Modifier.fillMaxWidth(),
-    shape = RoundedCornerShape(18.dp),
-    color = cardColor,
-    border = BorderStroke(1.dp, cardBorder),
+    verticalArrangement = Arrangement.spacedBy(0.dp),
   ) {
     Row(
       modifier =
         Modifier
           .fillMaxWidth()
+          .clip(RoundedCornerShape(16.dp))
           .clickable(onClick = onClick)
+          .background(if (active) mobileSurfaceStrong.copy(alpha = 0.9f) else Color.Transparent)
           .padding(horizontal = 12.dp, vertical = 12.dp),
       horizontalArrangement = Arrangement.spacedBy(10.dp),
       verticalAlignment = Alignment.CenterVertically,
@@ -230,6 +231,13 @@ private fun ContactListItem(
           }
         }
       }
+    }
+    if (showDivider) {
+      HorizontalDivider(
+        modifier = Modifier.padding(start = 68.dp),
+        thickness = 1.dp,
+        color = mobileBorder.copy(alpha = 0.20f),
+      )
     }
   }
 }
