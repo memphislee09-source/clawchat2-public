@@ -859,3 +859,26 @@
 - `adb -s c2f22adf shell dumpsys activity activities | rg "ai.openclaw.app/.MainActivity|ResumedActivity|topDisplayFocusedStack"`
 - `adb -s c2f22adf shell dumpsys window | rg "mCurrentFocus|mFocusedApp|ai.openclaw.app|MainActivity"`
 - Verified latest branch artifact for Redmi K20 (`c2f22adf`): `app/build/outputs/apk/play/release/openclaw-0.2.7-play-release.apk`, built at `2026-03-31 19:24:53 +0800`, installed successfully, and verified with `ai.openclaw.app/.MainActivity` in the focused window/task path after launch.
+
+## Release 0.2.8 Plan
+
+- [x] Promote the tested `codex/light-ui-color-polish` work into `main` as the new development baseline.
+- [x] Bump the Android app to `0.2.8` / `versionCode 10`.
+- [x] Update release-facing docs to reflect the new contacts/chat UI baseline and the moved-out message metadata layout.
+- [x] Build and verify fresh `playRelease` artifacts for `0.2.8`, including unit tests and a real-device install of the release APK.
+- [x] Push the updated `main` baseline to the private and public GitHub repositories, then publish the public GitHub Release with the `0.2.8` APK and checksum.
+
+## Release 0.2.8 Review
+
+- Fast-forwarded `codex/light-ui-color-polish` into `main`, so future development now starts from this `0.2.8` UI baseline.
+- Updated `README.md`, `RELEASING.md`, `status.md`, and added `RELEASE_NOTES_v0.2.8.md` so the public docs now match the current Contacts/Chat presentation, including outside-bubble speaker/time metadata and single-line bubble shrink behavior.
+- This release promotes the refreshed Contacts and Chat surfaces into the public baseline: stronger light-mode contrast, corrected dark-mode composer surfaces, outside-bubble metadata, and width rules that keep only single-line plain-text messages compact.
+- Fresh verification completed on 2026-03-31 with:
+- `./gradlew :app:compilePlayDebugKotlin :app:testPlayDebugUnitTest :app:assemblePlayRelease`
+- `shasum -a 256 /Users/memphis/.openclaw/workspace-mira/clawchat2/app/build/outputs/apk/play/release/openclaw-0.2.8-play-release.apk`
+- `adb -s c2f22adf install -r /Users/memphis/.openclaw/workspace-mira/clawchat2/app/build/outputs/apk/play/release/openclaw-0.2.8-play-release.apk`
+- `adb -s c2f22adf shell am start -W -n ai.openclaw.app/.MainActivity`
+- `adb -s c2f22adf shell monkey -p ai.openclaw.app -c android.intent.category.LAUNCHER 1`
+- `adb -s c2f22adf shell dumpsys activity activities | rg "ai.openclaw.app/.MainActivity|ResumedActivity|topDisplayFocusedStack"`
+- `adb -s c2f22adf shell ps -A | rg "ai\\.openclaw\\.app"`
+- Verified release artifact for this pass: `app/build/outputs/apk/play/release/openclaw-0.2.8-play-release.apk`, built at `2026-03-31 21:09:29 +0800`, SHA-256 `0b20c95dc89d1c44ac0a3825e7d5f0ecc317b16951e7e7fe8d946c0962e542a9`.
