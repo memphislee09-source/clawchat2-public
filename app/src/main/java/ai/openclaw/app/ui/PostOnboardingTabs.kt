@@ -57,6 +57,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import ai.openclaw.app.MainViewModel
 import ai.openclaw.app.R
 import ai.openclaw.app.BuildConfig
@@ -314,7 +315,12 @@ private fun TopStatusBar(
         Text(
           text = title,
           modifier = Modifier.padding(start = if (titleLeadingContent != null) 8.dp else 0.dp),
-          style = if (activeTab == HomeTab.Contacts) mobileTitle2 else mobileHeadline,
+          style =
+            if (activeTab == HomeTab.Contacts) {
+              mobileTitle2.copy(fontSize = 22.sp, lineHeight = 28.sp)
+            } else {
+              mobileHeadline
+            },
           color = mobileText,
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
@@ -401,8 +407,9 @@ private fun ChatTopBarAvatar(contact: AgentContactEntry) {
   Surface(
     modifier = Modifier.size(28.dp),
     shape = avatarShape,
-    color = mobileSurfaceStrong,
-    border = BorderStroke(1.dp, mobileBorder.copy(alpha = 0.9f)),
+    color = mobileSurface,
+    border = BorderStroke(1.dp, mobileBorder.copy(alpha = 0.72f)),
+    shadowElevation = 1.dp,
   ) {
     if (avatarUrl != null) {
       SubcomposeAsyncImage(
@@ -429,7 +436,7 @@ private fun ChatTopBarAvatarFallback(contact: AgentContactEntry) {
       Modifier
         .fillMaxSize()
         .clip(avatarShape)
-        .background(mobileSurface),
+        .background(mobileSurfaceStrong.copy(alpha = 0.86f)),
     contentAlignment = Alignment.Center,
   ) {
     if (label != null) {

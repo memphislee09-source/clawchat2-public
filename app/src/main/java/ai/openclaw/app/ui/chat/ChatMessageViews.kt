@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -28,16 +29,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.openclaw.app.chat.ChatMessage
@@ -53,6 +57,7 @@ import ai.openclaw.app.ui.mobileCaption1
 import ai.openclaw.app.ui.mobileCaption2
 import ai.openclaw.app.ui.mobileCodeBg
 import ai.openclaw.app.ui.mobileCodeText
+import ai.openclaw.app.ui.mobileDarkMode
 import ai.openclaw.app.ui.mobileHeadline
 import ai.openclaw.app.ui.mobileSurfaceStrong
 import ai.openclaw.app.ui.mobileText
@@ -65,7 +70,6 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import androidx.compose.foundation.isSystemInDarkTheme
 
 private data class ChatBubbleStyle(
   val containerColor: Color,
@@ -93,13 +97,27 @@ fun ChatMessageBubble(message: ChatMessage, assistantLabel: String = "assistant"
     }
 
   if (displayableContent.isEmpty()) return
+  val expandToMaxWidth = displayableContent.any { it.type != "text" }
+  val singleTextCandidate =
+    displayableContent
+      .singleOrNull()
+      ?.takeIf { it.type == "text" }
+      ?.text
+      ?.trim()
+      ?.takeIf { it.isNotEmpty() }
 
   ChatBubbleContainer(
     style = style,
     roleLabel = roleLabel(role = role, assistantLabel = assistantLabel, userLabel = userLabel),
     timestampLabel = formatBubbleTimestamp(message.timestampMs),
-  ) {
-    ChatMessageBody(content = displayableContent, textColor = style.textColor)
+    expandToMaxWidth = expandToMaxWidth,
+    singleTextCandidate = singleTextCandidate,
+  ) { useFullWidth ->
+    ChatMessageBody(
+      content = displayableContent,
+      textColor = style.textColor,
+      expandToMaxWidth = useFullWidth,
+    )
   }
 }
 
@@ -109,22 +127,46 @@ private fun ChatBubbleContainer(
   roleLabel: String,
   modifier: Modifier = Modifier,
   timestampLabel: String? = null,
-  content: @Composable () -> Unit,
+  expandToMaxWidth: Boolean = false,
+  singleTextCandidate: String? = null,
+  content: @Composable (Boolean) -> Unit,
 ) {
-  Row(
-    modifier = modifier.fillMaxWidth(),
-    horizontalArrangement = Arrangement.Start,
-  ) {
+  BoxWithConstraints(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+    val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val bubbleMaxWidth = maxWidth * 0.9f
+    val shouldShrinkToContent =
+      !expandToMaxWidth &&
+        singleTextCandidate != null &&
+        !singleTextCandidate.contains('\n') &&
+        remember(singleTextCandidate, bubbleMaxWidth, density) {
+          val maxTextWidthPx =
+            with(density) {
+              (bubbleMaxWidth - 22.dp).roundToPx().coerceAtLeast(1)
+            }
+          textMeasurer.measure(
+            text = AnnotatedString(singleTextCandidate),
+            style = mobileCallout,
+            constraints = Constraints(maxWidth = maxTextWidthPx),
+          ).lineCount == 1
+        }
+    val useFullWidth = expandToMaxWidth || !shouldShrinkToContent
+    val bubbleModifier =
+      if (useFullWidth) {
+        Modifier.fillMaxWidth()
+      } else {
+        Modifier.widthIn(max = bubbleMaxWidth)
+      }
     Surface(
       shape = RoundedCornerShape(14.dp),
       color = style.containerColor,
       tonalElevation = 0.dp,
-      shadowElevation = 0.dp,
+      shadowElevation = 1.dp,
       border = BorderStroke(1.dp, style.borderColor),
-      modifier = Modifier.fillMaxWidth(),
+      modifier = bubbleModifier,
     ) {
       Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = if (useFullWidth) Modifier.fillMaxWidth() else Modifier,
         horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.spacedBy(5.dp),
       ) {
@@ -151,16 +193,20 @@ private fun ChatBubbleContainer(
             )
           }
         }
-        content()
+        content(useFullWidth)
       }
     }
   }
 }
 
 @Composable
-private fun ChatMessageBody(content: List<ChatMessageContent>, textColor: Color) {
+private fun ChatMessageBody(
+  content: List<ChatMessageContent>,
+  textColor: Color,
+  expandToMaxWidth: Boolean,
+) {
   Column(
-    modifier = Modifier.fillMaxWidth(),
+    modifier = if (expandToMaxWidth) Modifier.fillMaxWidth() else Modifier,
     horizontalAlignment = Alignment.Start,
     verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
@@ -170,7 +216,7 @@ private fun ChatMessageBody(content: List<ChatMessageContent>, textColor: Color)
           val text = part.text ?: return@forEachIndexed
           Box(
             modifier =
-              Modifier.fillMaxWidth().padding(
+              (if (expandToMaxWidth) Modifier.fillMaxWidth() else Modifier).padding(
                 start = 11.dp,
                 end = 11.dp,
                 bottom = if (index == content.lastIndex) 11.dp else 0.dp,
@@ -197,7 +243,8 @@ fun ChatTypingIndicatorBubble(assistantLabel: String = "assistant") {
   ChatBubbleContainer(
     style = bubbleStyle("assistant"),
     roleLabel = roleLabel(role = "assistant", assistantLabel = assistantLabel, userLabel = "我"),
-  ) {
+    expandToMaxWidth = false,
+  ) { _ ->
     Row(
       modifier = Modifier.padding(horizontal = 11.dp, vertical = 10.dp),
       verticalAlignment = Alignment.CenterVertically,
@@ -220,7 +267,8 @@ fun ChatPendingToolsBubble(toolCalls: List<ChatPendingToolCall>, assistantLabel:
   ChatBubbleContainer(
     style = bubbleStyle("assistant"),
     roleLabel = "$assistantLabel · tools",
-  ) {
+    expandToMaxWidth = false,
+  ) { _ ->
     Column(
       modifier = Modifier.padding(horizontal = 11.dp, vertical = 10.dp),
       verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -260,7 +308,8 @@ fun ChatStreamingAssistantBubble(text: String, assistantLabel: String = "assista
   ChatBubbleContainer(
     style = bubbleStyle("assistant"),
     roleLabel = "$assistantLabel · live",
-  ) {
+    expandToMaxWidth = false,
+  ) { _ ->
     Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 10.dp), contentAlignment = Alignment.CenterStart) {
       ChatMarkdown(text = text, textColor = mobileText)
     }
@@ -269,29 +318,34 @@ fun ChatStreamingAssistantBubble(text: String, assistantLabel: String = "assista
 
 @Composable
 private fun bubbleStyle(role: String): ChatBubbleStyle {
-  val darkMode = isSystemInDarkTheme()
+  val darkMode = mobileDarkMode
   return when (role) {
     "user" ->
       ChatBubbleStyle(
-        containerColor = mobileAccent,
+        containerColor = if (darkMode) mobileAccent else Color(0xFF68C97A),
         roleColor = Color(0xFF18211C).copy(alpha = 0.82f),
-        borderColor = mobileAccent.copy(alpha = if (darkMode) 0.22f else 0.12f),
+        borderColor =
+          if (darkMode) {
+            mobileAccent.copy(alpha = 0.22f)
+          } else {
+            Color(0xFF68C97A).copy(alpha = 0.12f)
+          },
         textColor = Color(0xFF18211C),
       )
 
     "system" ->
       ChatBubbleStyle(
-        containerColor = mobileWarningSoft,
-        roleColor = mobileWarning,
-        borderColor = mobileWarning.copy(alpha = if (darkMode) 0.16f else 0.10f),
+        containerColor = if (darkMode) mobileWarningSoft else Color(0xFFFDF1E7),
+        roleColor = if (darkMode) mobileWarning else Color(0xFFC98247),
+        borderColor = if (darkMode) mobileWarning.copy(alpha = 0.16f) else Color(0xFFE9C8AC),
         textColor = mobileText,
       )
 
     else ->
       ChatBubbleStyle(
-        containerColor = mobileSurfaceStrong,
+        containerColor = if (darkMode) mobileSurfaceStrong else Color(0xFFFDFEFE),
         roleColor = mobileTextSecondary,
-        borderColor = mobileBorder.copy(alpha = if (darkMode) 0.22f else 0.16f),
+        borderColor = mobileBorder.copy(alpha = if (darkMode) 0.22f else 0.34f),
         textColor = mobileText,
       )
   }

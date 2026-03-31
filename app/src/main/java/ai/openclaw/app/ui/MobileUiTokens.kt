@@ -36,20 +36,20 @@ internal data class MobileUiPalette(
 
 private val mobileLightPalette =
   MobileUiPalette(
-    background = Color(0xFFF7F8FB),
+    background = Color(0xFFF3F7FB),
     surface = Color(0xFFFFFFFF),
-    surfaceStrong = Color(0xFFF1F4F8),
-    border = Color(0xFFE4E9F0),
-    borderStrong = Color(0xFFD6DDE7),
-    text = Color(0xFF2E3644),
-    textSecondary = Color(0xFF768297),
-    textTertiary = Color(0xFFA0A9B8),
-    accent = Color(0xFF67C979),
-    accentSoft = Color(0xFFDDF3E2),
-    success = Color(0xFF5CCB79),
-    successSoft = Color(0xFFD9F3E0),
-    warning = Color(0xFF7ACEEA),
-    warningSoft = Color(0xFFE3F5FB),
+    surfaceStrong = Color(0xFFEAF2F8),
+    border = Color(0xFFD8E3EE),
+    borderStrong = Color(0xFFC4D3E1),
+    text = Color(0xFF243245),
+    textSecondary = Color(0xFF64758A),
+    textTertiary = Color(0xFF8D9CAF),
+    accent = Color(0xFF3DBA72),
+    accentSoft = Color(0xFFD9F3E5),
+    success = Color(0xFF33B86C),
+    successSoft = Color(0xFFD7F1E1),
+    warning = Color(0xFF4FB4D8),
+    warningSoft = Color(0xFFE0F4FB),
     danger = Color(0xFFEF6C66),
     dangerSoft = Color(0xFFFFE3E1),
     codeBg = Color(0xFF171D27),
@@ -82,15 +82,23 @@ private object MobileUiPaletteState {
   var currentPalette by mutableStateOf(mobileLightPalette)
 }
 
+private object MobileUiModeState {
+  var darkMode by mutableStateOf(false)
+}
+
 internal fun setMobileUiPalette(darkMode: Boolean) {
+  MobileUiModeState.darkMode = darkMode
   MobileUiPaletteState.currentPalette = if (darkMode) mobileDarkPalette else mobileLightPalette
 }
+
+internal val mobileDarkMode: Boolean
+  get() = MobileUiModeState.darkMode
 
 internal val mobileBackground: Color
   get() = MobileUiPaletteState.currentPalette.background
 
 internal val mobileBackgroundGradient: Brush
-  get() = Brush.verticalGradient(listOf(mobileBackground, mobileSurfaceStrong))
+  get() = Brush.verticalGradient(listOf(mobileBackground, mobileSurfaceStrong.copy(alpha = 0.95f)))
 
 internal val mobileSurface: Color
   get() = MobileUiPaletteState.currentPalette.surface

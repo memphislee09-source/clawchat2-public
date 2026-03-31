@@ -62,6 +62,7 @@ import ai.openclaw.app.ui.mobileBorder
 import ai.openclaw.app.ui.mobileCallout
 import ai.openclaw.app.ui.mobileCaption1
 import ai.openclaw.app.ui.mobileDanger
+import ai.openclaw.app.ui.mobileDarkMode
 import ai.openclaw.app.ui.mobileSurfaceStrong
 import ai.openclaw.app.ui.mobileText
 import ai.openclaw.app.ui.mobileTextSecondary
@@ -115,7 +116,7 @@ fun ChatComposer(
   val sendTint = if (sendBusy) mobileDanger else mobileAccent
 
   Column(
-    modifier = Modifier.fillMaxWidth(),
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 10.dp),
     verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
     if (attachments.isNotEmpty()) {
@@ -134,7 +135,7 @@ fun ChatComposer(
       minLines = 1,
       maxLines = 6,
       textStyle = mobileBodyStyle().copy(color = mobileText),
-      shape = RoundedCornerShape(12.dp),
+      shape = RoundedCornerShape(14.dp),
       colors = chatTextFieldColors(),
     )
 
@@ -539,8 +540,8 @@ private fun AttachmentsStrip(
 private fun AttachmentChip(type: String, fileName: String, onRemove: () -> Unit) {
   Surface(
     shape = RoundedCornerShape(999.dp),
-    color = mobileSurfaceStrong,
-    border = BorderStroke(1.dp, mobileBorder.copy(alpha = 0.24f)),
+    color = mobileAccentSoft.copy(alpha = 0.42f),
+    border = BorderStroke(1.dp, mobileBorder.copy(alpha = 0.28f)),
   ) {
     Row(
       modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -569,7 +570,7 @@ private fun AttachmentChip(type: String, fileName: String, onRemove: () -> Unit)
       Surface(
         onClick = onRemove,
         shape = RoundedCornerShape(999.dp),
-        color = mobileAccentSoft.copy(alpha = 0.72f),
+        color = mobileSurfaceStrong.copy(alpha = 0.96f),
         border = BorderStroke(1.dp, mobileBorder.copy(alpha = 0.18f)),
       ) {
         Text(
@@ -585,15 +586,27 @@ private fun AttachmentChip(type: String, fileName: String, onRemove: () -> Unit)
 
 @Composable
 private fun chatTextFieldColors() =
-  OutlinedTextFieldDefaults.colors(
-    focusedContainerColor = mobileSurfaceStrong,
-    unfocusedContainerColor = mobileSurfaceStrong,
-    focusedBorderColor = mobileAccent.copy(alpha = 0.30f),
-    unfocusedBorderColor = mobileBorder.copy(alpha = 0.18f),
-    focusedTextColor = mobileText,
-    unfocusedTextColor = mobileText,
-    cursorColor = mobileAccent,
-  )
+  if (mobileDarkMode) {
+    OutlinedTextFieldDefaults.colors(
+      focusedContainerColor = mobileSurfaceStrong.copy(alpha = 0.96f),
+      unfocusedContainerColor = mobileSurfaceStrong.copy(alpha = 0.90f),
+      focusedBorderColor = mobileAccent.copy(alpha = 0.36f),
+      unfocusedBorderColor = mobileBorder.copy(alpha = 0.48f),
+      focusedTextColor = mobileText,
+      unfocusedTextColor = mobileText,
+      cursorColor = mobileAccent,
+    )
+  } else {
+    OutlinedTextFieldDefaults.colors(
+      focusedContainerColor = Color.White.copy(alpha = 0.98f),
+      unfocusedContainerColor = mobileSurfaceStrong.copy(alpha = 0.78f),
+      focusedBorderColor = mobileAccent.copy(alpha = 0.48f),
+      unfocusedBorderColor = mobileBorder.copy(alpha = 0.28f),
+      focusedTextColor = mobileText,
+      unfocusedTextColor = mobileText,
+      cursorColor = mobileAccent,
+    )
+  }
 
 @Composable
 private fun mobileBodyStyle() =

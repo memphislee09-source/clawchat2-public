@@ -822,3 +822,38 @@
 - Updated `.github/workflows/android-ci.yml` to run the flavor-specific tasks `:app:compilePlayDebugKotlin` and `:app:testPlayDebugUnitTest`, which match the public Android build variant actually shipped and already used in local verification.
 - Fresh local verification completed on 2026-03-31 with `./gradlew :app:compilePlayDebugKotlin :app:testPlayDebugUnitTest`, and the workflow-matching command set now exits successfully instead of failing during task resolution.
 - Pushed the workflow fix to both private and public `main`, and the public GitHub Actions run `23782763953` (`ci: fix android checks flavor tasks`) completed successfully with the `android-checks` job green in 3m30s.
+
+## Light UI Color Polish Plan
+
+- [x] Create and keep work on `codex/light-ui-color-polish`; do not merge back to `main` without explicit user approval after testing.
+- [x] Re-read the current `main` UI baseline and trace the light-mode color sources for Contacts and Chat.
+- [x] Adjust the light-mode palette and theme contrast so the app keeps its calm direction but gains more color energy and visual depth.
+- [x] Refine the Contacts page styling with clearer active-state emphasis, richer row layering, and better avatar/list contrast.
+- [x] Refine the Chat page styling with stronger transcript/composer separation and better bubble hierarchy in light mode.
+- [x] Rebuild and verify the updated light-mode UI pass, then record review notes here before waiting for user approval.
+
+## Light UI Color Polish Review
+
+- Current work is on branch `codex/light-ui-color-polish`, and it must stay off `main` until the user explicitly approves the visual direction after testing.
+- The light palette has been retuned to keep the same soft product direction while increasing separation between app background, elevated surfaces, borders, and green accent states.
+- Contacts now read less flat in light mode: active rows use a soft green-tinted fill instead of barely differentiated gray, unread rows get a cleaner white layer, dividers are easier to see, and avatar containers have stronger foreground/background contrast.
+- Chat now has clearer hierarchy in light mode: assistant/system bubbles are more distinct from the page background, the composer sits in its own raised surface, the input field reads as a true editable area, and attachment chips inherit the brighter/tinted look instead of blending into the same gray plane.
+- Also fixed a theme-consistency footgun while touching the bubble styling: chat bubble light/dark branching now follows the app-selected theme mode state instead of reading only the system theme.
+- Follow-up polish on 2026-03-31 kept the user bubble aligned to the approved screenshot target in light mode (`#68C97A`), moved system bubbles to a softer pale contrast color, and increased the Contacts title size plus the overall Contacts page contrast.
+- Follow-up layout fixes on 2026-03-31 tightened the Contacts divider end alignment to the row corner radius, restored dark-mode composer surfaces so the whole input area follows theme, and kept dark-mode user bubble text on the original black text treatment requested by the user.
+- Chat bubble sizing now only shrinks for true single-line plain-text messages; multi-line plain-text messages and any attachment-bearing messages continue to use the wider max-width layout.
+- Fresh verification completed on 2026-03-31 with:
+- `./gradlew :app:compilePlayDebugKotlin`
+- `./gradlew :app:assemblePlayRelease`
+- `adb -s c2f22adf install -r /Users/memphis/.openclaw/workspace-mira/clawchat2/app/build/outputs/apk/play/release/openclaw-0.2.7-play-release.apk`
+- `adb -s c2f22adf shell am start -W -n ai.openclaw.app/.MainActivity`
+- `adb -s c2f22adf shell dumpsys activity activities | rg "ai.openclaw.app/.MainActivity|ResumedActivity|topResumedActivity"`
+- `adb -s c2f22adf shell ps -A | rg "ai\\.openclaw\\.app"`
+- Verified device build for Redmi K20 (`c2f22adf`): `app/build/outputs/apk/play/release/openclaw-0.2.7-play-release.apk`, built at `2026-03-31 18:13:08 +0800`, installed successfully, and launched to a resumed `MainActivity`.
+- Final branch verification after the follow-up iterations completed on 2026-03-31 with:
+- `./gradlew :app:compilePlayDebugKotlin :app:assemblePlayRelease`
+- `adb -s c2f22adf install -r /Users/memphis/.openclaw/workspace-mira/clawchat2/app/build/outputs/apk/play/release/openclaw-0.2.7-play-release.apk`
+- `adb -s c2f22adf shell am start -W -n ai.openclaw.app/.MainActivity`
+- `adb -s c2f22adf shell dumpsys activity activities | rg "ai.openclaw.app/.MainActivity|ResumedActivity|topDisplayFocusedStack"`
+- `adb -s c2f22adf shell dumpsys window | rg "mCurrentFocus|mFocusedApp|ai.openclaw.app|MainActivity"`
+- Verified latest branch artifact for Redmi K20 (`c2f22adf`): `app/build/outputs/apk/play/release/openclaw-0.2.7-play-release.apk`, built at `2026-03-31 19:24:53 +0800`, installed successfully, and verified with `ai.openclaw.app/.MainActivity` in the focused window/task path after launch.

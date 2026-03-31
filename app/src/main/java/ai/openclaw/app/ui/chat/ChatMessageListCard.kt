@@ -202,8 +202,9 @@ private fun EmptyChatHint(modifier: Modifier = Modifier, healthOk: Boolean, onRe
   Surface(
     modifier = modifier.fillMaxWidth(),
     shape = RoundedCornerShape(16.dp),
-    color = mobileSurfaceStrong,
-    border = androidx.compose.foundation.BorderStroke(1.dp, mobileBorder.copy(alpha = 0.28f)),
+    color = mobileSurface,
+    border = androidx.compose.foundation.BorderStroke(1.dp, mobileBorder.copy(alpha = 0.34f)),
+    shadowElevation = 1.dp,
   ) {
     androidx.compose.foundation.layout.Column(
       modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),

@@ -47,6 +47,8 @@ import ai.openclaw.app.ui.mobileDanger
 import ai.openclaw.app.ui.mobileDangerSoft
 import ai.openclaw.app.ui.mobileText
 import ai.openclaw.app.ui.mobileAccent
+import ai.openclaw.app.ui.mobileDarkMode
+import ai.openclaw.app.ui.mobileSurface
 import ai.openclaw.app.ui.mobileSurfaceStrong
 import java.io.ByteArrayOutputStream
 import java.util.Locale
@@ -169,52 +171,60 @@ fun ChatSheetContent(viewModel: MainViewModel) {
     )
 
     Row(modifier = Modifier.fillMaxWidth().imePadding()) {
-      ChatComposer(
-        healthOk = healthOk,
-        thinkingLevel = thinkingLevel,
-        thinkingSupported = thinkingSupported && chatSessionKey.isNotBlank(),
-        modelSupported = modelSupported && chatSessionKey.isNotBlank(),
-        pendingRunCount = pendingRunCount,
-        abortSupported = abortSupported,
-        stopInFlight = stopInFlight,
-        currentModel = currentModel,
-        modelOptions = modelOptions,
-        modelOptionsLoading = modelOptionsLoading,
-        modelOptionsError = modelOptionsError,
-        modelSwitchingLabel = modelSwitchingLabel,
-        thinkingOptions = thinkingOptions,
-        thinkingOptionsLoading = thinkingOptionsLoading,
-        thinkingOptionsError = thinkingOptionsError,
-        thinkingModelLabel = thinkingModelLabel,
-        thinkingSwitchingLevel = thinkingSwitchingLevel,
-        readoutEnabled = speakerEnabled,
-        attachments = attachments,
-        onPickAttachments = { pickAttachments.launch(arrayOf("*/*")) },
-        onRemoveAttachment = { id -> attachments.removeAll { it.id == id } },
-        onOpenModelMenu = { viewModel.refreshChatModelOptions(force = false, silent = false) },
-        onSetModel = { provider, model -> viewModel.setChatModel(provider = provider, model = model) },
-        onOpenThinkingMenu = { viewModel.refreshChatThinkingOptions(force = false, silent = false) },
-        onSetThinkingLevel = { level -> viewModel.setChatThinkingLevel(level) },
-        onToggleReadout = { enabled -> viewModel.setSpeakerEnabled(enabled) },
-        onNew = {
-          viewModel.sendChat(message = "/new", thinking = thinkingLevel, attachments = emptyList())
-        },
-        onAbort = { viewModel.abortChat() },
-        onInputFocusChanged = { focused -> composerFocused = focused },
-        onSend = { text ->
-          val outgoing =
-            attachments.map { att ->
-              OutgoingAttachment(
-                type = att.type,
-                mimeType = att.mimeType,
-                fileName = att.fileName,
-                base64 = att.base64,
-              )
-            }
-          viewModel.sendChat(message = text, thinking = thinkingLevel, attachments = outgoing)
-          attachments.clear()
-        },
-      )
+      Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = if (mobileDarkMode) mobileSurface else Color.White.copy(alpha = 0.96f),
+        border = BorderStroke(1.dp, mobileBorder.copy(alpha = if (mobileDarkMode) 0.56f else 0.34f)),
+        shadowElevation = 2.dp,
+      ) {
+        ChatComposer(
+          healthOk = healthOk,
+          thinkingLevel = thinkingLevel,
+          thinkingSupported = thinkingSupported && chatSessionKey.isNotBlank(),
+          modelSupported = modelSupported && chatSessionKey.isNotBlank(),
+          pendingRunCount = pendingRunCount,
+          abortSupported = abortSupported,
+          stopInFlight = stopInFlight,
+          currentModel = currentModel,
+          modelOptions = modelOptions,
+          modelOptionsLoading = modelOptionsLoading,
+          modelOptionsError = modelOptionsError,
+          modelSwitchingLabel = modelSwitchingLabel,
+          thinkingOptions = thinkingOptions,
+          thinkingOptionsLoading = thinkingOptionsLoading,
+          thinkingOptionsError = thinkingOptionsError,
+          thinkingModelLabel = thinkingModelLabel,
+          thinkingSwitchingLevel = thinkingSwitchingLevel,
+          readoutEnabled = speakerEnabled,
+          attachments = attachments,
+          onPickAttachments = { pickAttachments.launch(arrayOf("*/*")) },
+          onRemoveAttachment = { id -> attachments.removeAll { it.id == id } },
+          onOpenModelMenu = { viewModel.refreshChatModelOptions(force = false, silent = false) },
+          onSetModel = { provider, model -> viewModel.setChatModel(provider = provider, model = model) },
+          onOpenThinkingMenu = { viewModel.refreshChatThinkingOptions(force = false, silent = false) },
+          onSetThinkingLevel = { level -> viewModel.setChatThinkingLevel(level) },
+          onToggleReadout = { enabled -> viewModel.setSpeakerEnabled(enabled) },
+          onNew = {
+            viewModel.sendChat(message = "/new", thinking = thinkingLevel, attachments = emptyList())
+          },
+          onAbort = { viewModel.abortChat() },
+          onInputFocusChanged = { focused -> composerFocused = focused },
+          onSend = { text ->
+            val outgoing =
+              attachments.map { att ->
+                OutgoingAttachment(
+                  type = att.type,
+                  mimeType = att.mimeType,
+                  fileName = att.fileName,
+                  base64 = att.base64,
+                )
+              }
+            viewModel.sendChat(message = text, thinking = thinkingLevel, attachments = outgoing)
+            attachments.clear()
+          },
+        )
+      }
     }
   }
 }

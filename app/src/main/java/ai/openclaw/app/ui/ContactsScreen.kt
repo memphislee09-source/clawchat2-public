@@ -154,14 +154,20 @@ private fun ContactListItem(
     modifier = Modifier.fillMaxWidth(),
     verticalArrangement = Arrangement.spacedBy(0.dp),
   ) {
+    val rowBackground =
+      when {
+        active -> mobileAccentSoft.copy(alpha = 0.92f)
+        unread -> mobileSurface.copy(alpha = 0.98f)
+        else -> Color.Transparent
+      }
     Row(
       modifier =
         Modifier
           .fillMaxWidth()
           .clip(RoundedCornerShape(16.dp))
           .clickable(onClick = onClick)
-          .background(if (active) mobileSurfaceStrong.copy(alpha = 0.9f) else Color.Transparent)
-          .padding(horizontal = 12.dp, vertical = 12.dp),
+          .background(rowBackground)
+          .padding(horizontal = 12.dp, vertical = 13.dp),
       horizontalArrangement = Arrangement.spacedBy(10.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -190,8 +196,8 @@ private fun ContactListItem(
           if (active) {
             Surface(
               shape = RoundedCornerShape(999.dp),
-              color = mobileAccentSoft.copy(alpha = 0.86f),
-              border = BorderStroke(1.dp, mobileAccent.copy(alpha = 0.14f)),
+              color = mobileSurface.copy(alpha = 0.94f),
+              border = BorderStroke(1.dp, mobileAccent.copy(alpha = 0.28f)),
             ) {
               Text(
                 text = tr("Active", "当前"),
@@ -205,7 +211,7 @@ private fun ContactListItem(
         Text(
           text = entry.previewText ?: tr("No messages yet", "暂无消息"),
           style = mobileCallout,
-          color = mobileTextSecondary,
+          color = mobileTextSecondary.copy(alpha = 0.96f),
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
         )
@@ -217,25 +223,26 @@ private fun ContactListItem(
         Text(
           text = formatContactRecency(entry.directSessionUpdatedAtMs),
           style = mobileCaption2,
-          color = if (active) mobileAccent else mobileTextSecondary,
+          color = if (active) mobileAccent else mobileTextSecondary.copy(alpha = 0.98f),
           maxLines = 1,
         )
         if (unread) {
           Surface(
-            modifier = Modifier.size(8.dp),
+            modifier = Modifier.size(9.dp),
             shape = RoundedCornerShape(999.dp),
             color = mobileSuccess,
+            border = BorderStroke(1.dp, mobileSurface.copy(alpha = 0.75f)),
           ) {
-            Box(modifier = Modifier.size(8.dp))
+            Box(modifier = Modifier.size(9.dp))
           }
         }
       }
     }
     if (showDivider) {
       HorizontalDivider(
-        modifier = Modifier.padding(start = 68.dp),
+        modifier = Modifier.padding(start = 68.dp, end = 16.dp),
         thickness = 1.dp,
-        color = mobileBorder.copy(alpha = 0.20f),
+        color = mobileBorderStrong.copy(alpha = 0.60f),
       )
     }
   }
@@ -246,14 +253,14 @@ private fun ContactLeadingAvatar(entry: AgentContactEntry, active: Boolean) {
   val avatarShape = RoundedCornerShape(12.dp)
   val borderColor =
     if (active) {
-      mobileAccent.copy(alpha = 0.4f)
+      mobileAccent.copy(alpha = 0.48f)
     } else {
-      mobileBorder.copy(alpha = 0.9f)
+      mobileBorderStrong.copy(alpha = 0.92f)
     }
   Surface(
     modifier = Modifier.size(46.dp),
     shape = avatarShape,
-    color = mobileSurfaceStrong,
+    color = if (active) mobileSurface else mobileSurface.copy(alpha = 0.98f),
     border = BorderStroke(1.dp, borderColor),
   ) {
     val avatarUrl = entry.avatarUrl?.trim().takeUnless { it.isNullOrEmpty() }
@@ -281,14 +288,14 @@ private fun ContactAvatarFallback(entry: AgentContactEntry, active: Boolean) {
       Modifier
         .fillMaxSize()
         .clip(avatarShape)
-        .background(if (active) mobileAccentSoft else mobileSurface),
+        .background(if (active) mobileAccentSoft.copy(alpha = 0.88f) else mobileSurfaceStrong.copy(alpha = 0.86f)),
     contentAlignment = Alignment.Center,
   ) {
     if (label != null) {
       Text(
         text = label,
         style = mobileCallout.copy(fontWeight = FontWeight.Bold),
-        color = if (active) mobileAccent else mobileText,
+        color = if (active) mobileAccent else mobileText.copy(alpha = 0.92f),
         textAlign = TextAlign.Center,
         maxLines = 1,
       )
