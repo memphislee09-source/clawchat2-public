@@ -698,4 +698,4 @@
 - `adb -s c2f22adf shell dumpsys activity activities | rg "mResumedActivity|topResumedActivity|ai.openclaw.app|MainActivity"`
 - `adb -s c2f22adf shell pidof ai.openclaw.app`
 - Verified public release artifact: `app/build/outputs/apk/play/release/openclaw-0.2.6-play-release.apk`, built at `2026-03-31 09:13:22 +0800`, SHA-256 `b300097f352e75993ccf65fe569266a0e02d9cd0a69b5bcae1dbb6d84d158af9`.
-- The release publication target for this pass is `https://github.com/memphislee09-source/clawchat2-public/releases/tag/v0.2.6`, with the same `main` baseline pushed to both the private and public GitHub repositories.
+- Pushed the same `main` baseline to both the private and public GitHub repositories, then published the public pre-release at `https://github.com/memphislee09-source/clawchat2-public/releases/tag/v0.2.6`.
