@@ -842,6 +842,8 @@
 - Follow-up polish on 2026-03-31 kept the user bubble aligned to the approved screenshot target in light mode (`#68C97A`), moved system bubbles to a softer pale contrast color, and increased the Contacts title size plus the overall Contacts page contrast.
 - Follow-up layout fixes on 2026-03-31 tightened the Contacts divider end alignment to the row corner radius, restored dark-mode composer surfaces so the whole input area follows theme, and kept dark-mode user bubble text on the original black text treatment requested by the user.
 - Chat bubble sizing now only shrinks for true single-line plain-text messages; multi-line plain-text messages and any attachment-bearing messages continue to use the wider max-width layout.
+- Chat message metadata now has a follow-up layout pass pending/implemented to move speaker and timestamp out of the bubble body and place them above the bubble at the top-left, while preserving the newer width rules.
+- Follow-up code review on 2026-03-31 identified one merge blocker in the local version: the moved-out metadata row could still widen the whole message column and defeat the approved single-line bubble shrink rule, so that coupling must be removed before merge/public release.
 - Fresh verification completed on 2026-03-31 with:
 - `./gradlew :app:compilePlayDebugKotlin`
 - `./gradlew :app:assemblePlayRelease`

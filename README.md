@@ -10,7 +10,7 @@ The short rationale for the fork is documented in [WHY_THIS_FORK.md](WHY_THIS_FO
 
 ### Project Status
 
-- Baseline version: `0.2.7`
+- Baseline version: `0.2.8`
 - Android compatibility baseline: `minSdk 30` (Android 11+)
 - Stage: early, experimental, not release-hardened
 - Scope: independent community fork, not an official OpenClaw distribution
@@ -25,10 +25,11 @@ Compared with the upstream Android client, this fork currently emphasizes:
 - simplified chat-first navigation
 - selectable app theme mode with dark-mode support
 - WeChat-style continuous contacts list with larger avatars and a single subtle divider between adjacent rows
-- continuous chat-message presentation with in-bubble speaker/time headers and synced user display name
+- continuous chat-message presentation with speaker/time metadata outside the bubble at the top-left and synced user display name
 - optional chat reply readout with a lightweight speaker toggle in the composer action row
 - quick composer controls for send/stop, `/new`, model switch, and thinking switch directly under the input box
 - denser chat transcript layout with left-aligned bubbles, smaller symmetric side padding, screenshot-aligned light/dark surfaces, and clearer color separation between user, agent, and system messages
+- single-line plain-text bubbles now shrink to content width, while multi-line text and attachment-bearing messages keep the wider conversation width
 - solid green user bubbles now use dark text in both light and dark mode for stronger readability against the brighter reply fill
 - edge-to-edge large chat images with fullscreen tap-to-open / tap-to-close viewing, while smaller images keep their natural size instead of being upscaled
 - borderless icon-only composer quick controls that keep attachment, new-chat, model, thinking, readout, and send/stop visible in one row
@@ -54,7 +55,7 @@ Related docs:
 - [OPENCLAW_AGENT_SETUP.md](OPENCLAW_AGENT_SETUP.md)
 - [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md)
 - [RELEASING.md](RELEASING.md)
-- [RELEASE_NOTES_v0.2.7.md](RELEASE_NOTES_v0.2.7.md)
+- [RELEASE_NOTES_v0.2.8.md](RELEASE_NOTES_v0.2.8.md)
 - [WHY_THIS_FORK.md](WHY_THIS_FORK.md)
 
 ### Demo And Preview
@@ -162,7 +163,7 @@ Current local verification:
 - Public APKs should be signed with the fork maintainer's own release key.
 - Release notes should clearly state that this is an unofficial OpenClaw fork.
 
-Current release guidance is documented in [RELEASING.md](RELEASING.md) and [RELEASE_NOTES_v0.2.7.md](RELEASE_NOTES_v0.2.7.md).
+Current release guidance is documented in [RELEASING.md](RELEASING.md) and [RELEASE_NOTES_v0.2.8.md](RELEASE_NOTES_v0.2.8.md).
 
 ### Development Notes
 
@@ -181,7 +182,7 @@ ClawChat2 是一个基于官方 OpenClaw Android 客户端 `openclaw/openclaw ->
 
 ### 项目状态
 
-- 当前基线版本：`0.2.7`
+- 当前基线版本：`0.2.8`
 - Android 兼容基线：`minSdk 30`（Android 11+）
 - 当前阶段：早期、实验性、尚未达到发布级稳定
 - 项目定位：独立社区分叉，不是官方 OpenClaw 发布版本
@@ -197,7 +198,8 @@ ClawChat2 是一个基于官方 OpenClaw Android 客户端 `openclaw/openclaw ->
 - 更强的 agent 到客户端媒体处理能力
 - 联系人页采用连续列表布局，相邻联系人之间只保留一条浅分隔线
 - 输入框下方现在也提供轻量快捷控制，包括 send/stop、`/new`、模型切换和 thinking 切换
-- 对话记录区域进一步收敛为左对齐、左右留白更小且对称的高密度气泡布局，并将发言人和时间收回到气泡首行，通过颜色区分用户、agent 与 system 消息
+- 对话记录区域进一步收敛为左对齐、左右留白更小且对称的高密度气泡布局，并将发言人和时间移到气泡外左上角，通过颜色区分用户、agent 与 system 消息
+- 单行纯文本消息会按内容宽度收缩；多行文本消息和带附件消息继续保持更宽的对话宽度
 - 用户回复气泡现在在浅色和深色模式下都统一使用实心绿色底配深色文字，提升亮色气泡上的可读性
 - 大图会尽量铺满气泡内容区，小图则保持原始显示尺寸不过度放大，同时支持单击进入全屏、全屏内再单击返回
 - 输入框下方的快捷操作现已收敛为无外框的纯图标按钮，一行内同时显示附件、新会话、模型、thinking、朗读与发送/停止
@@ -221,7 +223,7 @@ ClawChat2 是一个基于官方 OpenClaw Android 客户端 `openclaw/openclaw ->
 - [OPENCLAW_AGENT_SETUP.md](OPENCLAW_AGENT_SETUP.md)
 - [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md)
 - [RELEASING.md](RELEASING.md)
-- [RELEASE_NOTES_v0.2.7.md](RELEASE_NOTES_v0.2.7.md)
+- [RELEASE_NOTES_v0.2.8.md](RELEASE_NOTES_v0.2.8.md)
 - [WHY_THIS_FORK.md](WHY_THIS_FORK.md)
 
 ### 视频与预览
@@ -333,7 +335,7 @@ adb shell am start -n ai.openclaw.app/.MainActivity
 - 对外发布的 APK 应使用分叉维护者自己的 release key 签名。
 - Release 说明中应明确写明这是非官方 OpenClaw 分叉。
 
-当前发行流程与首版说明见 [RELEASING.md](RELEASING.md) 和 [RELEASE_NOTES_v0.2.7.md](RELEASE_NOTES_v0.2.7.md)。
+当前发行流程与首版说明见 [RELEASING.md](RELEASING.md) 和 [RELEASE_NOTES_v0.2.8.md](RELEASE_NOTES_v0.2.8.md)。
 
 ### 开发说明
 

@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
@@ -70,6 +71,11 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+
+private enum class ChatBubbleSlot {
+  Header,
+  Bubble,
+}
 
 private data class ChatBubbleStyle(
   val containerColor: Color,
@@ -157,43 +163,67 @@ private fun ChatBubbleContainer(
       } else {
         Modifier.widthIn(max = bubbleMaxWidth)
       }
-    Surface(
-      shape = RoundedCornerShape(14.dp),
-      color = style.containerColor,
-      tonalElevation = 0.dp,
-      shadowElevation = 1.dp,
-      border = BorderStroke(1.dp, style.borderColor),
-      modifier = bubbleModifier,
-    ) {
-      Column(
-        modifier = if (useFullWidth) Modifier.fillMaxWidth() else Modifier,
-        horizontalAlignment = Alignment.Start,
-        verticalArrangement = Arrangement.spacedBy(5.dp),
-      ) {
-        Row(
-          modifier = Modifier.padding(start = 11.dp, end = 11.dp, top = 9.dp),
-          horizontalArrangement = Arrangement.spacedBy(6.dp),
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          Text(
-            text = roleLabel,
-            style = mobileCaption2.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp),
-            color = style.roleColor,
-            textAlign = TextAlign.Start,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-          )
-          if (!timestampLabel.isNullOrBlank()) {
+    val headerSpacingPx = with(density) { 4.dp.roundToPx() }
+    SubcomposeLayout(modifier = bubbleModifier) { constraints ->
+      val bubblePlaceable =
+        subcompose(ChatBubbleSlot.Bubble) {
+          Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = style.containerColor,
+            tonalElevation = 0.dp,
+            shadowElevation = 1.dp,
+            border = BorderStroke(1.dp, style.borderColor),
+            modifier = if (useFullWidth) Modifier.fillMaxWidth() else Modifier,
+          ) {
+            Column(
+              modifier = if (useFullWidth) Modifier.fillMaxWidth() else Modifier,
+              horizontalAlignment = Alignment.Start,
+              verticalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+              content(useFullWidth)
+            }
+          }
+        }.first().measure(constraints.copy(minWidth = 0, minHeight = 0))
+
+      val headerPlaceable =
+        subcompose(ChatBubbleSlot.Header) {
+          Row(
+            modifier = Modifier.padding(start = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
             Text(
-              text = timestampLabel,
-              style = mobileCaption2,
-              color = style.roleColor.copy(alpha = 0.78f),
+              text = roleLabel,
+              style = mobileCaption2.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp),
+              color = style.roleColor,
+              textAlign = TextAlign.Start,
               maxLines = 1,
               overflow = TextOverflow.Ellipsis,
             )
+            if (!timestampLabel.isNullOrBlank()) {
+              Text(
+                text = timestampLabel,
+                style = mobileCaption2,
+                color = style.roleColor.copy(alpha = 0.78f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+              )
+            }
           }
-        }
-        content(useFullWidth)
+        }.first().measure(
+          Constraints(
+            minWidth = 0,
+            maxWidth = bubblePlaceable.width,
+            minHeight = 0,
+            maxHeight = constraints.maxHeight,
+          ),
+        )
+
+      val layoutWidth = bubblePlaceable.width
+      val layoutHeight = headerPlaceable.height + headerSpacingPx + bubblePlaceable.height
+      layout(width = layoutWidth, height = layoutHeight) {
+        headerPlaceable.placeRelative(x = 0, y = 0)
+        bubblePlaceable.placeRelative(x = 0, y = headerPlaceable.height + headerSpacingPx)
       }
     }
   }
@@ -217,6 +247,7 @@ private fun ChatMessageBody(
           Box(
             modifier =
               (if (expandToMaxWidth) Modifier.fillMaxWidth() else Modifier).padding(
+                top = if (index == 0) 11.dp else 0.dp,
                 start = 11.dp,
                 end = 11.dp,
                 bottom = if (index == content.lastIndex) 11.dp else 0.dp,
@@ -229,7 +260,14 @@ private fun ChatMessageBody(
           }
         }
         else -> {
-          Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+          Box(
+            modifier =
+              Modifier.fillMaxWidth().padding(
+                top = if (index == 0) 10.dp else 0.dp,
+                bottom = if (index == content.lastIndex) 11.dp else 0.dp,
+              ),
+            contentAlignment = Alignment.CenterStart,
+          ) {
             ChatMediaAttachment(descriptor = part.toAttachmentDescriptor())
           }
         }
@@ -323,7 +361,7 @@ private fun bubbleStyle(role: String): ChatBubbleStyle {
     "user" ->
       ChatBubbleStyle(
         containerColor = if (darkMode) mobileAccent else Color(0xFF68C97A),
-        roleColor = Color(0xFF18211C).copy(alpha = 0.82f),
+        roleColor = if (darkMode) Color(0xFFEAF3EE) else Color(0xFF18211C).copy(alpha = 0.82f),
         borderColor =
           if (darkMode) {
             mobileAccent.copy(alpha = 0.22f)
